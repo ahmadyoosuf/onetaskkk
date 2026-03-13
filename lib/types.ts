@@ -1,96 +1,89 @@
 // ─── Task Types ─────────────────────────────────────────────
-export type TaskStatus = "draft" | "open" | "in_progress" | "review" | "completed" | "cancelled"
-export type TaskCategory = "development" | "design" | "writing" | "research" | "marketing" | "data"
+export type TaskType = "form_submission" | "email_sending" | "social_media_liking"
+export type TaskStatus = "open" | "completed" | "cancelled"
 export type SubmissionStatus = "pending" | "approved" | "rejected"
+export type Platform = "linkedin" | "twitter" | "instagram"
 
-export interface Task {
+// ─── Task Definitions ───────────────────────────────────────
+export interface BaseTask {
   id: string
+  type: TaskType
   title: string
   description: string
-  category: TaskCategory
-  budget: number
-  skills: string[]
-  deadline: string // ISO date string
-  attachments: string[]
+  reward: number
+  maxSubmissions: number
+  currentSubmissions: number
   status: TaskStatus
-  submissionCount: number
-  createdAt: string
-  updatedAt: string
+  createdAt: Date
+  deadline?: Date
 }
 
+export interface FormSubmissionTask extends BaseTask {
+  type: "form_submission"
+  details: {
+    targetUrl: string
+    formFields: string[]
+  }
+}
+
+export interface EmailSendingTask extends BaseTask {
+  type: "email_sending"
+  details: {
+    emailContent: string
+    targetEmail: string
+  }
+}
+
+export interface SocialMediaLikingTask extends BaseTask {
+  type: "social_media_liking"
+  details: {
+    postUrl: string
+    platform: Platform
+  }
+}
+
+export type Task = FormSubmissionTask | EmailSendingTask | SocialMediaLikingTask
+
+// ─── Submission ─────────────────────────────────────────────
 export interface Submission {
   id: string
   taskId: string
-  taskTitle: string
-  submitterName: string
-  submitterEmail: string
+  userId: string
+  userName: string
   status: SubmissionStatus
-  submittedAt: string
-  reviewedAt?: string
-  notes?: string
+  proof: string
+  liveAppUrl?: string
+  submittedAt: Date
+  reviewedAt?: Date
+  adminNotes?: string
 }
 
-// ─── Form Schema Types ──────────────────────────────────────
-export interface TaskFormData {
-  title: string
-  description: string
-  category: TaskCategory
-  budget: number
-  skills: string[]
-  deadline: string
-  attachments: string[]
+// ─── User ───────────────────────────────────────────────────
+export interface User {
+  id: string
+  name: string
+  email: string
+  role: "admin" | "worker"
 }
 
-// ─── Filter/Sort Types ──────────────────────────────────────
-export interface TaskFilters {
-  status?: TaskStatus[]
-  category?: TaskCategory[]
-  budgetMin?: number
-  budgetMax?: number
-  search?: string
+// ─── Task Type Metadata ─────────────────────────────────────
+export const TASK_TYPE_META: Record<TaskType, { label: string; description: string }> = {
+  form_submission: {
+    label: "Form Submission",
+    description: "Workers fill out a target form with specified fields",
+  },
+  email_sending: {
+    label: "Email Sending", 
+    description: "Workers send emails to a target address with your content",
+  },
+  social_media_liking: {
+    label: "Social Media Liking",
+    description: "Workers engage with your social media post",
+  },
 }
 
-export interface SubmissionFilters {
-  status?: SubmissionStatus[]
-  taskId?: string
-  search?: string
-}
-
-export type SortDirection = "asc" | "desc"
-
-export interface SortConfig<T extends string> {
-  field: T
-  direction: SortDirection
-}
-
-// ─── Constants ──────────────────────────────────────────────
-export const TASK_CATEGORIES: { value: TaskCategory; label: string }[] = [
-  { value: "development", label: "Development" },
-  { value: "design", label: "Design" },
-  { value: "writing", label: "Writing" },
-  { value: "research", label: "Research" },
-  { value: "marketing", label: "Marketing" },
-  { value: "data", label: "Data" },
-]
-
-export const TASK_STATUSES: { value: TaskStatus; label: string }[] = [
-  { value: "draft", label: "Draft" },
-  { value: "open", label: "Open" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "review", label: "Review" },
-  { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
-]
-
-export const SUBMISSION_STATUSES: { value: SubmissionStatus; label: string }[] = [
-  { value: "pending", label: "Pending" },
-  { value: "approved", label: "Approved" },
-  { value: "rejected", label: "Rejected" },
-]
-
-export const SKILL_OPTIONS = [
-  "React", "TypeScript", "Node.js", "Python", "Figma", "UI/UX",
-  "Copywriting", "SEO", "Data Analysis", "SQL", "Excel", "Research",
-  "Project Management", "Marketing Strategy", "Social Media", "GraphQL",
-  "AWS", "Docker", "Tailwind CSS", "Next.js", "Vue.js", "Angular",
+export const PLATFORM_OPTIONS: { value: Platform; label: string }[] = [
+  { value: "linkedin", label: "LinkedIn" },
+  { value: "twitter", label: "Twitter / X" },
+  { value: "instagram", label: "Instagram" },
 ]

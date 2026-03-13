@@ -19,17 +19,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background">
       {/* Glass Header */}
       <header className="sticky top-0 z-50 glass border-b border-border/30">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
+        <div className="mx-auto flex h-14 sm:h-16 max-w-7xl items-center justify-between px-3 sm:px-4">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
+          <Link href="/" className="flex items-center gap-2 shrink-0">
+            <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm sm:text-base">
               Y
             </span>
-            <span className="text-xl font-semibold tracking-tight">Yoke</span>
+            <span className="hidden xs:inline text-lg sm:text-xl font-semibold tracking-tight">Yoke</span>
           </Link>
 
           {/* Navigation */}
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center gap-0.5 sm:gap-1">
             {NAV_ITEMS.map((item) => {
               const isActive = pathname === item.href || 
                 (item.href !== "/" && pathname.startsWith(item.href))
@@ -40,23 +40,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    "flex items-center gap-1.5 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors",
                     isActive
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
                   <Icon className="h-4 w-4" />
-                  <span className="hidden sm:inline">{item.label}</span>
+                  <span className="hidden md:inline">{item.label}</span>
                 </Link>
               )
             })}
           </nav>
 
           {/* User indicator */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <div className="h-2 w-2 rounded-full bg-success animate-breathe" />
-            <span className="text-sm text-muted-foreground">Demo Mode</span>
+            <span className="hidden sm:inline text-xs sm:text-sm text-muted-foreground">Demo</span>
           </div>
         </div>
       </header>

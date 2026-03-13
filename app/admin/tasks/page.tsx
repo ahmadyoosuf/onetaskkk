@@ -38,9 +38,8 @@ const TASK_ICONS: Record<TaskType, typeof FileText> = {
 
 const STATUS_STYLES: Record<TaskStatus, { label: string; className: string }> = {
   open: { label: "Open", className: "bg-success/10 text-success border-success/20" },
-  in_progress: { label: "In Progress", className: "bg-info/10 text-info border-info/20" },
   completed: { label: "Completed", className: "bg-muted text-muted-foreground border-border/30" },
-  closed: { label: "Closed", className: "bg-destructive/10 text-destructive border-destructive/20" },
+  cancelled: { label: "Cancelled", className: "bg-destructive/10 text-destructive border-destructive/20" },
 }
 
 export default function TasksManagementPage() {
@@ -62,12 +61,12 @@ export default function TasksManagementPage() {
     <AppShell>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Tasks Management</h1>
-            <p className="text-muted-foreground">Manage all tasks and track submissions.</p>
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">Tasks Management</h1>
+            <p className="text-sm text-muted-foreground">Manage all tasks and track submissions.</p>
           </div>
-          <Button asChild>
+          <Button asChild size="sm" className="w-full sm:w-auto">
             <Link href="/admin/composer">
               <Plus className="mr-2 h-4 w-4" />
               New Task

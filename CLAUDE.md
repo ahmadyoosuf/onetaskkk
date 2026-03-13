@@ -1,106 +1,44 @@
-# TaskMarket
+# Yoke Task Marketplace
 
-Micro-task marketplace. Posters create tasks, workers claim and submit, admins review.
+Frontend evaluation — micro-task platform with admin and worker views.
 
 ## Stack
 
-- Next.js 15 (App Router)
-- React 19
-- Tailwind CSS v4
-- Shadcn UI (customized, not default)
-- react-hook-form + zod
-- MSW 2.x for mocking
-- TanStack Virtual for large lists
-- Web Workers for off-thread computation
+- Next.js 15, React 19, Tailwind v4, Shadcn UI
+- react-hook-form + zod for form validation
+- TanStack Virtual for submissions table (1000+ rows)
+- No state management libraries — React state + shared store module
 
-No state management libraries. React state + context only.
+## Routes
 
-## Architecture
+| Path | Role | Purpose |
+|------|------|---------|
+| `/` | Worker | Browse tasks, filter, submit work |
+| `/admin/composer` | Admin | Create new task |
+| `/admin/tasks` | Admin | View all tasks, status, submissions |
+| `/admin/submissions` | Admin | Review/approve/reject submissions |
 
-```
-features/
-  composer/
-    components/    # TitleField, DescriptionField, DeadlineField, CategoryField, BudgetField, SkillsField, AttachmentField
-    hooks/
-  feed/
-    components/    # TaskCard, TaskFilters, SelectionIndicator
-    hooks/         # useKeyboardNavigation, useTaskSelection
-  management/
-    components/    # TaskTable, TaskRow, StatusSelect
-  submissions/
-    components/    # SubmissionsTable, VirtualRow, StatusBadge, RunningTotals
-    workers/       # filter-sort.worker.ts
+## Task Types
 
-components/ui/     # Shadcn primitives (customized)
-lib/types.ts       # Shared types
-mocks/
-  handlers/        # MSW handlers by domain
-  data/            # Seed data generators
-```
+Each type has different fields and validation:
 
-## Code Standards
+- **Form Submission** — target URL, instructions
+- **Email Sending** — email content, recipient count
+- **Social Media Liking** — post URL, platform, engagement type
 
-- No `any` types
-- No unused imports
-- No TODO comments (implement or delete)
-- No dead code
-- One responsibility per file
-- Mobile-first responsive design
+## Architecture Decisions
 
-## Mock Data Requirements
+**Forms:** Using react-hook-form with zod schemas. The composer has conditional fields per task type, and proper validation matters for the UX. Deadline must be future date, required fields enforced.
 
-MSW handlers, not hardcoded arrays. Data must feel real:
+**Virtualization:** Submissions table uses TanStack Virtual. The PRD says "should handle 1000s of tasks" — standard DOM rendering would tank performance.
 
-- 20+ tasks across statuses: draft, open, in_progress, review, completed, cancelled
-- Categories: development, design, writing, research, marketing, data
-- Budgets: $50-$5000 range
-- 100+ submissions with varied statuses spanning 6 months
+**State:** Shared store in `/lib/store.ts` with getter/setter functions. No Redux. The app is small enough that this pattern is cleaner.
 
----
+**Design system:** Adapted from a security dashboard reference — Space Grotesk + IBM Plex Mono fonts, indigo primary, warm surfaces, ghost borders (`border-border/30`), glass header.
 
-## Phase 1
+## Phase 2 Scope (not implemented)
 
-### Task Composer
-
-Single `TaskForm` component. Accepts optional `task` prop for edit mode.
-
-- Routes: `/composer` (create), `/composer/[id]` (edit)
-- Each field is its own component, not inline inputs
-- Zod validation: deadline must be future, skills minimum 1
-- Attachment field is UI-only (no persistence)
-
-### Tasks Feed
-
-Keyboard-first interaction:
-
-- `role="listbox"` container, `role="option"` cards with `aria-selected`
-- Roving tabindex (only focused item has `tabindex=0`)
-- Arrow keys move focus, Home/End jump, Space toggles selection
-- Multi-select up to 5 items. 6th attempt shows toast rejection
-- Filters fully keyboard accessible (Tab to reach, arrows to operate)
-- Filter by: status, category, budget range
-
-### Tasks Management
-
-Admin table:
-
-- Columns: title, category, submissions, deadline, status, delete
-- Status column is interactive Select with optimistic update
-- Delete removes task
-- No drag-drop (Phase 2)
-
-### Submissions Screen
-
-Virtualized table for 100+ rows:
-
-- TanStack Virtual with `useVirtualizer`, absolute positioning
-- Columns: task name, submitter, status, date
-- Running totals at top (total + per-status breakdown)
-- Filter/sort logic runs in Web Worker (`filter-sort.worker.ts`)
-- Batch DOM writes per animation frame
-
----
-
-## Phase 2
-
-Branch exists at `phase-2`. Requirements TBD.
+- Drag-and-drop reordering
+- Real file uploads
+- Database integration
+- Auth with roles
