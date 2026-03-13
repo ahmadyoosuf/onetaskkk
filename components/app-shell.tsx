@@ -23,9 +23,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0">
             <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm sm:text-base">
-              Y
+              T
             </span>
-            <span className="hidden xs:inline text-lg sm:text-xl font-semibold tracking-tight">Yoke</span>
+            <span className="hidden xs:inline text-lg sm:text-xl font-semibold tracking-tight">TaskMarket</span>
           </Link>
 
           {/* Navigation */}

@@ -1,44 +1,70 @@
-# Yoke Task Marketplace
+# TaskMarket
 
-Frontend evaluation — micro-task platform with admin and worker views.
+Frontend evaluation — micro-task platform with admin and worker roles.
 
 ## Stack
 
-- Next.js 15, React 19, Tailwind v4, Shadcn UI
-- react-hook-form + zod for form validation
-- TanStack Virtual for submissions table (1000+ rows)
-- No state management libraries — React state + shared store module
+- Next.js 15 + React 19 + TypeScript
+- Tailwind CSS v4
+- Shadcn UI (customized design system)
+- react-hook-form + zod (form validation)
+- TanStack Virtual (virtualized lists)
+
+No external state management — React state + module-level store.
 
 ## Routes
 
-| Path | Role | Purpose |
-|------|------|---------|
-| `/` | Worker | Browse tasks, filter, submit work |
-| `/admin/composer` | Admin | Create new task |
-| `/admin/tasks` | Admin | View all tasks, status, submissions |
-| `/admin/submissions` | Admin | Review/approve/reject submissions |
+| Path | Role | Screen |
+|------|------|--------|
+| `/` | Worker | Tasks Feed — browse, filter, submit work |
+| `/admin/composer` | Admin | Task Composer — create new tasks |
+| `/admin/tasks` | Admin | Tasks Management — overview, stats, delete |
+| `/admin/submissions` | Admin | Submissions — review, approve/reject |
 
 ## Task Types
 
-Each type has different fields and validation:
+| Type | Fields |
+|------|--------|
+| Form Submission | targetUrl, formFields[] |
+| Email Sending | targetEmail, emailContent |
+| Social Media Liking | postUrl, platform |
 
-- **Form Submission** — target URL, instructions
-- **Email Sending** — email content, recipient count
-- **Social Media Liking** — post URL, platform, engagement type
+## Architecture
 
-## Architecture Decisions
+```
+lib/
+  types.ts      — discriminated union types (Task, Submission)
+  schemas.ts    — zod schemas for form validation
+  store.ts      — in-memory CRUD with 120+ mock submissions
 
-**Forms:** Using react-hook-form with zod schemas. The composer has conditional fields per task type, and proper validation matters for the UX. Deadline must be future date, required fields enforced.
+components/
+  app-shell.tsx — shared layout with glass header
+  composer/     — isolated form field components
 
-**Virtualization:** Submissions table uses TanStack Virtual. The PRD says "should handle 1000s of tasks" — standard DOM rendering would tank performance.
+app/
+  page.tsx              — Tasks Feed
+  admin/composer/       — Task Composer
+  admin/tasks/          — Tasks Management
+  admin/submissions/    — Submissions
+```
 
-**State:** Shared store in `/lib/store.ts` with getter/setter functions. No Redux. The app is small enough that this pattern is cleaner.
+## Key Decisions
 
-**Design system:** Adapted from a security dashboard reference — Space Grotesk + IBM Plex Mono fonts, indigo primary, warm surfaces, ghost borders (`border-border/30`), glass header.
+**Why discriminated unions for Task?**  
+Each task type has different `details` shape. Union types let TypeScript enforce correct field access per type.
 
-## Phase 2 Scope (not implemented)
+**Why TanStack Virtual?**  
+PRD says "should handle 1000s of tasks." Virtualization renders only visible rows — no DOM bloat.
 
-- Drag-and-drop reordering
-- Real file uploads
-- Database integration
-- Auth with roles
+**Why isolated field components?**  
+Composer has `TitleField`, `RewardField`, `FormSubmissionFields`, etc. Each component owns its validation state via `useFormContext`. Easier to test, reuse, modify.
+
+**Why module-level store vs Context?**  
+For a demo with no persistence, a simple `getTasks()`/`createTask()` module is cleaner than Context boilerplate. Would swap for real DB + React Query in production.
+
+## Testing Notes
+
+- Submissions page has 120 pre-seeded entries to test virtualization
+- Create a task via Composer, verify it appears in Tasks Management
+- Filter submissions by status and task, verify counts update
+- Mobile: all screens work at 375px viewport

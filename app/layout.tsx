@@ -16,9 +16,8 @@ const ibmPlexMono = IBM_Plex_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Yoke — Task Marketplace',
-  description: 'Post tasks, find work, get paid. A task marketplace built for real productivity.',
-  generator: 'v0.app',
+  title: 'TaskMarket',
+  description: 'Micro-task marketplace platform — post tasks, complete work, manage submissions.',
 }
 
 export default function RootLayout({
