@@ -68,3 +68,7 @@ For a demo with no persistence, a simple `getTasks()`/`createTask()` module is c
 - Create a task via Composer, verify it appears in Tasks Management
 - Filter submissions by status and task, verify counts update
 - Mobile: all screens work at 375px viewport
+
+## AI Prompts
+
+Development prompts are in `/prompts/` folder — raw context I fed to Claude during build.

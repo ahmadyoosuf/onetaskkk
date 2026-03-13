@@ -27,3 +27,7 @@ Next.js 15, React 19, Tailwind v4, Shadcn UI, react-hook-form + zod, TanStack Vi
 ## Architecture
 
 See [CLAUDE.md](./CLAUDE.md) for detailed decisions.
+
+## AI Usage
+
+Built with Claude. Raw prompts in `/prompts/`.
