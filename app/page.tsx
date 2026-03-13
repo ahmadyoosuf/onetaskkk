@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { FileText, Mail, Heart, DollarSign, Users, ExternalLink, Send, Filter, Calendar, Upload } from "lucide-react"
+import { FileText, Mail, Heart, DollarSign, Users, ExternalLink, Send, Filter, Calendar } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getTasks, createSubmission, getCurrentUser } from "@/lib/store"
 import { submissionSchema, type SubmissionFormData } from "@/lib/schemas"
@@ -325,12 +325,12 @@ export default function TasksFeedPage() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="proof" className={errors.proof ? "text-destructive" : ""}>
-                Enter your work for this task *
+                Proof of Completion *
               </Label>
               <Textarea
                 id="proof"
                 placeholder="Describe how you completed the task..."
-                rows={3}
+                rows={4}
                 {...register("proof")}
                 className={errors.proof ? "border-destructive" : ""}
               />
@@ -338,30 +338,12 @@ export default function TasksFeedPage() {
                 <p className="text-sm text-destructive">{errors.proof.message}</p>
               )}
             </div>
-            
-            {/* File Upload (UI only - no persistence) */}
             <div className="space-y-2">
-              <Label>Screenshot / Evidence</Label>
-              <div className="flex items-center justify-center w-full">
-                <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer border-border/50 hover:border-primary/50 hover:bg-muted/30 transition-colors">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <Upload className="w-6 h-6 mb-1 text-muted-foreground" />
-                    <p className="text-xs text-muted-foreground">
-                      <span className="font-medium text-primary">Click to upload</span> or drag and drop
-                    </p>
-                    <p className="text-xs text-muted-foreground">PNG, JPG (max 5MB)</p>
-                  </div>
-                  <input type="file" className="hidden" accept="image/png,image/jpeg" />
-                </label>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="liveAppUrl">Live App URL (optional)</Label>
+              <Label htmlFor="liveAppUrl">Live URL (optional)</Label>
               <Input
                 id="liveAppUrl"
                 type="url"
-                placeholder="https://github.com/username/repo"
+                placeholder="https://..."
                 {...register("liveAppUrl")}
               />
               {errors.liveAppUrl && (
@@ -374,7 +356,7 @@ export default function TasksFeedPage() {
               </Button>
               <Button type="submit" disabled={!isValid}>
                 <Send className="mr-2 h-4 w-4" />
-                Submit Work
+                Submit
               </Button>
             </DialogFooter>
           </form>
