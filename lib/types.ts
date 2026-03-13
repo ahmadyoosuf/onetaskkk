@@ -1,71 +1,96 @@
 // ─── Task Types ─────────────────────────────────────────────
-export type TaskType = "form_submission" | "email_sending" | "social_media_liking"
-
-export type TaskStatus = "open" | "in_progress" | "completed" | "closed"
-
+export type TaskStatus = "draft" | "open" | "in_progress" | "review" | "completed" | "cancelled"
+export type TaskCategory = "development" | "design" | "writing" | "research" | "marketing" | "data"
 export type SubmissionStatus = "pending" | "approved" | "rejected"
 
 export interface Task {
   id: string
-  type: TaskType
   title: string
   description: string
-  details: TaskDetails
-  reward: number
-  maxSubmissions: number
-  currentSubmissions: number
+  category: TaskCategory
+  budget: number
+  skills: string[]
+  deadline: string // ISO date string
+  attachments: string[]
   status: TaskStatus
-  createdAt: Date
-  deadline?: Date
-}
-
-export interface TaskDetails {
-  // Form submission
-  targetUrl?: string
-  formFields?: string[]
-  // Email sending
-  emailContent?: string
-  targetEmail?: string
-  // Social media liking
-  postUrl?: string
-  platform?: "twitter" | "linkedin" | "instagram"
+  submissionCount: number
+  createdAt: string
+  updatedAt: string
 }
 
 export interface Submission {
   id: string
   taskId: string
-  userId: string
-  userName: string
+  taskTitle: string
+  submitterName: string
+  submitterEmail: string
   status: SubmissionStatus
-  proof: string // URL or text proof
-  liveAppUrl?: string
-  submittedAt: Date
-  reviewedAt?: Date
-  adminNotes?: string
+  submittedAt: string
+  reviewedAt?: string
+  notes?: string
 }
 
-export interface User {
-  id: string
-  name: string
-  email: string
-  role: "admin" | "worker"
+// ─── Form Schema Types ──────────────────────────────────────
+export interface TaskFormData {
+  title: string
+  description: string
+  category: TaskCategory
+  budget: number
+  skills: string[]
+  deadline: string
+  attachments: string[]
 }
 
-// ─── Task Type Metadata ─────────────────────────────────────
-export const TASK_TYPE_META: Record<TaskType, { label: string; icon: string; description: string }> = {
-  form_submission: {
-    label: "Form Submission",
-    icon: "FileText",
-    description: "Fill out a form with specified information",
-  },
-  email_sending: {
-    label: "Email Sending", 
-    icon: "Mail",
-    description: "Send an email to the target address",
-  },
-  social_media_liking: {
-    label: "Social Media Liking",
-    icon: "Heart",
-    description: "Like/interact with a social media post",
-  },
+// ─── Filter/Sort Types ──────────────────────────────────────
+export interface TaskFilters {
+  status?: TaskStatus[]
+  category?: TaskCategory[]
+  budgetMin?: number
+  budgetMax?: number
+  search?: string
 }
+
+export interface SubmissionFilters {
+  status?: SubmissionStatus[]
+  taskId?: string
+  search?: string
+}
+
+export type SortDirection = "asc" | "desc"
+
+export interface SortConfig<T extends string> {
+  field: T
+  direction: SortDirection
+}
+
+// ─── Constants ──────────────────────────────────────────────
+export const TASK_CATEGORIES: { value: TaskCategory; label: string }[] = [
+  { value: "development", label: "Development" },
+  { value: "design", label: "Design" },
+  { value: "writing", label: "Writing" },
+  { value: "research", label: "Research" },
+  { value: "marketing", label: "Marketing" },
+  { value: "data", label: "Data" },
+]
+
+export const TASK_STATUSES: { value: TaskStatus; label: string }[] = [
+  { value: "draft", label: "Draft" },
+  { value: "open", label: "Open" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "review", label: "Review" },
+  { value: "completed", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" },
+]
+
+export const SUBMISSION_STATUSES: { value: SubmissionStatus; label: string }[] = [
+  { value: "pending", label: "Pending" },
+  { value: "approved", label: "Approved" },
+  { value: "rejected", label: "Rejected" },
+]
+
+export const SKILL_OPTIONS = [
+  "React", "TypeScript", "Node.js", "Python", "Figma", "UI/UX",
+  "Copywriting", "SEO", "Data Analysis", "SQL", "Excel", "Research",
+  "Project Management", "Marketing Strategy", "Social Media", "GraphQL",
+  "AWS", "Docker", "Tailwind CSS", "Next.js", "Vue.js", "Angular",
+]
