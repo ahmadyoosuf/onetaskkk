@@ -65,6 +65,13 @@ export interface Submission {
   adminNotes?: string
 }
 
+// ─── Submission Form Data (for worker submit forms) ────────
+export interface SubmissionFormData {
+  screenshotUrl: string
+  postUrl?: string
+  emailContent?: string
+}
+
 // ─── User ───────────────────────────────────────────────────
 export interface User {
   id: string

@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
-import { TaskDetail } from "@/components/tasks/task-detail"
+import { TaskDetail, TaskInstructionDetails } from "@/components/tasks/task-detail"
 
 import {
   Dialog,
@@ -36,83 +36,13 @@ import { cn } from "@/lib/utils"
 import { getCurrentUser } from "@/lib/store"
 import { useSubmissions, useTasks, useCreateSubmission } from "@/hooks/use-store"
 import { socialMediaSubmissionSchema, emailSubmissionSchema } from "@/lib/schemas"
-import type { Task, TaskType } from "@/lib/types"
+import type { Task, TaskType, SubmissionFormData } from "@/lib/types"
 import { TASK_TYPE_META } from "@/lib/types"
 
 const TASK_ICONS: Record<TaskType, typeof Share2> = {
   social_media_posting: Share2,
   email_sending: Mail,
   social_media_liking: Heart,
-}
-
-function TaskInstructionDetails({ task }: { task: Task }) {
-  return (
-    <div className="space-y-3 rounded-lg bg-muted/50 p-3 text-sm">
-      <Badge variant="outline" className="border-border/30">
-        {task.allowMultipleSubmissions ? "Repeat submissions allowed" : "One submission per worker"}
-      </Badge>
-
-      {task.type === "social_media_posting" && (
-        <>
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-muted-foreground">Platform</span>
-            <Badge variant="outline" className="capitalize text-xs">
-              {task.taskDetails.platform}
-            </Badge>
-          </div>
-          {task.taskDetails.accountHandle && (
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-muted-foreground">Tag</span>
-              <span className="font-mono text-xs">{task.taskDetails.accountHandle}</span>
-            </div>
-          )}
-          <div>
-            <span className="text-muted-foreground text-xs">Post Content:</span>
-            <p className="mt-1 rounded border border-border/30 bg-background p-2 text-xs leading-relaxed">
-              {task.taskDetails.postContent}
-            </p>
-          </div>
-        </>
-      )}
-
-      {task.type === "email_sending" && (
-        <>
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-muted-foreground">Send to</span>
-            <span className="font-mono text-xs">{task.taskDetails.targetEmail}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground text-xs">Email Content:</span>
-            <p className="mt-1 rounded border border-border/30 bg-background p-2 text-xs">
-              {task.taskDetails.emailContent}
-            </p>
-          </div>
-        </>
-      )}
-
-      {task.type === "social_media_liking" && (
-        <>
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-muted-foreground">Platform</span>
-            <Badge variant="outline" className="capitalize text-xs">
-              {task.taskDetails.platform}
-            </Badge>
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-muted-foreground">Post</span>
-            <a
-              href={task.taskDetails.postUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-primary hover:underline text-xs"
-            >
-              View Post <ExternalLink className="h-3 w-3" />
-            </a>
-          </div>
-        </>
-      )}
-    </div>
-  )
 }
 
 // URL state parsers for nuqs
@@ -189,8 +119,7 @@ function TasksFeedContent() {
     overscan: 10,
   })
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const onSubmit = async (data: Record<string, any>) => {
+  const onSubmit = async (data: SubmissionFormData) => {
     if (!selectedTask) return
     try {
       // Build PRD-compliant submission based on task type

@@ -10,7 +10,7 @@ const TASK_ICONS: Record<TaskType, typeof Share2> = {
   social_media_liking: Heart,
 }
 
-function TaskInstructionDetails({ task }: { task: Task }) {
+export function TaskInstructionDetails({ task }: { task: Task }) {
   return (
     <div className="space-y-3 rounded-lg bg-muted/50 p-3 text-sm">
       <Badge variant="outline" className="border-border/30">

@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { jwtVerify } from "jose"
-
-const SESSION_COOKIE = "onetaskkk-session"
-const SECRET = new TextEncoder().encode("onetaskkk-demo-secret-key-min-32chars!")
+import { SESSION_COOKIE, SECRET } from "@/lib/auth-constants"
 
 async function getSessionFromRequest(request: NextRequest) {
   const token = request.cookies.get(SESSION_COOKIE)?.value

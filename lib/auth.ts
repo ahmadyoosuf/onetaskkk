@@ -2,9 +2,7 @@ import { SignJWT, jwtVerify } from "jose"
 import { cookies } from "next/headers"
 import { MOCK_USERS } from "./mock-users"
 import type { User } from "./types"
-
-const SESSION_COOKIE = "onetaskkk-session"
-const SECRET = new TextEncoder().encode("onetaskkk-demo-secret-key-min-32chars!")
+import { SESSION_COOKIE, SECRET } from "./auth-constants"
 
 /**
  * Create a signed JWT for the given user
