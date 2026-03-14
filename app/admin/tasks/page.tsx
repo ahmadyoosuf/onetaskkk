@@ -48,30 +48,39 @@ const STATUS_STYLES: Record<TaskStatus, { label: string; className: string }> = 
 }
 
 export default function TasksManagementPage() {
-  const tasks = useTasks()
+  const { tasks, isLoading } = useTasks()
   const allSubmissions = getSubmissions()
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set())
+  const [isMutating, setIsMutating] = useState(false)
 
-  const handleDelete = (taskId: string) => {
-    deleteTask(taskId)
+  const handleDelete = async (taskId: string) => {
+    setIsMutating(true)
+    await deleteTask(taskId)
     setSelectedTasks((prev) => {
       const next = new Set(prev)
       next.delete(taskId)
       return next
     })
+    setIsMutating(false)
   }
 
-  const handleStatusChange = (taskId: string, newStatus: TaskStatus) => {
-    updateTaskStatus(taskId, newStatus)
+  const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
+    setIsMutating(true)
+    await updateTaskStatus(taskId, newStatus)
+    setIsMutating(false)
   }
 
-  const handleBulkStatusChange = (newStatus: TaskStatus) => {
-    selectedTasks.forEach((taskId) => updateTaskStatus(taskId, newStatus))
+  const handleBulkStatusChange = async (newStatus: TaskStatus) => {
+    setIsMutating(true)
+    await Promise.all(Array.from(selectedTasks).map((taskId) => updateTaskStatus(taskId, newStatus)))
+    setIsMutating(false)
   }
 
-  const handleBulkDelete = () => {
-    selectedTasks.forEach((taskId) => deleteTask(taskId))
+  const handleBulkDelete = async () => {
+    setIsMutating(true)
+    await Promise.all(Array.from(selectedTasks).map((taskId) => deleteTask(taskId)))
     setSelectedTasks(new Set())
+    setIsMutating(false)
   }
 
   const toggleTaskSelection = (taskId: string) => {
@@ -191,7 +200,7 @@ export default function TasksManagementPage() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
+                <Button variant="destructive" size="sm" onClick={handleBulkDelete} disabled={isMutating}>
                   <Trash2 className="mr-1 h-3 w-3" />
                   Delete
                 </Button>

@@ -44,7 +44,7 @@ const TASK_ICONS: Record<TaskType, typeof FileText> = {
 
 export default function TasksFeedPage() {
   const { toast } = useToast()
-  const tasks = useTasks()
+  const { tasks, isLoading } = useTasks()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showSubmitDialog, setShowSubmitDialog] = useState(false)
   const [showMobileDetail, setShowMobileDetail] = useState(false)
@@ -83,10 +83,13 @@ export default function TasksFeedPage() {
     overscan: 5,
   })
 
-  const onSubmit = (data: SubmissionFormData) => {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const onSubmit = async (data: SubmissionFormData) => {
     if (!selectedTask) return
+    setIsSubmitting(true)
     const user = getCurrentUser()
-    createSubmission({
+    await createSubmission({
       taskId: selectedTask.id,
       userId: user.id,
       userName: user.name,
@@ -100,6 +103,7 @@ export default function TasksFeedPage() {
     setShowSubmitDialog(false)
     reset()
     setSelectedTask(null)
+    setIsSubmitting(false)
   }
 
   return (
@@ -141,7 +145,13 @@ export default function TasksFeedPage() {
           </div>
 
           {/* Task Feed */}
-          {filteredTasks.length === 0 ? (
+          {isLoading ? (
+            <Card className="border-border/30 border-dashed">
+              <CardContent className="flex h-32 items-center justify-center">
+                <p className="text-muted-foreground animate-pulse">Loading tasks...</p>
+              </CardContent>
+            </Card>
+          ) : filteredTasks.length === 0 ? (
             <Card className="border-border/30 border-dashed">
               <CardContent className="flex h-32 items-center justify-center">
                 <p className="text-muted-foreground">No tasks match your filters.</p>
@@ -461,9 +471,15 @@ export default function TasksFeedPage() {
               <Button type="button" variant="outline" onClick={() => setShowSubmitDialog(false)} className="w-full sm:w-auto h-11">
                 Cancel
               </Button>
-              <Button type="submit" disabled={!isValid} className="w-full sm:w-auto h-11">
-                <Send className="mr-2 h-4 w-4" />
-                Submit
+              <Button type="submit" disabled={!isValid || isSubmitting} className="w-full sm:w-auto h-11">
+                {isSubmitting ? (
+                  "Submitting..."
+                ) : (
+                  <>
+                    <Send className="mr-2 h-4 w-4" />
+                    Submit
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </form>

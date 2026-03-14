@@ -56,9 +56,9 @@ export default function TaskComposerPage() {
     setValue("type", newType, { shouldValidate: false })
   }
 
-  const onSubmit = (data: TaskFormData) => {
+  const onSubmit = async (data: TaskFormData) => {
     if (data.type === "form_submission") {
-      createTask({
+      await createTask({
         type: "form_submission",
         title: data.title,
         description: data.description,
@@ -71,7 +71,7 @@ export default function TaskComposerPage() {
         },
       })
     } else if (data.type === "email_sending") {
-      createTask({
+      await createTask({
         type: "email_sending",
         title: data.title,
         description: data.description,
@@ -84,7 +84,7 @@ export default function TaskComposerPage() {
         },
       })
     } else if (data.type === "social_media_liking") {
-      createTask({
+      await createTask({
         type: "social_media_liking",
         title: data.title,
         description: data.description,

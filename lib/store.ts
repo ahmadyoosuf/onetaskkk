@@ -1,5 +1,24 @@
 import type { Task, Submission, User, TaskType, Platform } from "./types"
 
+// ─── Simulated Network Delays (per PRD) ─────────────────────
+const FETCH_DELAY = 2000 // 2 seconds for data fetching
+const MUTATION_DELAY_MIN = 1000 // 1-3 seconds for mutations
+const MUTATION_DELAY_MAX = 3000
+
+function randomMutationDelay(): number {
+  return MUTATION_DELAY_MIN + Math.random() * (MUTATION_DELAY_MAX - MUTATION_DELAY_MIN)
+}
+
+async function simulateFetchDelay<T>(data: T): Promise<T> {
+  await new Promise((resolve) => setTimeout(resolve, FETCH_DELAY))
+  return data
+}
+
+async function simulateMutationDelay<T>(data: T): Promise<T> {
+  await new Promise((resolve) => setTimeout(resolve, randomMutationDelay()))
+  return data
+}
+
 // ─── Simple Pub/Sub for Reactivity ──────────────────────────
 type Listener = () => void
 const listeners = new Set<Listener>()
@@ -27,86 +46,82 @@ export function getSubmissionsSnapshot(): Submission[] {
   return submissionsSnapshot
 }
 
+// ─── SWR-compatible Async Fetchers ──────────────────────────
+export async function fetchTasks(): Promise<Task[]> {
+  const data = [...tasks].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+  return simulateFetchDelay(data)
+}
+
+export async function fetchSubmissions(): Promise<Submission[]> {
+  const data = [...submissions].sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime())
+  return simulateFetchDelay(data)
+}
+
 // ─── Mock Data Generation ───────────────────────────────────
+const TASK_TEMPLATES = {
+  form_submission: [
+    { title: "Complete Beta Signup Form", description: "Sign up for our new product beta program by filling out the registration form.", targetUrl: "https://acme.com/beta-signup", formFields: ["Full Name", "Email", "Company"] },
+    { title: "Survey Completion", description: "Complete our customer satisfaction survey to help us improve.", targetUrl: "https://survey.acme.com", formFields: ["Rating", "Comments", "Would Recommend"] },
+    { title: "Newsletter Subscription", description: "Subscribe to our newsletter with your email address.", targetUrl: "https://acme.com/newsletter", formFields: ["Email", "Name", "Interests"] },
+    { title: "Event Registration", description: "Register for our upcoming virtual event.", targetUrl: "https://events.acme.com/register", formFields: ["Name", "Email", "Timezone"] },
+    { title: "Product Demo Request", description: "Fill out the form to request a personalized product demo.", targetUrl: "https://acme.com/demo", formFields: ["Company", "Email", "Use Case"] },
+  ],
+  email_sending: [
+    { title: "Send Product Feedback Email", description: "Send a detailed feedback email about your experience using our product.", emailContent: "Share your honest feedback...", targetEmail: "feedback@acme.com" },
+    { title: "Referral Email Campaign", description: "Send an email to a friend about our service with your referral link.", emailContent: "Invite a friend and tell them why you love our product...", targetEmail: "friends@personal.com" },
+    { title: "Support Thank You Email", description: "Send a thank you email to our support team for their help.", emailContent: "Thank you for your excellent support...", targetEmail: "support@acme.com" },
+    { title: "Feature Request Submission", description: "Email our product team with your feature suggestions.", emailContent: "I would love to see the following features...", targetEmail: "features@acme.com" },
+  ],
+  social_media_liking: [
+    { title: "Like Product Launch Post", description: "Like our product launch announcement on LinkedIn.", postUrl: "https://linkedin.com/posts/acme", platform: "linkedin" as Platform },
+    { title: "Twitter Engagement Campaign", description: "Like and retweet our latest product announcement tweet.", postUrl: "https://twitter.com/acme/status", platform: "twitter" as Platform },
+    { title: "Instagram Post Engagement", description: "Like our latest Instagram post to boost visibility.", postUrl: "https://instagram.com/p/acme", platform: "instagram" as Platform },
+    { title: "Facebook Page Interaction", description: "Like and share our Facebook page announcement.", postUrl: "https://facebook.com/acme/posts", platform: "facebook" as Platform },
+  ],
+}
+
 function generateMockTasks(): Task[] {
   const now = new Date()
+  const tasks: Task[] = []
+  const types: TaskType[] = ["form_submission", "email_sending", "social_media_liking"]
   
-  return [
-    {
-      id: "task-1",
-      type: "form_submission",
-      title: "Complete Beta Signup Form",
-      description: "Sign up for our new product beta program by filling out the registration form with your details.",
-      details: { targetUrl: "https://acme.com/beta-signup", formFields: ["Full Name", "Email", "Company"] },
-      reward: 2.5,
-      maxSubmissions: 100,
-      currentSubmissions: 47,
-      status: "open",
-      createdAt: new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000),
-      deadline: new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: "task-2",
-      type: "email_sending",
-      title: "Send Product Feedback Email",
-      description: "Send a detailed feedback email about your experience using our product to the support team.",
-      details: { emailContent: "Share your honest feedback about the product experience...", targetEmail: "feedback@acme.com" },
-      reward: 3.0,
-      maxSubmissions: 50,
-      currentSubmissions: 12,
-      status: "open",
-      createdAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: "task-3",
-      type: "social_media_liking",
-      title: "Like Product Launch Post",
-      description: "Like our product launch announcement on LinkedIn to help boost visibility.",
-      details: { postUrl: "https://linkedin.com/posts/acme-123", platform: "linkedin" as Platform },
-      reward: 0.5,
-      maxSubmissions: 500,
-      currentSubmissions: 234,
-      status: "open",
-      createdAt: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: "task-4",
-      type: "form_submission",
-      title: "Survey Completion",
-      description: "Complete our customer satisfaction survey to help us improve our services.",
-      details: { targetUrl: "https://survey.acme.com/satisfaction", formFields: ["Rating", "Comments", "Would Recommend"] },
-      reward: 1.5,
-      maxSubmissions: 200,
-      currentSubmissions: 200,
-      status: "completed",
-      createdAt: new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: "task-5",
-      type: "social_media_liking",
-      title: "Twitter Engagement Campaign",
-      description: "Like and retweet our latest product announcement tweet.",
-      details: { postUrl: "https://twitter.com/acme/status/123456", platform: "twitter" as Platform },
-      reward: 0.75,
-      maxSubmissions: 300,
-      currentSubmissions: 89,
-      status: "open",
-      createdAt: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: "task-6",
-      type: "email_sending",
-      title: "Referral Email Campaign",
-      description: "Send an email to a friend telling them about our service and include your referral link.",
-      details: { emailContent: "Invite a friend and tell them why you love our product...", targetEmail: "friends@personal.com" },
-      reward: 5.0,
-      maxSubmissions: 100,
-      currentSubmissions: 23,
-      status: "open",
-      createdAt: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000),
-      deadline: new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000),
-    },
-  ] as Task[]
+  // Generate 100+ tasks for virtualizer stress testing
+  for (let i = 0; i < 120; i++) {
+    const type = types[i % 3]
+    const templates = TASK_TEMPLATES[type]
+    const template = templates[i % templates.length]
+    const daysAgo = Math.floor(i / 3)
+    const isCompleted = Math.random() < 0.15
+    const isCancelled = !isCompleted && Math.random() < 0.05
+    const maxSubs = [50, 100, 200, 300, 500][Math.floor(Math.random() * 5)]
+    const currentSubs = isCompleted ? maxSubs : Math.floor(Math.random() * maxSubs * 0.8)
+    
+    const baseTask = {
+      id: `task-${i + 1}`,
+      type,
+      title: `${template.title}${i > 0 ? ` #${i + 1}` : ""}`,
+      description: template.description,
+      reward: parseFloat((0.5 + Math.random() * 9.5).toFixed(2)),
+      maxSubmissions: maxSubs,
+      currentSubmissions: currentSubs,
+      status: isCompleted ? "completed" : isCancelled ? "cancelled" : "open",
+      createdAt: new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000),
+      deadline: Math.random() > 0.6 ? new Date(now.getTime() + (Math.random() * 30) * 24 * 60 * 60 * 1000) : undefined,
+    }
+    
+    if (type === "form_submission") {
+      const t = template as typeof TASK_TEMPLATES.form_submission[0]
+      tasks.push({ ...baseTask, details: { targetUrl: t.targetUrl, formFields: t.formFields } } as Task)
+    } else if (type === "email_sending") {
+      const t = template as typeof TASK_TEMPLATES.email_sending[0]
+      tasks.push({ ...baseTask, details: { emailContent: t.emailContent, targetEmail: t.targetEmail } } as Task)
+    } else {
+      const t = template as typeof TASK_TEMPLATES.social_media_liking[0]
+      tasks.push({ ...baseTask, details: { postUrl: t.postUrl, platform: t.platform } } as Task)
+    }
+  }
+  
+  return tasks
 }
 
 function generateMockSubmissions(): Submission[] {
@@ -119,12 +134,12 @@ function generateMockSubmissions(): Submission[] {
   const submissions: Submission[] = []
   const now = new Date()
   
-  // Generate 100+ submissions across tasks
-  const taskIds = ["task-1", "task-2", "task-3", "task-5", "task-6"]
+  // Generate submissions spread across the 120 tasks
   const statuses: Array<"pending" | "approved" | "rejected"> = ["pending", "approved", "rejected"]
   
-  for (let i = 0; i < 120; i++) {
-    const taskId = taskIds[i % taskIds.length]
+  for (let i = 0; i < 300; i++) {
+    // Spread submissions across first 60 tasks for realistic distribution
+    const taskId = `task-${(i % 60) + 1}`
     const status = statuses[Math.floor(Math.random() * 3)]
     const daysAgo = Math.floor(Math.random() * 30)
     const submittedAt = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000)
@@ -185,7 +200,7 @@ type CreateTaskInput =
   | (CreateTaskInputBase & { type: "email_sending"; details: { emailContent: string; targetEmail: string } })
   | (CreateTaskInputBase & { type: "social_media_liking"; details: { postUrl: string; platform: Platform } })
 
-export function createTask(input: CreateTaskInput): Task {
+export async function createTask(input: CreateTaskInput): Promise<Task> {
   const newTask: Task = {
     id: `task-${Date.now()}`,
     title: input.title,
@@ -200,25 +215,28 @@ export function createTask(input: CreateTaskInput): Task {
     details: input.details,
   } as Task
   
+  await simulateMutationDelay(null)
   tasks = [newTask, ...tasks]
   notify()
   return newTask
 }
 
-export function updateTask(id: string, updates: Partial<Task>): Task | undefined {
+export async function updateTask(id: string, updates: Partial<Task>): Promise<Task | undefined> {
   const index = tasks.findIndex((t) => t.id === id)
   if (index === -1) return undefined
+  await simulateMutationDelay(null)
   tasks[index] = { ...tasks[index], ...updates } as Task
   notify()
   return tasks[index]
 }
 
-export function updateTaskStatus(id: string, status: "open" | "completed" | "cancelled"): Task | undefined {
+export async function updateTaskStatus(id: string, status: "open" | "completed" | "cancelled"): Promise<Task | undefined> {
   return updateTask(id, { status })
 }
 
-export function deleteTask(id: string): boolean {
+export async function deleteTask(id: string): Promise<boolean> {
   const initialLength = tasks.length
+  await simulateMutationDelay(null)
   tasks = tasks.filter((t) => t.id !== id)
   const deleted = tasks.length < initialLength
   if (deleted) notify()
@@ -235,13 +253,15 @@ export function getSubmission(id: string): Submission | undefined {
   return submissions.find((s) => s.id === id)
 }
 
-export function createSubmission(submission: Omit<Submission, "id" | "submittedAt" | "status">): Submission {
+export async function createSubmission(submission: Omit<Submission, "id" | "submittedAt" | "status">): Promise<Submission> {
   const newSubmission: Submission = {
     ...submission,
     id: `sub-${Date.now()}`,
     submittedAt: new Date(),
     status: "pending",
   }
+  
+  await simulateMutationDelay(null)
   submissions = [newSubmission, ...submissions]
   
   // Increment task submission count (immutable update)
@@ -257,13 +277,14 @@ export function createSubmission(submission: Omit<Submission, "id" | "submittedA
   return newSubmission
 }
 
-export function updateSubmissionStatus(
+export async function updateSubmissionStatus(
   id: string,
   status: "approved" | "rejected",
   adminNotes?: string
-): Submission | undefined {
+): Promise<Submission | undefined> {
   const index = submissions.findIndex((s) => s.id === id)
   if (index === -1) return undefined
+  await simulateMutationDelay(null)
   submissions[index] = {
     ...submissions[index],
     status,

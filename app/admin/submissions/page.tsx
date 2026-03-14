@@ -44,8 +44,9 @@ function SubmissionsContent() {
   const { toast } = useToast()
   const searchParams = useSearchParams()
   const taskIdFromUrl = searchParams.get("task")
-  const submissions = useSubmissions()
-  const tasks = useTasks()
+  const { submissions, isLoading: isLoadingSubmissions } = useSubmissions()
+  const { tasks, isLoading: isLoadingTasks } = useTasks()
+  const [isReviewing, setIsReviewing] = useState(false)
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null)
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("all")
   const [taskFilter, setTaskFilter] = useState<string>(taskIdFromUrl || "all")
@@ -103,9 +104,10 @@ function SubmissionsContent() {
     setShowReviewDialog(true)
   }
 
-  const confirmReview = () => {
+  const confirmReview = async () => {
     if (!selectedSubmission) return
-    updateSubmissionStatus(selectedSubmission.id, reviewAction, adminNotes || undefined)
+    setIsReviewing(true)
+    await updateSubmissionStatus(selectedSubmission.id, reviewAction, adminNotes || undefined)
     toast({
       title: `Submission ${reviewAction}`,
       description: `${selectedSubmission.userName}'s submission has been ${reviewAction}.`,
@@ -114,6 +116,7 @@ function SubmissionsContent() {
     setAdminNotes("")
     setSelectedSubmission(null)
     setShowMobileDetail(false)
+    setIsReviewing(false)
   }
 
   // Running totals
@@ -570,10 +573,13 @@ function SubmissionsContent() {
             </Button>
             <Button 
               onClick={confirmReview}
+              disabled={isReviewing}
               className={reviewAction === "approved" ? "bg-success hover:bg-success/90" : ""}
               variant={reviewAction === "rejected" ? "destructive" : "default"}
             >
-              {reviewAction === "approved" ? (
+              {isReviewing ? (
+                "Processing..."
+              ) : reviewAction === "approved" ? (
                 <>
                   <Check className="mr-1.5 h-4 w-4" />
                   Approve
