@@ -138,6 +138,10 @@ function generateMockTasks(): Task[] {
     const maxSubs = [50, 100, 200, 300, 500][Math.floor(Math.random() * 5)]
     const currentSubs = isCompleted ? maxSubs : Math.floor(Math.random() * maxSubs * 0.8)
     
+    // Assign tasks to campaigns for bulk operations
+    const campaigns = ["spring-launch", "q2-marketing", "social-boost", "engagement-2026", undefined]
+    const campaignId = campaigns[i % campaigns.length]
+    
     const baseTask = {
       id: `task-${i + 1}`,
       type,
@@ -150,6 +154,7 @@ function generateMockTasks(): Task[] {
       status: isCompleted ? "completed" : isCancelled ? "cancelled" : "open",
       createdAt: new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000),
       deadline: Math.random() > 0.6 ? new Date(now.getTime() + (Math.random() * 30) * 24 * 60 * 60 * 1000) : undefined,
+      campaignId,
     }
     
     if (type === "social_media_posting") {
@@ -167,7 +172,7 @@ function generateMockTasks(): Task[] {
   return tasks
 }
 
-function generateMockSubmissions(): Submission[] {
+function generateMockSubmissions(generatedTasks: Task[]): Submission[] {
   const names = [
     "Alice Johnson", "Bob Smith", "Carol Davis", "David Wilson", "Emma Brown",
     "Frank Miller", "Grace Lee", "Henry Chen", "Ivy Wang", "Jack Taylor",
@@ -177,39 +182,52 @@ function generateMockSubmissions(): Submission[] {
   const submissions: Submission[] = []
   const now = new Date()
   
-  // Generate submissions spread across the 120 tasks
+  // Generate submissions spread across the tasks
   const statuses: Array<"pending" | "approved" | "rejected"> = ["pending", "approved", "rejected"]
   
   for (let i = 0; i < 300; i++) {
     // Spread submissions across first 60 tasks for realistic distribution
-    const taskId = `task-${(i % 60) + 1}`
+    const taskIndex = i % Math.min(60, generatedTasks.length)
+    const task = generatedTasks[taskIndex]
+    const taskId = task.id
+    const taskType = task.type
     const status = statuses[Math.floor(Math.random() * 3)]
     const daysAgo = Math.floor(Math.random() * 30)
     const submittedAt = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000)
     const userName = names[i % names.length]
     
-    submissions.push({
+    // PRD-compliant submission fields based on task type
+    const submission: Submission = {
       id: `sub-${i + 1}`,
       taskId,
+      taskType,
       userId: `user-${(i % 15) + 1}`,
       userName,
       status,
-      proof: status === "rejected" 
-        ? "Screenshot provided but task not completed correctly"
-        : "Screenshot showing completed task submission",
-      liveAppUrl: Math.random() > 0.5 ? `https://proof.example.com/${i}` : undefined,
+      screenshotUrl: `https://screenshots.example.com/evidence-${i + 1}.png`,
       submittedAt,
       reviewedAt: status !== "pending" ? new Date(submittedAt.getTime() + 2 * 60 * 60 * 1000) : undefined,
       adminNotes: status === "rejected" ? "Submission does not meet requirements" : undefined,
-    })
+    }
+    
+    // Add task-type-specific fields per PRD
+    if (taskType === "social_media_posting" || taskType === "social_media_liking") {
+      submission.postUrl = `https://linkedin.com/posts/user-${i}-post-${taskIndex}`
+    } else if (taskType === "email_sending") {
+      submission.emailContent = `Dear Team,\n\nI am writing to share my experience with your product. The onboarding was seamless and the features are exactly what I needed.\n\nBest regards,\n${userName}`
+    }
+    
+    submissions.push(submission)
   }
   
   return submissions.sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime())
 }
 
 // ─── In-Memory Store ────────────────────────────────────────
-let tasks: Task[] = (loadFromStorage<Task>(STORAGE_KEYS.tasks) ?? generateMockTasks()).map(withTaskDefaults)
-let submissions: Submission[] = loadFromStorage<Submission>(STORAGE_KEYS.submissions) ?? generateMockSubmissions()
+const storedTasks = loadFromStorage<Task>(STORAGE_KEYS.tasks)
+const generatedTasks = storedTasks ?? generateMockTasks()
+let tasks: Task[] = generatedTasks.map(withTaskDefaults)
+let submissions: Submission[] = loadFromStorage<Submission>(STORAGE_KEYS.submissions) ?? generateMockSubmissions(tasks)
 
 // Initialize snapshots
 tasksSnapshot = [...tasks]
@@ -241,6 +259,7 @@ type CreateTaskInputBase = {
   maxSubmissions: number
   allowMultipleSubmissions: boolean
   deadline?: Date
+  campaignId?: string
 }
 
 type CreateTaskInput = 
@@ -260,6 +279,7 @@ export async function createTask(input: CreateTaskInput): Promise<Task> {
     status: "open",
     createdAt: new Date(),
     deadline: input.deadline,
+    campaignId: input.campaignId,
     type: input.type,
     details: input.details,
   } as Task

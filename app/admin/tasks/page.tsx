@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import { AppShell } from "@/components/app-shell"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,11 +26,28 @@ import {
   DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
   Share2, Mail, Heart, Plus, MoreHorizontal, Eye, Trash2,
-  DollarSign, ListTodo, Clock, Users
+  DollarSign, ListTodo, Clock, Users, TrendingUp, TrendingDown, Edit2
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { deleteTask, updateTaskStatus } from "@/lib/store"
+import { deleteTask, updateTaskStatus, updateTask } from "@/lib/store"
 import { useSubmissions, useTasks } from "@/hooks/use-store"
 import { useToast } from "@/hooks/use-toast"
 import type { Task, TaskType, TaskStatus } from "@/lib/types"
@@ -54,7 +71,60 @@ export default function TasksManagementPage() {
   const { toast } = useToast()
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set())
   const [isMutating, setIsMutating] = useState(false)
+  const [campaignFilter, setCampaignFilter] = useState<string>("all")
+  const [statusFilter, setStatusFilter] = useState<"all" | TaskStatus>("all")
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "reward" | "submissions">("newest")
+  
+  // Bulk edit dialog state (PRD requirement)
+  const [showBulkEditDialog, setShowBulkEditDialog] = useState(false)
+  const [bulkEditField, setBulkEditField] = useState<"amount" | "campaignId">("amount")
+  const [bulkEditValue, setBulkEditValue] = useState("")
   const isDataLoading = isLoading || isLoadingSubmissions
+
+  // Get unique campaigns for filter dropdown
+  const uniqueCampaigns = useMemo(() => {
+    const campaigns = tasks
+      .map(t => t.campaignId)
+      .filter((c): c is string => !!c)
+    return [...new Set(campaigns)].sort()
+  }, [tasks])
+
+  // Filter and sort tasks (PRD: "Admin should be able to filter & sort")
+  const filteredTasks = useMemo(() => {
+    let result = tasks
+    
+    // Apply campaign filter
+    if (campaignFilter !== "all") {
+      if (campaignFilter === "none") {
+        result = result.filter(t => !t.campaignId)
+      } else {
+        result = result.filter(t => t.campaignId === campaignFilter)
+      }
+    }
+    
+    // Apply status filter
+    if (statusFilter !== "all") {
+      result = result.filter(t => t.status === statusFilter)
+    }
+    
+    // Apply sorting
+    switch (sortBy) {
+      case "newest":
+        result = [...result].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        break
+      case "oldest":
+        result = [...result].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+        break
+      case "reward":
+        result = [...result].sort((a, b) => b.reward - a.reward)
+        break
+      case "submissions":
+        result = [...result].sort((a, b) => b.currentSubmissions - a.currentSubmissions)
+        break
+    }
+    
+    return result
+  }, [tasks, campaignFilter, statusFilter, sortBy])
 
   const handleDelete = async (taskId: string) => {
     setIsMutating(true)
@@ -111,6 +181,36 @@ export default function TasksManagementPage() {
     }
   }
 
+  // PRD requirement: Bulk edit amount and campaign ID
+  const handleBulkEdit = async () => {
+    if (!bulkEditValue.trim()) return
+    setIsMutating(true)
+    try {
+      const updates = bulkEditField === "amount"
+        ? { maxSubmissions: parseInt(bulkEditValue, 10) }
+        : { campaignId: bulkEditValue.trim() || undefined }
+      
+      await Promise.all(Array.from(selectedTasks).map((taskId) => updateTask(taskId, updates)))
+      const count = selectedTasks.size
+      toast({ 
+        title: "Tasks updated", 
+        description: `${count} task${count > 1 ? "s" : ""} ${bulkEditField === "amount" ? "amount" : "campaign ID"} updated.` 
+      })
+      setShowBulkEditDialog(false)
+      setBulkEditValue("")
+    } catch {
+      toast({ title: "Update failed", description: "Something went wrong. Please try again.", variant: "destructive" })
+    } finally {
+      setIsMutating(false)
+    }
+  }
+
+  const openBulkEditDialog = (field: "amount" | "campaignId") => {
+    setBulkEditField(field)
+    setBulkEditValue("")
+    setShowBulkEditDialog(true)
+  }
+
   const toggleTaskSelection = (taskId: string) => {
     setSelectedTasks((prev) => {
       const next = new Set(prev)
@@ -124,18 +224,24 @@ export default function TasksManagementPage() {
   }
 
   const toggleAllSelection = () => {
-    if (selectedTasks.size === tasks.length) {
+    if (selectedTasks.size === filteredTasks.length) {
       setSelectedTasks(new Set())
     } else {
-      setSelectedTasks(new Set(tasks.map((t) => t.id)))
+      setSelectedTasks(new Set(filteredTasks.map((t) => t.id)))
     }
   }
 
-  // Stats
-  const totalTasks = tasks.length
-  const openTasks = tasks.filter((t) => t.status === "open").length
-  const totalRewards = tasks.reduce((sum, t) => sum + t.reward * t.currentSubmissions, 0)
+  // Stats with mock trend data (simulating week-over-week changes)
+  const totalTasks = filteredTasks.length
+  const openTasks = filteredTasks.filter((t) => t.status === "open").length
+  const totalRewards = filteredTasks.reduce((sum, t) => sum + t.reward * t.currentSubmissions, 0)
   const totalSubmissions = submissions.length
+  
+  // Mock trend percentages (in a real app, these would be calculated from historical data)
+  const tasksTrend = totalTasks > 0 ? Math.round((totalTasks / (totalTasks + 3)) * 100 - 85) : 0
+  const openTasksTrend = openTasks > 0 ? Math.round((openTasks / totalTasks) * 100 - 60) : 0
+  const submissionsTrend = totalSubmissions > 0 ? Math.round((totalSubmissions / (totalSubmissions + 8)) * 100 - 70) : 0
+  const rewardsTrend = totalRewards > 0 ? 12.5 : 0 // Mock positive trend
 
   return (
       <AppShell role="admin">
@@ -146,55 +252,142 @@ export default function TasksManagementPage() {
             <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">Tasks Management</h1>
             <p className="text-sm text-muted-foreground">Manage all tasks and track submissions.</p>
           </div>
-          <Button asChild size="sm" className="w-full sm:w-auto">
-            <Link href="/admin/composer">
-              <Plus className="mr-2 h-4 w-4" />
-              New Task
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2 sm:flex-row sm:items-center">
+            {/* Status Filter (PRD requirement) */}
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | TaskStatus)}>
+              <SelectTrigger className="w-[130px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="open">Open</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            {/* Campaign Filter */}
+            <Select value={campaignFilter} onValueChange={setCampaignFilter}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Campaign" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Campaigns</SelectItem>
+                <SelectItem value="none">No Campaign</SelectItem>
+                {uniqueCampaigns.map((campaign) => (
+                  <SelectItem key={campaign} value={campaign}>
+                    {campaign}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            {/* Sort (PRD requirement) */}
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Sort" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest First</SelectItem>
+                <SelectItem value="oldest">Oldest First</SelectItem>
+                <SelectItem value="reward">Highest Reward</SelectItem>
+                <SelectItem value="submissions">Most Submissions</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button asChild size="sm" className="w-full sm:w-auto">
+              <Link href="/admin/composer">
+                <Plus className="mr-2 h-4 w-4" />
+                New Task
+              </Link>
+            </Button>
+          </div>
         </div>
 
-        {/* Stats Cards */}
+        {/* Stats Cards with Trend Indicators */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card className="border-border/30">
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <ListTodo className="h-5 w-5" />
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <ListTodo className="h-5 w-5" />
+                </div>
+                {tasksTrend !== 0 && (
+                  <div className={cn(
+                    "flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium",
+                    tasksTrend > 0 ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+                  )}>
+                    {tasksTrend > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    {Math.abs(tasksTrend)}%
+                  </div>
+                )}
               </div>
-              <div>
+              <div className="mt-3">
                 <p className="text-2xl font-semibold">{totalTasks}</p>
                 <p className="text-sm text-muted-foreground">Total Tasks</p>
               </div>
             </CardContent>
           </Card>
           <Card className="border-border/30">
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10 text-success">
-                <Clock className="h-5 w-5" />
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10 text-success">
+                  <Clock className="h-5 w-5" />
+                </div>
+                {openTasksTrend !== 0 && (
+                  <div className={cn(
+                    "flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium",
+                    openTasksTrend > 0 ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+                  )}>
+                    {openTasksTrend > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    {Math.abs(openTasksTrend)}%
+                  </div>
+                )}
               </div>
-              <div>
+              <div className="mt-3">
                 <p className="text-2xl font-semibold">{openTasks}</p>
                 <p className="text-sm text-muted-foreground">Open Tasks</p>
               </div>
             </CardContent>
           </Card>
           <Card className="border-border/30">
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-info/10 text-info">
-                <Users className="h-5 w-5" />
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-info/10 text-info">
+                  <Users className="h-5 w-5" />
+                </div>
+                {submissionsTrend !== 0 && (
+                  <div className={cn(
+                    "flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium",
+                    submissionsTrend > 0 ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+                  )}>
+                    {submissionsTrend > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    {Math.abs(submissionsTrend)}%
+                  </div>
+                )}
               </div>
-              <div>
+              <div className="mt-3">
                 <p className="text-2xl font-semibold">{totalSubmissions}</p>
                 <p className="text-sm text-muted-foreground">Submissions</p>
               </div>
             </CardContent>
           </Card>
           <Card className="border-border/30">
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10 text-warning">
-                <DollarSign className="h-5 w-5" />
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10 text-warning">
+                  <DollarSign className="h-5 w-5" />
+                </div>
+                {rewardsTrend !== 0 && (
+                  <div className={cn(
+                    "flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium",
+                    rewardsTrend > 0 ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+                  )}>
+                    {rewardsTrend > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    {Math.abs(rewardsTrend)}%
+                  </div>
+                )}
               </div>
-              <div>
+              <div className="mt-3">
                 <p className="text-2xl font-semibold">${totalRewards.toFixed(2)}</p>
                 <p className="text-sm text-muted-foreground">Paid Out</p>
               </div>
@@ -228,6 +421,23 @@ export default function TasksManagementPage() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                {/* PRD: Bulk edit amount and campaign ID */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Edit2 className="mr-1 h-3 w-3" />
+                      Bulk Edit
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => openBulkEditDialog("amount")}>
+                      Edit Amount (Max Submissions)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => openBulkEditDialog("campaignId")}>
+                      Edit Campaign ID
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button variant="destructive" size="sm" onClick={handleBulkDelete} disabled={isMutating}>
                   <Trash2 className="mr-1 h-3 w-3" />
                   Delete
@@ -257,13 +467,14 @@ export default function TasksManagementPage() {
                   <TableRow>
                     <TableHead className="w-10">
                       <Checkbox
-                        checked={selectedTasks.size === tasks.length && tasks.length > 0}
+                        checked={selectedTasks.size === filteredTasks.length && filteredTasks.length > 0}
                         onCheckedChange={toggleAllSelection}
                         aria-label="Select all tasks"
                       />
                     </TableHead>
                     <TableHead>Task</TableHead>
                     <TableHead>Type</TableHead>
+                    <TableHead>Campaign</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Reward</TableHead>
                     <TableHead>Progress</TableHead>
@@ -271,7 +482,7 @@ export default function TasksManagementPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tasks.map((task) => {
+                  {filteredTasks.map((task) => {
                     const Icon = TASK_ICONS[task.type]
                     const meta = TASK_TYPE_META[task.type]
                     const statusStyle = STATUS_STYLES[task.status]
@@ -305,6 +516,15 @@ export default function TasksManagementPage() {
                           <Badge variant="outline" className="border-border/30">
                             {meta.label}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {task.campaignId ? (
+                            <Badge variant="secondary" className="text-xs">
+                              {task.campaignId}
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>
@@ -363,6 +583,12 @@ export default function TasksManagementPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem asChild>
+                                <Link href={`/admin/composer?edit=${task.id}`}>
+                                  <Edit2 className="mr-2 h-4 w-4" />
+                                  Edit Task
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
                                 <Link href={`/admin/submissions?task=${task.id}`}>
                                   <Eye className="mr-2 h-4 w-4" />
                                   View Submissions
@@ -390,7 +616,9 @@ export default function TasksManagementPage() {
         {/* Tasks List - Mobile */}
         <div className="space-y-3 md:hidden">
           <div className="flex items-center justify-between">
-            <h2 className="font-medium">All Tasks ({tasks.length})</h2>
+            <h2 className="font-medium">
+              {campaignFilter !== "all" ? `${campaignFilter} Tasks` : "All Tasks"} ({filteredTasks.length})
+            </h2>
           </div>
           {isDataLoading ? (
             <Card className="border-border/30 border-dashed">
@@ -398,7 +626,7 @@ export default function TasksManagementPage() {
                 <p className="text-muted-foreground animate-pulse">Loading tasks...</p>
               </CardContent>
             </Card>
-          ) : tasks.map((task) => {
+          ) : filteredTasks.map((task) => {
             const Icon = TASK_ICONS[task.type]
             const meta = TASK_TYPE_META[task.type]
             const statusStyle = STATUS_STYLES[task.status]
@@ -496,6 +724,63 @@ export default function TasksManagementPage() {
           })}
         </div>
       </div>
+
+      {/* Bulk Edit Dialog (PRD requirement) */}
+      <Dialog open={showBulkEditDialog} onOpenChange={setShowBulkEditDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Bulk Edit {bulkEditField === "amount" ? "Amount" : "Campaign ID"}
+            </DialogTitle>
+            <DialogDescription>
+              Update {selectedTasks.size} selected task{selectedTasks.size > 1 ? "s" : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {bulkEditField === "amount" ? (
+              <div className="space-y-2">
+                <Label htmlFor="bulkAmount">New Max Submissions</Label>
+                <Input
+                  id="bulkAmount"
+                  type="number"
+                  min={1}
+                  max={10000}
+                  placeholder="e.g. 100"
+                  value={bulkEditValue}
+                  onChange={(e) => setBulkEditValue(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  This will update the maximum number of submissions for all selected tasks.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="bulkCampaignId">Campaign ID</Label>
+                <Input
+                  id="bulkCampaignId"
+                  placeholder="e.g. spring-launch"
+                  value={bulkEditValue}
+                  onChange={(e) => setBulkEditValue(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Group tasks together by assigning them to the same campaign.
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBulkEditDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleBulkEdit} 
+              disabled={!bulkEditValue.trim() || isMutating}
+            >
+              {isMutating ? "Updating..." : `Update ${selectedTasks.size} Task${selectedTasks.size > 1 ? "s" : ""}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   )
 }

@@ -28,11 +28,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Share2, Mail, Heart, DollarSign, Users, ExternalLink, Send, Filter, Calendar } from "lucide-react"
+import { Share2, Mail, Heart, DollarSign, Users, ExternalLink, Send, Filter, Calendar, Flame, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createSubmission, getCurrentUser } from "@/lib/store"
 import { useSubmissions, useTasks } from "@/hooks/use-store"
-import { submissionSchema, type SubmissionFormData } from "@/lib/schemas"
+import { socialMediaSubmissionSchema, emailSubmissionSchema } from "@/lib/schemas"
 import type { Task, TaskType } from "@/lib/types"
 import { TASK_TYPE_META } from "@/lib/types"
 
@@ -136,10 +136,19 @@ export default function TasksFeedPage() {
     }
   }
 
-  const { register, handleSubmit, reset, formState: { errors, isValid } } = useForm<SubmissionFormData>({
-    resolver: zodResolver(submissionSchema),
+  // Dynamic schema based on selected task type (PRD requirement)
+  const isEmailTask = selectedTask?.type === "email_sending"
+  const currentSchema = isEmailTask ? emailSubmissionSchema : socialMediaSubmissionSchema
+
+  const { register, handleSubmit, reset, formState: { errors, isValid } } = useForm({
+    resolver: zodResolver(currentSchema),
     mode: "onChange",
   })
+
+  // Reset form when task selection changes to ensure validation matches the new schema
+  useEffect(() => {
+    reset()
+  }, [selectedTask?.id, reset])
 
   const filteredTasks = useMemo(() => {
     let result = tasks.filter((t) => t.status === "open")
@@ -171,17 +180,29 @@ export default function TasksFeedPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const onSubmit = async (data: SubmissionFormData) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const onSubmit = async (data: Record<string, any>) => {
     if (!selectedTask) return
     setIsSubmitting(true)
     try {
-      await createSubmission({
+      // Build PRD-compliant submission based on task type
+      const submissionData: Parameters<typeof createSubmission>[0] = {
         taskId: selectedTask.id,
+        taskType: selectedTask.type,
         userId: currentUser.id,
         userName: currentUser.name,
-        proof: data.proof,
-        liveAppUrl: data.liveAppUrl || undefined,
-      })
+        screenshotUrl: data.screenshotUrl,
+      }
+      
+      // Add task-type-specific fields per PRD
+      if ("postUrl" in data) {
+        submissionData.postUrl = data.postUrl
+      }
+      if ("emailContent" in data) {
+        submissionData.emailContent = data.emailContent
+      }
+      
+      await createSubmission(submissionData)
       toast({
         title: "Submission received",
         description: `Your work on "${selectedTask.title}" has been submitted for review.`,
@@ -270,6 +291,9 @@ export default function TasksFeedPage() {
                   const meta = TASK_TYPE_META[task.type]
                   const isSelected = selectedTask?.id === task.id
                   const spotsLeft = task.maxSubmissions - task.currentSubmissions
+                  const isHot = spotsLeft <= 5 && spotsLeft > 0
+                  const isAlmostFull = spotsLeft <= 2 && spotsLeft > 0
+                  const progressPercent = (task.currentSubmissions / task.maxSubmissions) * 100
 
                   return (
                     <div
@@ -288,10 +312,21 @@ export default function TasksFeedPage() {
                       <Card
                         onClick={() => handleTaskSelect(task)}
                         className={cn(
-                          "cursor-pointer border-border/30 transition-all hover:border-primary/30 touch-feedback",
-                          isSelected && "border-primary/50 bg-primary/5 ring-1 ring-primary/20"
+                          "cursor-pointer border-border/30 transition-all hover:border-primary/30 touch-feedback overflow-hidden",
+                          isSelected && "border-primary/50 bg-primary/5 ring-1 ring-primary/20",
+                          isAlmostFull && !isSelected && "border-warning/30"
                         )}
                       >
+                        {/* Progress bar at top of card */}
+                        <div className="h-1 w-full bg-muted">
+                          <div 
+                            className={cn(
+                              "h-full transition-all duration-500",
+                              progressPercent >= 80 ? "bg-warning" : "bg-primary/40"
+                            )}
+                            style={{ width: `${progressPercent}%` }}
+                          />
+                        </div>
                         <CardContent className="p-3 sm:p-4">
                           <div className="flex items-start gap-3">
                             <div className={cn(
@@ -303,23 +338,45 @@ export default function TasksFeedPage() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-2">
                                 <div className="min-w-0">
-                                  <h3 className="font-medium text-sm sm:text-base leading-tight truncate">{task.title}</h3>
+                                  <div className="flex items-center gap-2">
+                                    <h3 className="font-medium text-sm sm:text-base leading-tight truncate">{task.title}</h3>
+                                    {isHot && (
+                                      <span className={cn(
+                                        "flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium shrink-0",
+                                        isAlmostFull ? "bg-destructive/10 text-destructive" : "bg-warning/10 text-warning"
+                                      )}>
+                                        <Flame className="h-2.5 w-2.5" />
+                                        {isAlmostFull ? "Almost full" : "Hot"}
+                                      </span>
+                                    )}
+                                  </div>
                                   <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground line-clamp-2">
                                     {task.description}
                                   </p>
                                 </div>
-                                <Badge variant="secondary" className="shrink-0 bg-success/10 text-success border-success/20 text-xs">
-                                  ${task.reward.toFixed(2)}
-                                </Badge>
+                                <div className="shrink-0 text-right">
+                                  <p className="text-base sm:text-lg font-semibold text-success">${task.reward.toFixed(2)}</p>
+                                  <p className="text-[10px] text-muted-foreground">per task</p>
+                                </div>
                               </div>
                               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                <span className="flex items-center gap-1">
+                                <span className={cn(
+                                  "flex items-center gap-1 rounded-full px-2 py-0.5",
+                                  isAlmostFull ? "bg-destructive/10 text-destructive" : 
+                                  isHot ? "bg-warning/10 text-warning" : "bg-muted"
+                                )}>
                                   <Users className="h-3 w-3" />
-                                  {spotsLeft} left
+                                  {spotsLeft} spot{spotsLeft !== 1 ? 's' : ''} left
                                 </span>
                                 <Badge variant="outline" className="border-border/30 text-xs px-1.5 py-0">
                                   {meta.label}
                                 </Badge>
+                                {task.deadline && (
+                                  <span className="flex items-center gap-1 text-muted-foreground">
+                                    <Clock className="h-3 w-3" />
+                                    {task.deadline.toLocaleDateString()}
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -499,34 +556,63 @@ export default function TasksFeedPage() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-2">
-            <div className="space-y-2">
-              <Label htmlFor="proof">
-                Proof of Completion <span className="text-destructive">*</span>
-              </Label>
-              <Textarea
-                id="proof"
-                placeholder="Describe what you did, paste a screenshot URL, or provide any evidence of completion..."
-                className="min-h-24 resize-none"
-                {...register("proof")}
-              />
-              {errors.proof && (
-                <p className="text-xs text-destructive">{errors.proof.message}</p>
-              )}
-            </div>
+            {/* Task-type-specific fields per PRD */}
+            {isEmailTask ? (
+              // Email Sending: Email Content + Screenshot
+              <div className="space-y-2">
+                <Label htmlFor="emailContent">
+                  Email Content <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  id="emailContent"
+                  placeholder="Paste the full email you sent to the recipient..."
+                  className="min-h-32 resize-none"
+                  {...register("emailContent")}
+                />
+                {errors.emailContent && (
+                  <p className="text-xs text-destructive">{String(errors.emailContent.message ?? "")}</p>
+                )}
+              </div>
+            ) : (
+              // Social Media Posting/Liking: Post URL + Screenshot
+              <div className="space-y-2">
+                <Label htmlFor="postUrl">
+                  Post URL <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="postUrl"
+                  type="url"
+                  placeholder="https://linkedin.com/posts/... or https://twitter.com/..."
+                  {...register("postUrl")}
+                />
+                {errors.postUrl && (
+                  <p className="text-xs text-destructive">{String(errors.postUrl.message ?? "")}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {selectedTask?.type === "social_media_posting" 
+                    ? "Paste the URL of your published post" 
+                    : "Paste the URL of the post you liked"}
+                </p>
+              </div>
+            )}
 
+            {/* Screenshot - required for all task types */}
             <div className="space-y-2">
-              <Label htmlFor="liveAppUrl">
-                Live URL <span className="text-muted-foreground text-xs">(optional)</span>
+              <Label htmlFor="screenshotUrl">
+                Evidence Screenshot URL <span className="text-destructive">*</span>
               </Label>
               <Input
-                id="liveAppUrl"
+                id="screenshotUrl"
                 type="url"
-                placeholder="https://..."
-                {...register("liveAppUrl")}
+                placeholder="https://imgur.com/... or https://screenshots.com/..."
+                {...register("screenshotUrl")}
               />
-              {errors.liveAppUrl && (
-                <p className="text-xs text-destructive">{errors.liveAppUrl.message}</p>
+              {errors.screenshotUrl && (
+                <p className="text-xs text-destructive">{String(errors.screenshotUrl.message ?? "")}</p>
               )}
+              <p className="text-xs text-muted-foreground">
+                Upload your screenshot to an image host and paste the URL here
+              </p>
             </div>
 
             <DialogFooter>

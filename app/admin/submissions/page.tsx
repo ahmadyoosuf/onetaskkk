@@ -25,9 +25,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { 
-  Check, X, Clock, Filter, ExternalLink, User, Calendar, 
-  FileText, MessageSquare, ChevronRight, Layers
+import {
+  Clock, Check, X, FileText, ExternalLink, Eye, ChevronDown,
+  MessageSquare, ImageIcon, Filter, Layers, ChevronRight, User, Calendar
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getTask, updateSubmissionStatus } from "@/lib/store"
@@ -183,13 +183,71 @@ function SubmissionsContent() {
           <p className="text-sm text-muted-foreground">Review and manage worker submissions.</p>
         </div>
 
-        {/* Running Totals */}
+        {/* Status Funnel Visualization */}
+        <Card className="border-border/30">
+          <CardContent className="p-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+              {/* Funnel bars */}
+              <div className="flex-1 space-y-2">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Submission Pipeline</span>
+                  <span>{submissions.length} total</span>
+                </div>
+                <div className="flex h-3 overflow-hidden rounded-full bg-muted">
+                  {submissions.length > 0 && (
+                    <>
+                      <div 
+                        className="bg-warning transition-all duration-500" 
+                        style={{ width: `${(pendingCount / submissions.length) * 100}%` }}
+                      />
+                      <div 
+                        className="bg-success transition-all duration-500" 
+                        style={{ width: `${(approvedCount / submissions.length) * 100}%` }}
+                      />
+                      <div 
+                        className="bg-destructive transition-all duration-500" 
+                        style={{ width: `${(rejectedCount / submissions.length) * 100}%` }}
+                      />
+                    </>
+                  )}
+                </div>
+                <div className="flex items-center gap-4 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-2 w-2 rounded-full bg-warning" />
+                    <span className="text-muted-foreground">Pending</span>
+                    <span className="font-medium">{pendingCount}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-2 w-2 rounded-full bg-success" />
+                    <span className="text-muted-foreground">Approved</span>
+                    <span className="font-medium">{approvedCount}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-2 w-2 rounded-full bg-destructive" />
+                    <span className="text-muted-foreground">Rejected</span>
+                    <span className="font-medium">{rejectedCount}</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Approval rate metric */}
+              <div className="shrink-0 rounded-lg border border-border/30 bg-muted/30 px-4 py-3 text-center">
+                <p className="text-2xl font-semibold text-success">
+                  {submissions.length > 0 ? Math.round((approvedCount / submissions.length) * 100) : 0}%
+                </p>
+                <p className="text-xs text-muted-foreground">Approval Rate</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Status Filter Pills */}
         <div className="flex flex-wrap gap-2">
           <Badge 
             variant="outline" 
             className={cn(
-              "cursor-pointer px-3 py-1.5 text-xs sm:text-sm",
-              statusFilter === "all" ? "bg-primary/10 text-primary border-primary/30" : "border-border/30"
+              "cursor-pointer px-3 py-1.5 text-xs sm:text-sm transition-all",
+              statusFilter === "all" ? "bg-primary/10 text-primary border-primary/30" : "border-border/30 hover:border-border"
             )}
             onClick={() => setStatusFilter("all")}
           >
@@ -198,8 +256,8 @@ function SubmissionsContent() {
           <Badge 
             variant="outline" 
             className={cn(
-              "cursor-pointer px-3 py-1.5 text-xs sm:text-sm",
-              statusFilter === "pending" ? "bg-warning/20 text-warning border-warning/50" : STATUS_STYLES.pending.className
+              "cursor-pointer px-3 py-1.5 text-xs sm:text-sm transition-all",
+              statusFilter === "pending" ? "bg-warning/20 text-warning border-warning/50" : STATUS_STYLES.pending.className + " hover:bg-warning/5"
             )}
             onClick={() => setStatusFilter("pending")}
           >
@@ -209,8 +267,8 @@ function SubmissionsContent() {
           <Badge 
             variant="outline" 
             className={cn(
-              "cursor-pointer px-3 py-1.5 text-xs sm:text-sm",
-              statusFilter === "approved" ? "bg-success/20 text-success border-success/50" : STATUS_STYLES.approved.className
+              "cursor-pointer px-3 py-1.5 text-xs sm:text-sm transition-all",
+              statusFilter === "approved" ? "bg-success/20 text-success border-success/50" : STATUS_STYLES.approved.className + " hover:bg-success/5"
             )}
             onClick={() => setStatusFilter("approved")}
           >
@@ -220,8 +278,8 @@ function SubmissionsContent() {
           <Badge 
             variant="outline" 
             className={cn(
-              "cursor-pointer px-3 py-1.5 text-xs sm:text-sm",
-              statusFilter === "rejected" ? "bg-destructive/20 text-destructive border-destructive/50" : STATUS_STYLES.rejected.className
+              "cursor-pointer px-3 py-1.5 text-xs sm:text-sm transition-all",
+              statusFilter === "rejected" ? "bg-destructive/20 text-destructive border-destructive/50" : STATUS_STYLES.rejected.className + " hover:bg-destructive/5"
             )}
             onClick={() => setStatusFilter("rejected")}
           >
@@ -319,20 +377,28 @@ function SubmissionsContent() {
                                   : "border-border/20 hover:border-border/40 hover:bg-muted/30"
                               )}
                             >
-                              <div className="flex min-w-0 items-center gap-3">
-                                <div className={cn(
-                                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-                                  statusStyle.className
-                                )}>
-                                  <StatusIcon className="h-4 w-4" />
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="truncate text-sm font-medium">{row.submission.userName}</p>
-                                  <p className="truncate text-xs text-muted-foreground">
-                                    {groupByTask ? row.submission.submittedAt.toLocaleDateString() : row.taskTitle}
-                                  </p>
-                                </div>
-                              </div>
+                                            <div className="flex min-w-0 items-center gap-3">
+                                                {/* Avatar with initials */}
+                                                <div className="relative shrink-0">
+                                                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-medium">
+                                                    {row.submission.userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                                                  </div>
+                                                  {/* Status indicator dot */}
+                                                  <div className={cn(
+                                                    "absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-background flex items-center justify-center",
+                                                    row.submission.status === "pending" ? "bg-warning" : 
+                                                    row.submission.status === "approved" ? "bg-success" : "bg-destructive"
+                                                  )}>
+                                                    <StatusIcon className="h-2 w-2 text-white" />
+                                                  </div>
+                                                </div>
+                                                <div className="min-w-0">
+                                                  <p className="truncate text-sm font-medium">{row.submission.userName}</p>
+                                                  <p className="truncate text-xs text-muted-foreground">
+                                                    {groupByTask ? row.submission.submittedAt.toLocaleDateString() : row.taskTitle}
+                                                  </p>
+                                                </div>
+                                              </div>
                               <div className="flex shrink-0 items-center gap-2">
                                 {!groupByTask && (
                                   <span className="hidden text-xs text-muted-foreground sm:block">
@@ -387,32 +453,57 @@ function SubmissionsContent() {
                     </div>
                   </div>
 
-                  {/* Proof */}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <FileText className="h-3 w-3" />
-                      Proof of Completion
-                    </Label>
-                    <div className="rounded-lg border border-border/30 bg-background p-3 text-sm">
-                      {selectedSubmission.proof}
-                    </div>
-                  </div>
-
-                  {/* Live App URL */}
-                  {selectedSubmission.liveAppUrl && (
+                  {/* Task-type-specific submission fields per PRD */}
+                  {selectedSubmission.postUrl && (
                     <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground">Live URL</Label>
+                      <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <ExternalLink className="h-3 w-3" />
+                        Post URL
+                      </Label>
                       <a
-                        href={selectedSubmission.liveAppUrl}
+                        href={selectedSubmission.postUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-sm text-primary hover:underline break-all"
+                        className="flex items-center gap-2 text-sm text-primary hover:underline break-all rounded-lg border border-border/30 bg-background p-3"
                       >
-                        {selectedSubmission.liveAppUrl}
+                        {selectedSubmission.postUrl}
                         <ExternalLink className="h-3 w-3 shrink-0" />
                       </a>
                     </div>
                   )}
+                  
+                  {selectedSubmission.emailContent && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <FileText className="h-3 w-3" />
+                        Email Content
+                      </Label>
+                      <div className="rounded-lg border border-border/30 bg-background p-3 text-sm whitespace-pre-wrap">
+                        {selectedSubmission.emailContent}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Evidence Screenshot */}
+                  {selectedSubmission.screenshotUrl && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <ImageIcon className="h-3 w-3" />
+                        Evidence Screenshot
+                      </Label>
+                      <a
+                        href={selectedSubmission.screenshotUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-primary hover:underline break-all"
+                      >
+                        {selectedSubmission.screenshotUrl}
+                        <ExternalLink className="h-3 w-3 shrink-0" />
+                      </a>
+                    </div>
+                  )}
+
+
 
                   {/* Admin Notes */}
                   {selectedSubmission.adminNotes && (
@@ -509,28 +600,51 @@ function SubmissionsContent() {
                   </div>
                 </div>
 
-                {/* Proof */}
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <FileText className="h-3 w-3" />
-                    Proof of Completion
-                  </Label>
-                  <div className="rounded-lg border border-border/30 bg-background p-3 text-sm">
-                    {selectedSubmission.proof}
-                  </div>
-                </div>
-
-                {/* Live URL */}
-                {selectedSubmission.liveAppUrl && (
+                {/* Task-type-specific submission fields per PRD */}
+                {selectedSubmission.postUrl && (
                   <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Live URL</Label>
+                    <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <ExternalLink className="h-3 w-3" />
+                      Post URL
+                    </Label>
                     <a
-                      href={selectedSubmission.liveAppUrl}
+                      href={selectedSubmission.postUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm text-primary hover:underline break-all rounded-lg border border-border/30 bg-background p-3"
+                    >
+                      {selectedSubmission.postUrl}
+                      <ExternalLink className="h-3 w-3 shrink-0" />
+                    </a>
+                  </div>
+                )}
+                
+                {selectedSubmission.emailContent && (
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <FileText className="h-3 w-3" />
+                      Email Content
+                    </Label>
+                    <div className="rounded-lg border border-border/30 bg-background p-3 text-sm whitespace-pre-wrap">
+                      {selectedSubmission.emailContent}
+                    </div>
+                  </div>
+                )}
+
+                {/* Evidence Screenshot */}
+                {selectedSubmission.screenshotUrl && (
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <ImageIcon className="h-3 w-3" />
+                      Evidence Screenshot
+                    </Label>
+                    <a
+                      href={selectedSubmission.screenshotUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 text-sm text-primary hover:underline break-all"
                     >
-                      {selectedSubmission.liveAppUrl}
+                      {selectedSubmission.screenshotUrl}
                       <ExternalLink className="h-3 w-3 shrink-0" />
                     </a>
                   </div>

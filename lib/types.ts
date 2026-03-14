@@ -17,6 +17,7 @@ export interface BaseTask {
   status: TaskStatus
   createdAt: Date
   deadline?: Date
+  campaignId?: string // For bulk operations and grouping
 }
 
 export interface SocialMediaPostingTask extends BaseTask {
@@ -46,15 +47,18 @@ export interface SocialMediaLikingTask extends BaseTask {
 
 export type Task = SocialMediaPostingTask | EmailSendingTask | SocialMediaLikingTask
 
-// ─── Submission ─────────────────────────────────────────────
+// ─── Submission (PRD-compliant fields per task type) ────────
 export interface Submission {
   id: string
   taskId: string
+  taskType: TaskType // Store task type for field display
   userId: string
   userName: string
   status: SubmissionStatus
-  proof: string
-  liveAppUrl?: string
+  // Task-type-specific fields (per PRD)
+  postUrl?: string        // For social_media_posting and social_media_liking
+  emailContent?: string   // For email_sending
+  screenshotUrl: string   // Required for all task types
   submittedAt: Date
   reviewedAt?: Date
   adminNotes?: string
