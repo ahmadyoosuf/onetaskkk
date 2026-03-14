@@ -78,6 +78,6 @@ For a demo with no persistence, a simple `getTasks()`/`createTask()` module is c
 - **Consistent spacing** — all sections use the same spacing scale (gap-4, p-4) to make layout predictable
 - **Glass header** — sticky, always visible — easy reference point when scrolling
 
-## AI Prompts
+## AI Disclosure
 
-Development prompts are in `/prompts/` folder — raw context I fed to Claude during build.
+See `/.ai_disclosure/` for transparency on AI assistance used during development.

@@ -1,5 +1,18 @@
 import type { Task, Submission, User, TaskType, Platform } from "./types"
 
+// ─── Simple Pub/Sub for Reactivity ──────────────────────────
+type Listener = () => void
+const listeners = new Set<Listener>()
+
+export function subscribe(listener: Listener): () => void {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
+function notify() {
+  listeners.forEach((listener) => listener())
+}
+
 // ─── Mock Data Generation ───────────────────────────────────
 function generateMockTasks(): Task[] {
   const now = new Date()
@@ -161,6 +174,7 @@ export function createTask(input: CreateTaskInput): Task {
   } as Task
   
   tasks = [newTask, ...tasks]
+  notify()
   return newTask
 }
 
@@ -168,6 +182,7 @@ export function updateTask(id: string, updates: Partial<Task>): Task | undefined
   const index = tasks.findIndex((t) => t.id === id)
   if (index === -1) return undefined
   tasks[index] = { ...tasks[index], ...updates } as Task
+  notify()
   return tasks[index]
 }
 
@@ -178,7 +193,9 @@ export function updateTaskStatus(id: string, status: "open" | "completed" | "can
 export function deleteTask(id: string): boolean {
   const initialLength = tasks.length
   tasks = tasks.filter((t) => t.id !== id)
-  return tasks.length < initialLength
+  const deleted = tasks.length < initialLength
+  if (deleted) notify()
+  return deleted
 }
 
 // ─── Submission Operations ──────────────────────────────────
@@ -209,6 +226,7 @@ export function createSubmission(submission: Omit<Submission, "id" | "submittedA
     }
   }
   
+  notify()
   return newSubmission
 }
 
@@ -225,6 +243,7 @@ export function updateSubmissionStatus(
     reviewedAt: new Date(),
     adminNotes,
   }
+  notify()
   return submissions[index]
 }
 

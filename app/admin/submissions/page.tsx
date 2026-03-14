@@ -30,7 +30,8 @@ import {
   FileText, MessageSquare, ChevronRight
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getSubmissions, getTasks, getTask, updateSubmissionStatus } from "@/lib/store"
+import { getTask, updateSubmissionStatus } from "@/lib/store"
+import { useTasks, useSubmissions } from "@/hooks/use-store"
 import type { Submission, SubmissionStatus } from "@/lib/types"
 
 const STATUS_STYLES: Record<SubmissionStatus, { label: string; className: string; icon: typeof Clock }> = {
@@ -45,8 +46,8 @@ function SubmissionsContent() {
   const taskIdFromUrl = searchParams.get("task")
   const parentRef = useRef<HTMLDivElement>(null)
 
-  const [submissions, setSubmissions] = useState(() => getSubmissions())
-  const tasks = getTasks()
+  const submissions = useSubmissions()
+  const tasks = useTasks()
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null)
   const [statusFilter, setStatusFilter] = useState<SubmissionStatus | "all">("all")
   const [taskFilter, setTaskFilter] = useState<string>(taskIdFromUrl || "all")
@@ -81,7 +82,6 @@ function SubmissionsContent() {
   const confirmReview = () => {
     if (!selectedSubmission) return
     updateSubmissionStatus(selectedSubmission.id, reviewAction, adminNotes || undefined)
-    setSubmissions(getSubmissions())
     toast({
       title: `Submission ${reviewAction}`,
       description: `${selectedSubmission.userName}'s submission has been ${reviewAction}.`,
