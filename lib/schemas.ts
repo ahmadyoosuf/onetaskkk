@@ -27,6 +27,10 @@ const baseTaskSchema = z.object({
       (date) => !date || date > new Date(),
       "Deadline must be in the future"
     ),
+  campaignId: z
+    .string()
+    .max(50, "Campaign ID must be less than 50 characters")
+    .optional(),
 })
 
 // ─── Type-Specific Schemas ──────────────────────────────────
@@ -77,6 +81,10 @@ export const submissionSchema = z.object({
     .string()
     .min(10, "Please provide details about your work")
     .max(500, "Proof must be less than 500 characters"),
+  screenshotUrl: z
+    .string()
+    .url("Must be a valid URL")
+    .min(1, "Screenshot URL is required"),
   liveAppUrl: z
     .string()
     .url("Must be a valid URL")

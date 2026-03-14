@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import { AppShell } from "@/components/app-shell"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -54,7 +54,23 @@ export default function TasksManagementPage() {
   const { toast } = useToast()
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set())
   const [isMutating, setIsMutating] = useState(false)
+  const [campaignFilter, setCampaignFilter] = useState<string>("all")
   const isDataLoading = isLoading || isLoadingSubmissions
+
+  // Get unique campaigns for filter dropdown
+  const uniqueCampaigns = useMemo(() => {
+    const campaigns = tasks
+      .map(t => t.campaignId)
+      .filter((c): c is string => !!c)
+    return [...new Set(campaigns)].sort()
+  }, [tasks])
+
+  // Filter tasks by campaign
+  const filteredTasks = useMemo(() => {
+    if (campaignFilter === "all") return tasks
+    if (campaignFilter === "none") return tasks.filter(t => !t.campaignId)
+    return tasks.filter(t => t.campaignId === campaignFilter)
+  }, [tasks, campaignFilter])
 
   const handleDelete = async (taskId: string) => {
     setIsMutating(true)
@@ -124,17 +140,17 @@ export default function TasksManagementPage() {
   }
 
   const toggleAllSelection = () => {
-    if (selectedTasks.size === tasks.length) {
+    if (selectedTasks.size === filteredTasks.length) {
       setSelectedTasks(new Set())
     } else {
-      setSelectedTasks(new Set(tasks.map((t) => t.id)))
+      setSelectedTasks(new Set(filteredTasks.map((t) => t.id)))
     }
   }
 
   // Stats with mock trend data (simulating week-over-week changes)
-  const totalTasks = tasks.length
-  const openTasks = tasks.filter((t) => t.status === "open").length
-  const totalRewards = tasks.reduce((sum, t) => sum + t.reward * t.currentSubmissions, 0)
+  const totalTasks = filteredTasks.length
+  const openTasks = filteredTasks.filter((t) => t.status === "open").length
+  const totalRewards = filteredTasks.reduce((sum, t) => sum + t.reward * t.currentSubmissions, 0)
   const totalSubmissions = submissions.length
   
   // Mock trend percentages (in a real app, these would be calculated from historical data)
@@ -152,12 +168,29 @@ export default function TasksManagementPage() {
             <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">Tasks Management</h1>
             <p className="text-sm text-muted-foreground">Manage all tasks and track submissions.</p>
           </div>
-          <Button asChild size="sm" className="w-full sm:w-auto">
-            <Link href="/admin/composer">
-              <Plus className="mr-2 h-4 w-4" />
-              New Task
-            </Link>
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            {/* Campaign Filter */}
+            <Select value={campaignFilter} onValueChange={setCampaignFilter}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Filter by campaign" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Campaigns</SelectItem>
+                <SelectItem value="none">No Campaign</SelectItem>
+                {uniqueCampaigns.map((campaign) => (
+                  <SelectItem key={campaign} value={campaign}>
+                    {campaign}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button asChild size="sm" className="w-full sm:w-auto">
+              <Link href="/admin/composer">
+                <Plus className="mr-2 h-4 w-4" />
+                New Task
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards with Trend Indicators */}
@@ -307,13 +340,14 @@ export default function TasksManagementPage() {
                   <TableRow>
                     <TableHead className="w-10">
                       <Checkbox
-                        checked={selectedTasks.size === tasks.length && tasks.length > 0}
+                        checked={selectedTasks.size === filteredTasks.length && filteredTasks.length > 0}
                         onCheckedChange={toggleAllSelection}
                         aria-label="Select all tasks"
                       />
                     </TableHead>
                     <TableHead>Task</TableHead>
                     <TableHead>Type</TableHead>
+                    <TableHead>Campaign</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Reward</TableHead>
                     <TableHead>Progress</TableHead>
@@ -321,7 +355,7 @@ export default function TasksManagementPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tasks.map((task) => {
+                  {filteredTasks.map((task) => {
                     const Icon = TASK_ICONS[task.type]
                     const meta = TASK_TYPE_META[task.type]
                     const statusStyle = STATUS_STYLES[task.status]
@@ -355,6 +389,15 @@ export default function TasksManagementPage() {
                           <Badge variant="outline" className="border-border/30">
                             {meta.label}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {task.campaignId ? (
+                            <Badge variant="secondary" className="text-xs">
+                              {task.campaignId}
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>
@@ -440,7 +483,9 @@ export default function TasksManagementPage() {
         {/* Tasks List - Mobile */}
         <div className="space-y-3 md:hidden">
           <div className="flex items-center justify-between">
-            <h2 className="font-medium">All Tasks ({tasks.length})</h2>
+            <h2 className="font-medium">
+              {campaignFilter !== "all" ? `${campaignFilter} Tasks` : "All Tasks"} ({filteredTasks.length})
+            </h2>
           </div>
           {isDataLoading ? (
             <Card className="border-border/30 border-dashed">
@@ -448,7 +493,7 @@ export default function TasksManagementPage() {
                 <p className="text-muted-foreground animate-pulse">Loading tasks...</p>
               </CardContent>
             </Card>
-          ) : tasks.map((task) => {
+          ) : filteredTasks.map((task) => {
             const Icon = TASK_ICONS[task.type]
             const meta = TASK_TYPE_META[task.type]
             const statusStyle = STATUS_STYLES[task.status]

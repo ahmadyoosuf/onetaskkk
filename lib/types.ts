@@ -17,6 +17,7 @@ export interface BaseTask {
   status: TaskStatus
   createdAt: Date
   deadline?: Date
+  campaignId?: string // For bulk operations and grouping
 }
 
 export interface SocialMediaPostingTask extends BaseTask {
@@ -54,6 +55,7 @@ export interface Submission {
   userName: string
   status: SubmissionStatus
   proof: string
+  screenshotUrl?: string // Evidence screenshot (required per PRD but URL-based for demo)
   liveAppUrl?: string
   submittedAt: Date
   reviewedAt?: Date

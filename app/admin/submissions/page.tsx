@@ -25,9 +25,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { 
-  Check, X, Clock, Filter, ExternalLink, User, Calendar, 
-  FileText, MessageSquare, ChevronRight, Layers
+import {
+  Clock, Check, X, FileText, ExternalLink, Eye, ChevronDown,
+  MessageSquare, ImageIcon
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getTask, updateSubmissionStatus } from "@/lib/store"
@@ -464,6 +464,25 @@ function SubmissionsContent() {
                     </div>
                   </div>
 
+                  {/* Evidence Screenshot */}
+                  {selectedSubmission.screenshotUrl && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <ImageIcon className="h-3 w-3" />
+                        Evidence Screenshot
+                      </Label>
+                      <a
+                        href={selectedSubmission.screenshotUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-primary hover:underline break-all"
+                      >
+                        {selectedSubmission.screenshotUrl}
+                        <ExternalLink className="h-3 w-3 shrink-0" />
+                      </a>
+                    </div>
+                  )}
+
                   {/* Live App URL */}
                   {selectedSubmission.liveAppUrl && (
                     <div className="space-y-2">
@@ -585,6 +604,25 @@ function SubmissionsContent() {
                     {selectedSubmission.proof}
                   </div>
                 </div>
+
+                {/* Evidence Screenshot */}
+                {selectedSubmission.screenshotUrl && (
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <ImageIcon className="h-3 w-3" />
+                      Evidence Screenshot
+                    </Label>
+                    <a
+                      href={selectedSubmission.screenshotUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm text-primary hover:underline break-all"
+                    >
+                      {selectedSubmission.screenshotUrl}
+                      <ExternalLink className="h-3 w-3 shrink-0" />
+                    </a>
+                  </div>
+                )}
 
                 {/* Live URL */}
                 {selectedSubmission.liveAppUrl && (

@@ -180,6 +180,7 @@ export default function TasksFeedPage() {
         userId: currentUser.id,
         userName: currentUser.name,
         proof: data.proof,
+        screenshotUrl: data.screenshotUrl,
         liveAppUrl: data.liveAppUrl || undefined,
       })
       toast({
@@ -548,6 +549,24 @@ export default function TasksFeedPage() {
               {errors.proof && (
                 <p className="text-xs text-destructive">{errors.proof.message}</p>
               )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="screenshotUrl">
+                Evidence Screenshot URL <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="screenshotUrl"
+                type="url"
+                placeholder="https://imgur.com/... or https://screenshots.com/..."
+                {...register("screenshotUrl")}
+              />
+              {errors.screenshotUrl && (
+                <p className="text-xs text-destructive">{errors.screenshotUrl.message}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Upload your screenshot to an image host and paste the URL here
+              </p>
             </div>
 
             <div className="space-y-2">

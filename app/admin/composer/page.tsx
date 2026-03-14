@@ -23,6 +23,7 @@ import { RewardField } from "@/components/composer/reward-field"
 import { MaxSubmissionsField } from "@/components/composer/max-submissions-field"
 import { AllowMultipleSubmissionsField } from "@/components/composer/allow-multiple-submissions-field"
 import { DeadlineField } from "@/components/composer/deadline-field"
+import { CampaignIdField } from "@/components/composer/campaign-id-field"
 import { SocialMediaPostingFields } from "@/components/composer/social-media-posting-fields"
 import { EmailSendingFields } from "@/components/composer/email-sending-fields"
 import { SocialMediaFields } from "@/components/composer/social-media-fields"
@@ -50,6 +51,7 @@ export default function TaskComposerPage() {
       platform: undefined,
       postContent: "",
       accountHandle: "",
+      campaignId: "",
     },
     mode: "onBlur",
   })
@@ -72,6 +74,7 @@ export default function TaskComposerPage() {
           maxSubmissions: data.maxSubmissions,
           allowMultipleSubmissions: data.allowMultipleSubmissions,
           deadline: data.deadline,
+          campaignId: data.campaignId || undefined,
           details: {
             platform: data.platform,
             postContent: data.postContent,
@@ -87,6 +90,7 @@ export default function TaskComposerPage() {
           maxSubmissions: data.maxSubmissions,
           allowMultipleSubmissions: data.allowMultipleSubmissions,
           deadline: data.deadline,
+          campaignId: data.campaignId || undefined,
           details: {
             targetEmail: data.targetEmail,
             emailContent: data.emailContent,
@@ -101,6 +105,7 @@ export default function TaskComposerPage() {
           maxSubmissions: data.maxSubmissions,
           allowMultipleSubmissions: data.allowMultipleSubmissions,
           deadline: data.deadline,
+          campaignId: data.campaignId || undefined,
           details: {
             postUrl: data.postUrl,
             platform: data.platform,
@@ -200,7 +205,10 @@ export default function TaskComposerPage() {
                   <MaxSubmissionsField />
                 </div>
                 <AllowMultipleSubmissionsField />
-                <DeadlineField />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <DeadlineField />
+                  <CampaignIdField />
+                </div>
               </CardContent>
             </Card>
 

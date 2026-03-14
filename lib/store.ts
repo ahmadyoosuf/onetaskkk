@@ -138,6 +138,10 @@ function generateMockTasks(): Task[] {
     const maxSubs = [50, 100, 200, 300, 500][Math.floor(Math.random() * 5)]
     const currentSubs = isCompleted ? maxSubs : Math.floor(Math.random() * maxSubs * 0.8)
     
+    // Assign tasks to campaigns for bulk operations
+    const campaigns = ["spring-launch", "q2-marketing", "social-boost", "engagement-2026", undefined]
+    const campaignId = campaigns[i % campaigns.length]
+    
     const baseTask = {
       id: `task-${i + 1}`,
       type,
@@ -150,6 +154,7 @@ function generateMockTasks(): Task[] {
       status: isCompleted ? "completed" : isCancelled ? "cancelled" : "open",
       createdAt: new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000),
       deadline: Math.random() > 0.6 ? new Date(now.getTime() + (Math.random() * 30) * 24 * 60 * 60 * 1000) : undefined,
+      campaignId,
     }
     
     if (type === "social_media_posting") {
@@ -197,6 +202,7 @@ function generateMockSubmissions(): Submission[] {
       proof: status === "rejected" 
         ? "Screenshot provided but task not completed correctly"
         : "Screenshot showing completed task submission",
+      screenshotUrl: `https://screenshots.example.com/evidence-${i + 1}.png`,
       liveAppUrl: Math.random() > 0.5 ? `https://proof.example.com/${i}` : undefined,
       submittedAt,
       reviewedAt: status !== "pending" ? new Date(submittedAt.getTime() + 2 * 60 * 60 * 1000) : undefined,
@@ -241,6 +247,7 @@ type CreateTaskInputBase = {
   maxSubmissions: number
   allowMultipleSubmissions: boolean
   deadline?: Date
+  campaignId?: string
 }
 
 type CreateTaskInput = 
@@ -260,6 +267,7 @@ export async function createTask(input: CreateTaskInput): Promise<Task> {
     status: "open",
     createdAt: new Date(),
     deadline: input.deadline,
+    campaignId: input.campaignId,
     type: input.type,
     details: input.details,
   } as Task
