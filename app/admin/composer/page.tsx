@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog"
 import { Share2, Mail, Heart, Plus, Save, Check, RotateCcw, ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { createTask, updateTask, getTask } from "@/lib/store"
+import { api } from "@/lib/store"
 import { taskFormSchema, type TaskFormData } from "@/lib/schemas"
 import { TASK_TYPE_META, type TaskType } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
@@ -82,7 +82,8 @@ function TaskComposerContent() {
   useEffect(() => {
     if (!editTaskId) return
     
-    const task = getTask(editTaskId)
+    const loadTask = async () => {
+    const task = await api.tasks.get(editTaskId)
     if (!task) {
       toast({ title: "Task not found", description: "The task you're trying to edit doesn't exist.", variant: "destructive" })
       router.push("/admin/tasks")
@@ -95,7 +96,7 @@ function TaskComposerContent() {
     const formData: Partial<TaskFormData> = {
       type: task.type,
       title: task.title,
-      description: task.description,
+      description: task.description ?? "",
       details: task.details,
       reward: task.reward,
       maxSubmissions: task.maxSubmissions,
@@ -125,6 +126,8 @@ function TaskComposerContent() {
     
     reset(formData as TaskFormData)
     setIsLoadingTask(false)
+    }
+    loadTask()
   }, [editTaskId, reset, router, toast])
 
   const handleTypeChange = (newType: TaskType) => {
@@ -159,13 +162,15 @@ function TaskComposerContent() {
   const onSubmit = async (data: TaskFormData) => {
     try {
       // Build task payload based on type
-      let taskPayload: Parameters<typeof createTask>[0]
+      let taskPayload: Parameters<typeof api.tasks.create>[0]
+
+      const desc = data.description || undefined
 
       if (data.type === "social_media_posting") {
         taskPayload = {
           type: "social_media_posting",
           title: data.title,
-          description: data.description,
+          description: desc,
           details: data.details,
           reward: data.reward,
           maxSubmissions: data.maxSubmissions,
@@ -182,7 +187,7 @@ function TaskComposerContent() {
         taskPayload = {
           type: "email_sending",
           title: data.title,
-          description: data.description,
+          description: desc,
           details: data.details,
           reward: data.reward,
           maxSubmissions: data.maxSubmissions,
@@ -198,7 +203,7 @@ function TaskComposerContent() {
         taskPayload = {
           type: "social_media_liking",
           title: data.title,
-          description: data.description,
+          description: desc,
           details: data.details,
           reward: data.reward,
           maxSubmissions: data.maxSubmissions,
@@ -214,7 +219,7 @@ function TaskComposerContent() {
 
       // Edit mode: update existing task
       if (isEditMode && editTaskId) {
-        await updateTask(editTaskId, taskPayload)
+        await api.tasks.update(editTaskId, taskPayload)
         toast({
           title: "Task updated",
           description: `"${data.title}" has been updated successfully.`,
@@ -222,7 +227,7 @@ function TaskComposerContent() {
         router.push("/admin/tasks")
       } else {
         // Create mode: create new task and show success dialog
-        await createTask(taskPayload)
+        await api.tasks.create(taskPayload)
         setCreatedTaskTitle(data.title)
         setShowSuccessDialog(true)
       }

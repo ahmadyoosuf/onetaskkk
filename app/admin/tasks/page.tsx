@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useMemo, Suspense } from "react"
+import { useState, useMemo, Suspense, useRef } from "react"
+import { useVirtualizer } from "@tanstack/react-virtual"
 import Link from "next/link"
 import { useQueryState, parseAsStringLiteral, parseAsString } from "nuqs"
 import { AppShell } from "@/components/app-shell"
@@ -71,6 +72,7 @@ function TasksManagementContent() {
   const updateTaskMutation = useUpdateTask()
   
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set())
+  const mobileListRef = useRef<HTMLDivElement>(null)
   
   // URL state management with nuqs
   const [statusFilter, setStatusFilter] = useQueryState("status", statusFilterParser)
@@ -81,6 +83,8 @@ function TasksManagementContent() {
   const [showBulkEditDialog, setShowBulkEditDialog] = useState(false)
   const [bulkEditField, setBulkEditField] = useState<"amount" | "campaignId">("amount")
   const [bulkEditValue, setBulkEditValue] = useState("")
+  // Confirmation dialog for destructive actions (PRD ADHD UX requirement)
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false)
   const isDataLoading = isLoading || isLoadingSubmissions
 
   // Get unique campaigns for filter dropdown
@@ -176,11 +180,31 @@ function TasksManagementContent() {
     }
   }
 
-  // PRD requirement: Bulk edit amount and campaign ID
+  // Compute minimum allowed maxSubmissions for validation
+  const minCurrentSubmissions = useMemo(() => {
+    return Math.max(
+      ...Array.from(selectedTasks).map(taskId => {
+        const task = tasks.find(t => t.id === taskId)
+        return task?.currentSubmissions ?? 0
+      }),
+      0
+    )
+  }, [selectedTasks, tasks])
+
+  // PRD requirement: Bulk edit amount and campaign ID with validation
   const handleBulkEdit = async () => {
     if (bulkEditField === "amount") {
       const parsed = parseInt(bulkEditValue, 10)
       if (!bulkEditValue.trim() || isNaN(parsed) || parsed < 1 || parsed > 10000) return
+      // Block bulk-editing maxSubmissions below any selected task's currentSubmissions
+      if (parsed < minCurrentSubmissions) {
+        toast({
+          title: "Invalid amount",
+          description: `Cannot set max submissions below ${minCurrentSubmissions} (highest current submissions among selected tasks).`,
+          variant: "destructive",
+        })
+        return
+      }
     }
     try {
       const updates = bulkEditField === "amount"
@@ -213,6 +237,14 @@ function TasksManagementContent() {
   const openTasks = filteredTasks.filter((t) => t.status === "open").length
   const totalRewards = filteredTasks.reduce((sum, t) => sum + t.reward * t.currentSubmissions, 0)
   const totalSubmissions = submissions.length
+
+  // Mobile virtualizer to prevent DOM explosion
+  const mobileVirtualizer = useVirtualizer({
+    count: filteredTasks.length,
+    getScrollElement: () => mobileListRef.current,
+    estimateSize: () => 200, // Approximate card height
+    overscan: 5,
+  })
 
   return (
       <AppShell role="admin">
@@ -365,7 +397,7 @@ function TasksManagementContent() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button variant="destructive" size="sm" onClick={handleBulkDelete} loading={isMutating}>
+                <Button variant="destructive" size="sm" onClick={() => setShowBulkDeleteConfirm(true)} loading={isMutating}>
                   <Trash2 className="mr-1 h-3 w-3" />
                   Delete
                 </Button>
@@ -403,7 +435,7 @@ function TasksManagementContent() {
           </CardContent>
         </Card>
 
-        {/* Tasks List - Mobile */}
+        {/* Tasks List - Mobile (Virtualized) */}
         <div className="space-y-3 md:hidden">
           <div className="flex items-center justify-between">
             <h2 className="font-medium">
@@ -418,117 +450,192 @@ function TasksManagementContent() {
                 <div className="h-20 rounded bg-muted animate-pulse" />
               </CardContent>
             </Card>
-          ) : filteredTasks.map((task) => {
-            const Icon = TASK_ICONS[task.type]
-            const meta = TASK_TYPE_META[task.type]
-            const progress = (task.currentSubmissions / task.maxSubmissions) * 100
-            const taskSubmissions = submissions.filter((s) => s.taskId === task.id)
-            const pendingCount = taskSubmissions.filter((s) => s.status === "pending").length
-
-            return (
-              <Card 
-                key={task.id} 
-                status={task.status}
-                className={cn(
-                  "border-border/30 touch-feedback",
-                  selectedTasks.has(task.id) && "border-primary/50 bg-primary/5"
-                )}
+          ) : filteredTasks.length === 0 ? (
+            <Card className="border-border/30 border-dashed">
+              <CardContent className="flex h-32 items-center justify-center">
+                <p className="text-muted-foreground">No tasks found.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div
+              ref={mobileListRef}
+              className="overflow-auto scrollbar-hide"
+              style={{ height: "calc(100svh - 380px)", minHeight: "300px" }}
+            >
+              <div
+                style={{
+                  height: `${mobileVirtualizer.getTotalSize()}px`,
+                  width: "100%",
+                  position: "relative",
+                }}
               >
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-start gap-3">
-                    <Checkbox
-                      checked={selectedTasks.has(task.id)}
-                      onCheckedChange={() => {
-                        setSelectedTasks((prev) => {
-                          const next = new Set(prev)
-                          if (next.has(task.id)) {
-                            next.delete(task.id)
-                          } else {
-                            next.add(task.id)
-                          }
-                          return next
-                        })
-                      }}
-                      className="mt-1"
-                    />
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium truncate">{task.title}</h3>
-                      <p className="text-xs text-muted-foreground line-clamp-1">{task.description}</p>
-                    </div>
-                  </div>
+                {mobileVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const task = filteredTasks[virtualRow.index]
+                  if (!task) return null
                   
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline" className="border-border/30 text-xs">
-                      {meta.label}
-                    </Badge>
-                    <Badge variant={task.status} className="text-xs">
-                      {TASK_STATUS_LABELS[task.status]}
-                    </Badge>
-                    <span className="text-sm font-mono font-medium text-success">${task.reward.toFixed(2)}</span>
-                    {pendingCount > 0 && (
-                      <Badge variant="secondary" className="text-xs bg-warning/10 text-warning border-warning/20">
-                        {pendingCount} pending
-                      </Badge>
-                    )}
-                  </div>
+                  const Icon = TASK_ICONS[task.type]
+                  const meta = TASK_TYPE_META[task.type]
+                  const progress = (task.currentSubmissions / task.maxSubmissions) * 100
+                  const taskSubmissions = submissions.filter((s) => s.taskId === task.id)
+                  const pendingCount = taskSubmissions.filter((s) => s.status === "pending").length
 
-                  <div className="flex items-center gap-2">
-                    <Progress value={progress} className="flex-1 h-2" />
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      {task.currentSubmissions}/{task.maxSubmissions}
-                    </span>
-                  </div>
+                  return (
+                    <div
+                      key={task.id}
+                      data-index={virtualRow.index}
+                      ref={mobileVirtualizer.measureElement}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        transform: `translateY(${virtualRow.start}px)`,
+                        padding: "4px 0",
+                      }}
+                    >
+                      <Card 
+                        status={task.status}
+                        className={cn(
+                          "border-border/30 touch-feedback",
+                          selectedTasks.has(task.id) && "border-primary/50 bg-primary/5"
+                        )}
+                      >
+                        <CardContent className="p-4 space-y-3">
+                          <div className="flex items-start gap-3">
+                            <Checkbox
+                              checked={selectedTasks.has(task.id)}
+                              onCheckedChange={() => {
+                                setSelectedTasks((prev) => {
+                                  const next = new Set(prev)
+                                  if (next.has(task.id)) {
+                                    next.delete(task.id)
+                                  } else {
+                                    next.add(task.id)
+                                  }
+                                  return next
+                                })
+                              }}
+                              className="mt-1"
+                            />
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
+                              <Icon className="h-5 w-5" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-medium truncate">{task.title}</h3>
+                              <p className="text-xs text-muted-foreground line-clamp-1">{task.description}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="outline" className="border-border/30 text-xs">
+                              {meta.label}
+                            </Badge>
+                            <Badge variant={task.status} className="text-xs">
+                              {TASK_STATUS_LABELS[task.status]}
+                            </Badge>
+                            <span className="text-sm font-mono font-medium text-success">${task.reward.toFixed(2)}</span>
+                            {pendingCount > 0 && (
+                              <Badge variant="secondary" className="text-xs bg-warning/10 text-warning border-warning/20">
+                                {pendingCount} pending
+                              </Badge>
+                            )}
+                          </div>
 
-                  <div className="flex gap-2">
-                    <Link href={`/admin/submissions?task=${task.id}`} className="flex-1">
-                      <Button variant="outline" size="sm" className="w-full h-9">
-                        <Eye className="mr-1.5 h-3.5 w-3.5" />
-                        Submissions
-                      </Button>
-                    </Link>
-                    <Link href={`/admin/composer?edit=${task.id}`}>
-                      <Button variant="outline" size="sm" className="h-9 px-3">
-                        <Edit2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </Link>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-9 px-2">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleStatusChange(task.id, "open")}
-                          className={task.status === "open" ? "bg-muted" : ""}>
-                          Set to Open
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleStatusChange(task.id, "completed")}
-                          className={task.status === "completed" ? "bg-muted" : ""}>
-                          Set to Completed
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleStatusChange(task.id, "cancelled")}
-                          className={task.status === "cancelled" ? "bg-muted" : ""}>
-                          Set to Cancelled
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={() => handleDelete(task.id)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
+                          <div className="flex items-center gap-2">
+                            <Progress value={progress} className="flex-1 h-2" />
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                              {task.currentSubmissions}/{task.maxSubmissions}
+                            </span>
+                          </div>
+
+                          <div className="flex gap-2">
+                            <Link href={`/admin/submissions?task=${task.id}`} className="flex-1">
+                              <Button variant="outline" size="sm" className="w-full h-9">
+                                <Eye className="mr-1.5 h-3.5 w-3.5" />
+                                Submissions
+                              </Button>
+                            </Link>
+                            <Link href={`/admin/composer?edit=${task.id}`}>
+                              <Button variant="outline" size="sm" className="h-9 px-3">
+                                <Edit2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </Link>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" className="h-9 px-2">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleStatusChange(task.id, "open")}
+                                  className={task.status === "open" ? "bg-muted" : ""}>
+                                  Set to Open
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleStatusChange(task.id, "completed")}
+                                  className={task.status === "completed" ? "bg-muted" : ""}>
+                                  Set to Completed
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleStatusChange(task.id, "cancelled")}
+                                  className={task.status === "cancelled" ? "bg-muted" : ""}>
+                                  Set to Cancelled
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => handleDelete(task.id)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Bulk Delete Confirmation Dialog (PRD ADHD UX requirement) */}
+      <Dialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Confirm Bulk Delete</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to permanently delete {selectedTasks.size} task{selectedTasks.size > 1 ? "s" : ""}? 
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm">
+            <p className="font-medium text-destructive">Warning:</p>
+            <ul className="mt-1 list-inside list-disc text-muted-foreground text-xs">
+              <li>All selected tasks will be permanently removed</li>
+              <li>Associated submissions will be orphaned</li>
+              <li>This cannot be reversed</li>
+            </ul>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setShowBulkDeleteConfirm(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={async () => {
+                await handleBulkDelete()
+                setShowBulkDeleteConfirm(false)
+              }}
+              loading={isMutating}
+            >
+              <Trash2 className="mr-1.5 h-4 w-4" />
+              Delete {selectedTasks.size} Task{selectedTasks.size > 1 ? "s" : ""}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Bulk Edit Dialog (PRD requirement) */}
       <Dialog open={showBulkEditDialog} onOpenChange={setShowBulkEditDialog}>
@@ -548,14 +655,19 @@ function TasksManagementContent() {
                 <Input
                   id="bulkAmount"
                   type="number"
-                  min={1}
+                  min={minCurrentSubmissions > 0 ? minCurrentSubmissions : 1}
                   max={10000}
-                  placeholder="e.g. 100"
+                  placeholder={minCurrentSubmissions > 0 ? `Min: ${minCurrentSubmissions}` : "e.g. 100"}
                   value={bulkEditValue}
                   onChange={(e) => setBulkEditValue(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
                   Sets the maximum number of submissions for all selected tasks.
+                  {minCurrentSubmissions > 0 && (
+                    <span className="block text-warning mt-1">
+                      Minimum: {minCurrentSubmissions} (based on current submissions)
+                    </span>
+                  )}
                 </p>
               </div>
             ) : (

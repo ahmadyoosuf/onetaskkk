@@ -38,15 +38,19 @@ pnpm build
 
 ## Stack
 
-Next.js 16, React 19, TypeScript, Tailwind CSS v4, shadcn UI, Lexical (rich-text Markdown editor), TanStack Query, TanStack Table, TanStack Virtual, react-hook-form + zod, nuqs, Vaul (bottom-sheet drawer)
+Next.js 16, React 19, TypeScript, Tailwind CSS v4, shadcn UI, Lexical (rich-text Markdown editor), TanStack Query, TanStack Table, TanStack Virtual, react-hook-form + zod, nuqs, Vaul (bottom-sheet drawer), idb-keyval (IndexedDB)
 
 ## Notes
 
-- All data is in-memory (500 tasks, 1000 submissions), no backend or database.
-- localStorage is fine at this mock scale. An IndexedDB migration would be needed at production volume to avoid the 5-10 MB ceiling.
+- All data persists to IndexedDB via `idb-keyval` — eliminates localStorage's 5MB quota limit and main-thread blocking.
+- Images are stored as base64 data URIs for cross-session persistence (no ephemeral blob URLs).
 - Fetch delay is randomised 1-3s, mutation delay is randomised 3-5s per PRD spec.
 - Dark mode is fully implemented with system-preference detection and `localStorage` persistence.
 - 70% mobile audience assumed. Bottom-sheet drawers (Vaul) replace dialogs on small screens.
+- TanStack Query is the single source of truth for all state — no conflicting pub/sub stores.
+- Unified `api` object in store.ts provides "Server Experience" — Client Components never touch raw data.
+- Mock data: 1,000 submissions distributed across all 500 tasks (not concentrated in first 200).
+- Confirmation dialogs prevent accidental bulk deletions (ADHD UX requirement).
 
 ## Architecture
 

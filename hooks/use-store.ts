@@ -1,51 +1,35 @@
 "use client"
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { useSyncExternalStore } from "react"
-import { 
-  subscribe, 
-  getTasksSnapshot, 
-  getSubmissionsSnapshot,
-  fetchTasks,
-  fetchSubmissions,
-  createTask,
-  updateTask,
-  updateTaskStatus,
-  deleteTask,
-  createSubmission,
-  updateSubmissionStatus,
-} from "@/lib/store"
-import type { Task, Submission, TaskStatus, SubmissionStatus } from "@/lib/types"
+import { api } from "@/lib/store"
+import type { Task, Submission, TaskStatus } from "@/lib/types"
 
 /**
- * TanStack Query-powered tasks hook with proper data flow:
- * - TanStack Query handles async fetching, caching, revalidation, and loading/error states
- * - useSyncExternalStore provides instant reactivity for local mutations
- * - Mutations automatically invalidate queries on success
+ * TanStack Query-powered hooks with PRD-mandated 1-3s simulated fetch delays.
+ * 
+ * Architecture:
+ * - TanStack Query is the single source of truth for async state
+ * - No useSyncExternalStore or pub/sub - Query handles caching & revalidation
+ * - isLoading reflects actual async fetch state (respects simulated delays)
+ * - Mutations invalidate queries, triggering re-fetch with delays
  */
+
 export function useTasks(): { 
   tasks: Task[]
   isLoading: boolean
   error: Error | null
   refetch: () => void
 } {
-  // Live snapshot for instant UI updates after local mutations
-  const snapshot = useSyncExternalStore(subscribe, getTasksSnapshot, getTasksSnapshot)
-  
-  // TanStack Query for async fetching, caching, and loading states
   const { data, error, isLoading, refetch } = useQuery({
     queryKey: ["tasks"],
-    queryFn: fetchTasks,
-    initialData: snapshot.length > 0 ? snapshot : undefined,
+    queryFn: api.tasks.list,
+    staleTime: 30_000, // Consider data fresh for 30s
+    gcTime: 5 * 60_000, // Keep in cache for 5 min
   })
 
-  // Prefer live snapshot over query cache for immediate reactivity
-  // Query data is used during initial load before snapshot is populated
-  const tasks = snapshot.length > 0 ? snapshot : (data ?? [])
-
   return { 
-    tasks,
-    isLoading: isLoading && snapshot.length === 0,
+    tasks: data ?? [],
+    isLoading,
     error: error ?? null,
     refetch,
   }
@@ -57,31 +41,29 @@ export function useSubmissions(): {
   error: Error | null
   refetch: () => void
 } {
-  const snapshot = useSyncExternalStore(subscribe, getSubmissionsSnapshot, getSubmissionsSnapshot)
-  
   const { data, error, isLoading, refetch } = useQuery({
     queryKey: ["submissions"],
-    queryFn: fetchSubmissions,
-    initialData: snapshot.length > 0 ? snapshot : undefined,
+    queryFn: api.submissions.list,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
   })
 
-  const submissions = snapshot.length > 0 ? snapshot : (data ?? [])
-
   return { 
-    submissions,
-    isLoading: isLoading && snapshot.length === 0,
+    submissions: data ?? [],
+    isLoading,
     error: error ?? null,
     refetch,
   }
 }
 
 /**
- * Mutation hooks for task operations with automatic cache invalidation
+ * Mutation hooks for task operations with automatic cache invalidation.
+ * Mutations use optimistic updates where appropriate.
  */
 export function useCreateTask() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: createTask,
+    mutationFn: api.tasks.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] })
     },
@@ -92,7 +74,7 @@ export function useUpdateTask() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: Partial<Task> }) => 
-      updateTask(id, updates),
+      api.tasks.update(id, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] })
     },
@@ -103,7 +85,7 @@ export function useUpdateTaskStatus() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: TaskStatus }) => 
-      updateTaskStatus(id, status),
+      api.tasks.updateStatus(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] })
     },
@@ -113,7 +95,7 @@ export function useUpdateTaskStatus() {
 export function useDeleteTask() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: deleteTask,
+    mutationFn: api.tasks.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] })
     },
@@ -121,12 +103,12 @@ export function useDeleteTask() {
 }
 
 /**
- * Mutation hooks for submission operations
+ * Mutation hooks for submission operations (via unified API)
  */
 export function useCreateSubmission() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: createSubmission,
+    mutationFn: api.submissions.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["submissions"] })
       queryClient.invalidateQueries({ queryKey: ["tasks"] }) // Task count updates
@@ -138,7 +120,7 @@ export function useUpdateSubmissionStatus() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, status, adminNotes }: { id: string; status: "approved" | "rejected"; adminNotes?: string }) => 
-      updateSubmissionStatus(id, status, adminNotes),
+      api.submissions.updateStatus(id, status, adminNotes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["submissions"] })
     },

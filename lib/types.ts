@@ -9,7 +9,7 @@ export interface BaseTask {
   id: string
   type: TaskType
   title: string
-  description: string
+  description?: string
   details: string
   reward: number
   maxSubmissions: number
