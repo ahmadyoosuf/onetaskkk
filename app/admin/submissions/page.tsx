@@ -107,16 +107,25 @@ function SubmissionsContent() {
   const confirmReview = async () => {
     if (!selectedSubmission) return
     setIsReviewing(true)
-    await updateSubmissionStatus(selectedSubmission.id, reviewAction, adminNotes || undefined)
-    toast({
-      title: `Submission ${reviewAction}`,
-      description: `${selectedSubmission.userName}'s submission has been ${reviewAction}.`,
-    })
-    setShowReviewDialog(false)
-    setAdminNotes("")
-    setSelectedSubmission(null)
-    setShowMobileDetail(false)
-    setIsReviewing(false)
+    try {
+      await updateSubmissionStatus(selectedSubmission.id, reviewAction, adminNotes || undefined)
+      toast({
+        title: `Submission ${reviewAction}`,
+        description: `${selectedSubmission.userName}'s submission has been ${reviewAction}.`,
+      })
+      setShowReviewDialog(false)
+      setAdminNotes("")
+      setSelectedSubmission(null)
+      setShowMobileDetail(false)
+    } catch {
+      toast({
+        title: "Review failed",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsReviewing(false)
+    }
   }
 
   // Running totals

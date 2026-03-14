@@ -25,13 +25,14 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu"
-import { 
+import {
   FileText, Mail, Heart, Plus, MoreHorizontal, Eye, Trash2,
   DollarSign, ListTodo, Clock, Users
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getSubmissions, deleteTask, updateTaskStatus } from "@/lib/store"
 import { useTasks } from "@/hooks/use-store"
+import { useToast } from "@/hooks/use-toast"
 import type { Task, TaskType, TaskStatus } from "@/lib/types"
 import { TASK_TYPE_META } from "@/lib/types"
 
@@ -49,38 +50,64 @@ const STATUS_STYLES: Record<TaskStatus, { label: string; className: string }> = 
 
 export default function TasksManagementPage() {
   const { tasks, isLoading } = useTasks()
+  const { toast } = useToast()
   const allSubmissions = getSubmissions()
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set())
   const [isMutating, setIsMutating] = useState(false)
 
   const handleDelete = async (taskId: string) => {
     setIsMutating(true)
-    await deleteTask(taskId)
-    setSelectedTasks((prev) => {
-      const next = new Set(prev)
-      next.delete(taskId)
-      return next
-    })
-    setIsMutating(false)
+    try {
+      await deleteTask(taskId)
+      setSelectedTasks((prev) => {
+        const next = new Set(prev)
+        next.delete(taskId)
+        return next
+      })
+      toast({ title: "Task deleted", description: "The task has been permanently removed." })
+    } catch {
+      toast({ title: "Delete failed", description: "Something went wrong. Please try again.", variant: "destructive" })
+    } finally {
+      setIsMutating(false)
+    }
   }
 
   const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
     setIsMutating(true)
-    await updateTaskStatus(taskId, newStatus)
-    setIsMutating(false)
+    try {
+      await updateTaskStatus(taskId, newStatus)
+      toast({ title: "Status updated", description: `Task marked as ${newStatus}.` })
+    } catch {
+      toast({ title: "Update failed", description: "Something went wrong. Please try again.", variant: "destructive" })
+    } finally {
+      setIsMutating(false)
+    }
   }
 
   const handleBulkStatusChange = async (newStatus: TaskStatus) => {
     setIsMutating(true)
-    await Promise.all(Array.from(selectedTasks).map((taskId) => updateTaskStatus(taskId, newStatus)))
-    setIsMutating(false)
+    try {
+      await Promise.all(Array.from(selectedTasks).map((taskId) => updateTaskStatus(taskId, newStatus)))
+      toast({ title: "Status updated", description: `${selectedTasks.size} tasks marked as ${newStatus}.` })
+    } catch {
+      toast({ title: "Update failed", description: "Something went wrong. Please try again.", variant: "destructive" })
+    } finally {
+      setIsMutating(false)
+    }
   }
 
   const handleBulkDelete = async () => {
     setIsMutating(true)
-    await Promise.all(Array.from(selectedTasks).map((taskId) => deleteTask(taskId)))
-    setSelectedTasks(new Set())
-    setIsMutating(false)
+    try {
+      await Promise.all(Array.from(selectedTasks).map((taskId) => deleteTask(taskId)))
+      const count = selectedTasks.size
+      setSelectedTasks(new Set())
+      toast({ title: "Tasks deleted", description: `${count} task${count > 1 ? "s" : ""} permanently removed.` })
+    } catch {
+      toast({ title: "Delete failed", description: "Something went wrong. Please try again.", variant: "destructive" })
+    } finally {
+      setIsMutating(false)
+    }
   }
 
   const toggleTaskSelection = (taskId: string) => {

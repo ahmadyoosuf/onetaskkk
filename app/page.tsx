@@ -88,22 +88,31 @@ export default function TasksFeedPage() {
   const onSubmit = async (data: SubmissionFormData) => {
     if (!selectedTask) return
     setIsSubmitting(true)
-    const user = getCurrentUser()
-    await createSubmission({
-      taskId: selectedTask.id,
-      userId: user.id,
-      userName: user.name,
-      proof: data.proof,
-      liveAppUrl: data.liveAppUrl || undefined,
-    })
-    toast({
-      title: "Submission received",
-      description: `Your work on "${selectedTask.title}" has been submitted for review.`,
-    })
-    setShowSubmitDialog(false)
-    reset()
-    setSelectedTask(null)
-    setIsSubmitting(false)
+    try {
+      const user = getCurrentUser()
+      await createSubmission({
+        taskId: selectedTask.id,
+        userId: user.id,
+        userName: user.name,
+        proof: data.proof,
+        liveAppUrl: data.liveAppUrl || undefined,
+      })
+      toast({
+        title: "Submission received",
+        description: `Your work on "${selectedTask.title}" has been submitted for review.`,
+      })
+      setShowSubmitDialog(false)
+      reset()
+      setSelectedTask(null)
+    } catch {
+      toast({
+        title: "Submission failed",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (

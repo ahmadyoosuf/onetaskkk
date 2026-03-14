@@ -1,5 +1,38 @@
 import type { Task, Submission, User, TaskType, Platform } from "./types"
 
+// ─── LocalStorage Persistence ────────────────────────────────
+const STORAGE_KEYS = {
+  tasks: "taskmarket_tasks",
+  submissions: "taskmarket_submissions",
+} as const
+
+function reviveDates(_key: string, value: unknown): unknown {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
+    return new Date(value)
+  }
+  return value
+}
+
+function loadFromStorage<T>(key: string): T[] | null {
+  if (typeof window === "undefined") return null
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) return null
+    return JSON.parse(raw, reviveDates) as T[]
+  } catch {
+    return null
+  }
+}
+
+function saveToStorage<T>(key: string, data: T[]): void {
+  if (typeof window === "undefined") return
+  try {
+    localStorage.setItem(key, JSON.stringify(data))
+  } catch {
+    // Ignore storage errors (e.g. private browsing, quota exceeded)
+  }
+}
+
 // ─── Simulated Network Delays (per PRD) ─────────────────────
 const FETCH_DELAY = 2000 // 2 seconds for data fetching
 const MUTATION_DELAY_MIN = 1000 // 1-3 seconds for mutations
@@ -31,6 +64,8 @@ export function subscribe(listener: Listener): () => void {
 function notify() {
   tasksSnapshot = [...tasks]
   submissionsSnapshot = [...submissions]
+  saveToStorage(STORAGE_KEYS.tasks, tasks)
+  saveToStorage(STORAGE_KEYS.submissions, submissions)
   listeners.forEach((listener) => listener())
 }
 
@@ -165,12 +200,16 @@ function generateMockSubmissions(): Submission[] {
 }
 
 // ─── In-Memory Store ────────────────────────────────────────
-let tasks: Task[] = generateMockTasks()
-let submissions: Submission[] = generateMockSubmissions()
+let tasks: Task[] = loadFromStorage<Task>(STORAGE_KEYS.tasks) ?? generateMockTasks()
+let submissions: Submission[] = loadFromStorage<Submission>(STORAGE_KEYS.submissions) ?? generateMockSubmissions()
 
 // Initialize snapshots
 tasksSnapshot = [...tasks]
 submissionsSnapshot = [...submissions]
+
+// Persist initial data to localStorage (seeds first-time visitors)
+saveToStorage(STORAGE_KEYS.tasks, tasks)
+saveToStorage(STORAGE_KEYS.submissions, submissions)
 
 const users: User[] = [
   { id: "admin-1", name: "Admin User", email: "admin@yoke.app", role: "admin" },

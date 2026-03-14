@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils"
 import { createTask } from "@/lib/store"
 import { taskFormSchema, type TaskFormData } from "@/lib/schemas"
 import { TASK_TYPE_META, type TaskType } from "@/lib/types"
+import { useToast } from "@/hooks/use-toast"
 
 // Field Components
 import { TitleField } from "@/components/composer/title-field"
@@ -33,6 +34,7 @@ const TASK_TYPES: { value: TaskType; icon: typeof FileText }[] = [
 
 export default function TaskComposerPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [taskType, setTaskType] = useState<TaskType>("form_submission")
 
   const methods = useForm<TaskFormData>({
@@ -57,48 +59,59 @@ export default function TaskComposerPage() {
   }
 
   const onSubmit = async (data: TaskFormData) => {
-    if (data.type === "form_submission") {
-      await createTask({
-        type: "form_submission",
-        title: data.title,
-        description: data.description,
-        reward: data.reward,
-        maxSubmissions: data.maxSubmissions,
-        deadline: data.deadline,
-        details: {
-          targetUrl: data.targetUrl,
-          formFields: data.formFields.split(",").map((f) => f.trim()).filter(Boolean),
-        },
+    try {
+      if (data.type === "form_submission") {
+        await createTask({
+          type: "form_submission",
+          title: data.title,
+          description: data.description,
+          reward: data.reward,
+          maxSubmissions: data.maxSubmissions,
+          deadline: data.deadline,
+          details: {
+            targetUrl: data.targetUrl,
+            formFields: data.formFields.split(",").map((f) => f.trim()).filter(Boolean),
+          },
+        })
+      } else if (data.type === "email_sending") {
+        await createTask({
+          type: "email_sending",
+          title: data.title,
+          description: data.description,
+          reward: data.reward,
+          maxSubmissions: data.maxSubmissions,
+          deadline: data.deadline,
+          details: {
+            targetEmail: data.targetEmail,
+            emailContent: data.emailContent,
+          },
+        })
+      } else if (data.type === "social_media_liking") {
+        await createTask({
+          type: "social_media_liking",
+          title: data.title,
+          description: data.description,
+          reward: data.reward,
+          maxSubmissions: data.maxSubmissions,
+          deadline: data.deadline,
+          details: {
+            postUrl: data.postUrl,
+            platform: data.platform,
+          },
+        })
+      }
+      toast({
+        title: "Task created",
+        description: `"${data.title}" is now live and accepting submissions.`,
       })
-    } else if (data.type === "email_sending") {
-      await createTask({
-        type: "email_sending",
-        title: data.title,
-        description: data.description,
-        reward: data.reward,
-        maxSubmissions: data.maxSubmissions,
-        deadline: data.deadline,
-        details: {
-          targetEmail: data.targetEmail,
-          emailContent: data.emailContent,
-        },
-      })
-    } else if (data.type === "social_media_liking") {
-      await createTask({
-        type: "social_media_liking",
-        title: data.title,
-        description: data.description,
-        reward: data.reward,
-        maxSubmissions: data.maxSubmissions,
-        deadline: data.deadline,
-        details: {
-          postUrl: data.postUrl,
-          platform: data.platform,
-        },
+      router.push("/admin/tasks")
+    } catch {
+      toast({
+        title: "Failed to create task",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
       })
     }
-
-    router.push("/admin/tasks")
   }
 
   return (
