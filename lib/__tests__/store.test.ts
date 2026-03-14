@@ -135,9 +135,11 @@ describe("store — submission operations", () => {
 
     const promise = store.createSubmission({
       taskId: task.id,
+      taskType: "social_media_posting",
       userId: "user-1",
       userName: "Test User",
-      proof: "I completed the form",
+      postUrl: "https://twitter.com/test-user/status/123",
+      screenshotUrl: "https://cdn.example.com/proofs/submission-test.png",
     })
     await vi.runAllTimersAsync()
     const submission = await promise
@@ -166,18 +168,22 @@ describe("store — submission operations", () => {
 
     const firstSubmission = store.createSubmission({
       taskId: task.id,
+      taskType: "email_sending",
       userId: "user-1",
       userName: "Test User",
-      proof: "Initial completion proof",
+      emailContent: "Initial completion details",
+      screenshotUrl: "https://cdn.example.com/proofs/first-email.png",
     })
     await vi.runAllTimersAsync()
     await firstSubmission
 
     await expect(store.createSubmission({
       taskId: task.id,
+      taskType: "email_sending",
       userId: "user-1",
       userName: "Test User",
-      proof: "Trying to submit again",
+      emailContent: "Trying to submit again",
+      screenshotUrl: "https://cdn.example.com/proofs/second-email.png",
     })).rejects.toThrow("already submitted")
   })
 

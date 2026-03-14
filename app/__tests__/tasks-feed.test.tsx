@@ -3,11 +3,11 @@ import userEvent from "@testing-library/user-event"
 import type { ReactNode } from "react"
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import type { Task, Submission } from "@/lib/types"
-import TasksFeedPage from "../page"
+import TasksFeedPage from "../worker/page"
 
 const mockUseTasks = vi.fn()
 const mockUseSubmissions = vi.fn()
-const mockCreateSubmission = vi.fn()
+const mockUseCreateSubmission = vi.fn()
 
 vi.mock("@/components/app-shell", () => ({
   AppShell: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -16,6 +16,7 @@ vi.mock("@/components/app-shell", () => ({
 vi.mock("@/hooks/use-store", () => ({
   useTasks: () => mockUseTasks(),
   useSubmissions: () => mockUseSubmissions(),
+  useCreateSubmission: () => mockUseCreateSubmission(),
 }))
 
 vi.mock("@/hooks/use-toast", () => ({
@@ -23,7 +24,6 @@ vi.mock("@/hooks/use-toast", () => ({
 }))
 
 vi.mock("@/lib/store", () => ({
-  createSubmission: (...args: unknown[]) => mockCreateSubmission(...args),
   getCurrentUser: () => ({ id: "user-1", name: "Alice Johnson", email: "alice@example.com", role: "worker" }),
 }))
 
@@ -41,9 +41,10 @@ vi.mock("@tanstack/react-virtual", () => ({
 
 describe("TasksFeedPage", () => {
   beforeEach(() => {
-    mockCreateSubmission.mockReset()
+    mockUseCreateSubmission.mockReset()
     mockUseTasks.mockReset()
     mockUseSubmissions.mockReset()
+    mockUseCreateSubmission.mockReturnValue({ mutateAsync: vi.fn(), isPending: false })
   })
 
   it("locks submitting when a worker already submitted a single-submit task", async () => {
@@ -67,10 +68,12 @@ describe("TasksFeedPage", () => {
     const submission: Submission = {
       id: "sub-1",
       taskId: "task-1",
+      taskType: "social_media_posting",
       userId: "user-1",
       userName: "Alice Johnson",
       status: "pending",
-      proof: "Submitted once already",
+      postUrl: "https://linkedin.com/posts/alice-launch-post",
+      screenshotUrl: "https://cdn.example.com/proofs/sub-1.png",
       submittedAt: new Date("2026-03-11T10:00:00Z"),
     }
 
