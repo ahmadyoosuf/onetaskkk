@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { LayoutDashboard, ListTodo, ClipboardCheck, PlusCircle, ArrowLeftRight, LogOut, User } from "lucide-react"
 import { useAuth } from "@/components/providers/auth-provider"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -87,7 +88,9 @@ export function AppShell({ children, role }: AppShellProps) {
           </nav>
 
           {/* User Menu */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+
             <button
               onClick={() => {
                 logout()
@@ -123,6 +126,11 @@ export function AppShell({ children, role }: AppShellProps) {
                       </Badge>
                       Current Role
                     </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <div className="px-2 py-1.5">
+                      <p className="mb-1.5 text-[10px] text-muted-foreground">Appearance</p>
+                      <ThemeToggle variant="menu" />
+                    </div>
                     <DropdownMenuSeparator />
                   </>
                 )}
