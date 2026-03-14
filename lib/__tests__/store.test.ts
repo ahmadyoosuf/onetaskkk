@@ -83,6 +83,32 @@ describe("store — task operations", () => {
 
     expect(socialTasks.every((task) => supportedPlatforms.has(task.details.platform))).toBe(true)
   })
+
+  it("updateTask updates only provided fields and preserves the rest", async () => {
+    vi.useFakeTimers()
+    const store = await freshStore()
+    const originalTask = store.getTasks()[0]!
+
+    const updatePromise = store.updateTask(originalTask.id, {
+      title: "Updated Task Title",
+      reward: originalTask.reward + 1,
+    })
+    await vi.runAllTimersAsync()
+    const updatedTask = await updatePromise
+
+    expect(updatedTask).toEqual({
+      ...originalTask,
+      title: "Updated Task Title",
+      reward: originalTask.reward + 1,
+    })
+    expect(updatedTask?.description).toBe(originalTask.description)
+    expect(updatedTask?.details).toEqual(originalTask.details)
+    expect(updatedTask?.status).toBe(originalTask.status)
+    expect(updatedTask?.maxSubmissions).toBe(originalTask.maxSubmissions)
+    expect(updatedTask?.allowMultipleSubmissions).toBe(originalTask.allowMultipleSubmissions)
+    expect(updatedTask?.currentSubmissions).toBe(originalTask.currentSubmissions)
+    expect(updatedTask?.createdAt).toEqual(originalTask.createdAt)
+  })
 })
 
 describe("store — submission operations", () => {
@@ -153,6 +179,62 @@ describe("store — submission operations", () => {
       userName: "Test User",
       proof: "Trying to submit again",
     })).rejects.toThrow("already submitted")
+  })
+
+  it("rejects submissions when currentSubmissions reached maxSubmissions", async () => {
+    vi.useFakeTimers()
+    const store = await freshStore()
+
+    const taskPromise = store.createTask({
+      type: "email_sending",
+      title: "Already Full Task",
+      description: "No more submissions should be accepted.",
+      reward: 2,
+      maxSubmissions: 1,
+      allowMultipleSubmissions: true,
+      details: { targetEmail: "owner@example.com", emailContent: "Done" },
+    })
+    await vi.runAllTimersAsync()
+    const task = await taskPromise
+
+    const updatePromise = store.updateTask(task.id, { currentSubmissions: task.maxSubmissions })
+    await vi.runAllTimersAsync()
+    await updatePromise
+
+    await expect(store.createSubmission({
+      taskId: task.id,
+      userId: "user-2",
+      userName: "Second User",
+      proof: "I completed it",
+    })).rejects.toThrow("Task is no longer accepting submissions")
+  })
+
+  it("rejects submissions when task status is cancelled", async () => {
+    vi.useFakeTimers()
+    const store = await freshStore()
+
+    const taskPromise = store.createTask({
+      type: "social_media_posting",
+      title: "Cancelled Task",
+      description: "Task has been cancelled.",
+      reward: 3,
+      maxSubmissions: 5,
+      allowMultipleSubmissions: true,
+      details: { platform: "linkedin", postContent: "Cancelled content" },
+    })
+    await vi.runAllTimersAsync()
+    const task = await taskPromise
+
+    const cancelPromise = store.updateTaskStatus(task.id, "cancelled")
+    await vi.runAllTimersAsync()
+    await cancelPromise
+
+    await expect(store.createSubmission({
+      taskId: task.id,
+      userId: "user-2",
+      userName: "Second User",
+      proof: "Attempting cancelled task",
+    })).rejects.toThrow("Task is no longer accepting submissions")
   })
 
   it("updateSubmissionStatus approves with notes and sets reviewedAt", async () => {
