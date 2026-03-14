@@ -3,7 +3,7 @@ import Image from "next/image"
 import { ListTodo, ShieldCheck, ArrowRight } from "lucide-react"
 
 export default function RolePickerPage() {
-  if (typeof window !== 'undefined') console.log([1,2,3].nonExistentMethod());
+  if (typeof window !== 'undefined') [1,2,3].nonExistentMethod();
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
       {/* Logo */}
