@@ -3,7 +3,6 @@ import { Space_Grotesk, IBM_Plex_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from '@/components/ui/toaster'
 import { QueryProvider } from '@/components/providers/query-provider'
-import { SessionProvider } from '@/components/providers/session-provider'
 import { AuthProvider } from '@/components/providers/auth-provider'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import './globals.css'
@@ -43,15 +42,13 @@ export default function RootLayout({
   return (
     <html lang="en" data-scroll-behavior="smooth">
       <body className={`${spaceGrotesk.variable} ${ibmPlexMono.variable} font-sans antialiased`}>
-        <SessionProvider>
-          <QueryProvider>
-            <NuqsAdapter>
-              <AuthProvider>
-                {children}
-              </AuthProvider>
-            </NuqsAdapter>
-          </QueryProvider>
-        </SessionProvider>
+        <QueryProvider>
+          <NuqsAdapter>
+            <AuthProvider>
+              {children}
+            </AuthProvider>
+          </NuqsAdapter>
+        </QueryProvider>
         <Toaster />
         <Analytics />
       </body>

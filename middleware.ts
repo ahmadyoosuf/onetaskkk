@@ -1,39 +1,44 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
+import { NextRequest, NextResponse } from "next/server"
+import { jwtVerify } from "jose"
+
+const SESSION_COOKIE = "onetaskkk-session"
+const SECRET = new TextEncoder().encode("onetaskkk-demo-secret-key-min-32chars!")
+
+async function getSessionFromRequest(request: NextRequest) {
+  const token = request.cookies.get(SESSION_COOKIE)?.value
+  if (!token) return null
+  try {
+    const { payload } = await jwtVerify(token, SECRET)
+    return { id: payload.id as string, role: payload.role as string }
+  } catch {
+    return null
+  }
+}
 
 export async function middleware(request: NextRequest) {
-  const session = await auth()
   const { pathname } = request.nextUrl
+  const session = await getSessionFromRequest(request)
 
-  // Public routes - always allow
-  const publicRoutes = ["/", "/login"]
-  const isPublicRoute = publicRoutes.some((route) => pathname === route) || pathname.startsWith("/login")
-  
-  if (isPublicRoute) {
-    // If logged in and visiting /login, redirect to their role page
-    if (session?.user && pathname.startsWith("/login")) {
-      const redirectUrl = session.user.role === "admin" ? "/admin/tasks" : "/worker"
-      return NextResponse.redirect(new URL(redirectUrl, request.url))
+  // Public routes — always allow
+  if (pathname === "/" || pathname.startsWith("/login")) {
+    if (session && pathname.startsWith("/login")) {
+      const dest = session.role === "admin" ? "/admin/tasks" : "/worker"
+      return NextResponse.redirect(new URL(dest, request.url))
     }
     return NextResponse.next()
   }
 
-  // Protected routes - require auth
-  if (!session?.user) {
+  // Protected routes — require session
+  if (!session) {
     const role = pathname.startsWith("/admin") ? "admin" : "worker"
     return NextResponse.redirect(new URL(`/login?role=${role}`, request.url))
   }
 
   // Role-based access control
-  const userRole = session.user.role
-  const isAdminRoute = pathname.startsWith("/admin")
-  const isWorkerRoute = pathname.startsWith("/worker")
-
-  if (isAdminRoute && userRole !== "admin") {
+  if (pathname.startsWith("/admin") && session.role !== "admin") {
     return NextResponse.redirect(new URL("/worker", request.url))
   }
-
-  if (isWorkerRoute && userRole !== "worker") {
+  if (pathname.startsWith("/worker") && session.role !== "worker") {
     return NextResponse.redirect(new URL("/admin/tasks", request.url))
   }
 

@@ -1,19 +1,12 @@
 "use client"
 
-import { createContext, useContext } from "react"
-import { useSession, signOut } from "next-auth/react"
+import { createContext, useContext, useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { getUserInitials } from "@/lib/mock-users"
-
-interface AuthUser {
-  id: string
-  name: string
-  email: string
-  role: "admin" | "worker"
-}
+import type { User } from "@/lib/types"
 
 interface AuthContextValue {
-  user: AuthUser | null
+  user: User | null
   isLoading: boolean
   logout: () => void
   initials: string
@@ -23,23 +16,24 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
-  const { data: session, status } = useSession()
-  
-  const isLoading = status === "loading"
-  
-  const user: AuthUser | null = session?.user
-    ? {
-        id: session.user.id,
-        name: session.user.name || "",
-        email: session.user.email || "",
-        role: session.user.role,
-      }
-    : null
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  const handleLogout = async () => {
-    await signOut({ redirect: false })
+  // Fetch session on mount
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then((res) => res.json())
+      .then((data) => setUser(data.user ?? null))
+      .catch(() => setUser(null))
+      .finally(() => setIsLoading(false))
+  }, [])
+
+  const handleLogout = useCallback(async () => {
+    await fetch("/api/auth/logout", { method: "POST" })
+    setUser(null)
     router.push("/")
-  }
+    router.refresh()
+  }, [router])
 
   const initials = user ? getUserInitials(user.name) : ""
 
