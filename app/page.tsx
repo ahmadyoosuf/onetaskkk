@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useRef } from "react"
+import { useMemo, useState, useRef, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useVirtualizer } from "@tanstack/react-virtual"
@@ -128,6 +128,11 @@ export default function TasksFeedPage() {
   const [typeFilter, setTypeFilter] = useState<TaskType | "all">("all")
   const [sortBy, setSortBy] = useState<"newest" | "reward">("newest")
   const parentRef = useRef<HTMLDivElement>(null)
+  const [hasMounted, setHasMounted] = useState(false)
+
+  useEffect(() => {
+    setHasMounted(true)
+  }, [])
 
   const handleTaskSelect = (task: Task) => {
     setSelectedTask(task)
@@ -210,7 +215,7 @@ export default function TasksFeedPage() {
             <div>
               <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">Available Tasks</h1>
               <p className="text-sm text-muted-foreground">
-                {filteredTasks.length} task{filteredTasks.length !== 1 && "s"} available
+                {hasMounted ? `${filteredTasks.length} task${filteredTasks.length !== 1 ? "s" : ""} available` : "\u00A0"}
               </p>
             </div>
             <div className="flex items-center gap-2">
