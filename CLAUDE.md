@@ -8,10 +8,11 @@ Frontend evaluation — micro-task platform with admin and worker roles.
 - Tailwind CSS v4
 - shadcn UI (customized design system)
 - Lexical + `@lexical/react` + `@lexical/markdown` (rich-text task details editor, outputs Markdown)
-- TanStack Query (data fetching & mutations)
-- TanStack Table (admin tasks table)
+- TanStack Query (data fetching & mutations — single source of truth)
+- TanStack Table (admin tasks table with pagination)
 - react-hook-form + zod (form validation)
-- TanStack Virtual (virtualized worker feed)
+- TanStack Virtual (virtualized worker feed and mobile task cards)
+- idb-keyval (IndexedDB persistence)
 - nuqs (URL state management)
 - Vaul (bottom-sheet drawer for mobile detail views)
 - `react-markdown` (renders stored Markdown in detail panels)
@@ -40,8 +41,8 @@ Frontend evaluation — micro-task platform with admin and worker roles.
 ```
 lib/
   types.ts      — discriminated union types (Task, Submission)
-  schemas.ts    — zod schemas for form validation
-  store.ts      — in-memory CRUD with 500 tasks, 1000 submissions
+  schemas.ts    — zod schemas for form validation (description now optional)
+  store.ts      — IndexedDB-backed CRUD with 500 tasks, 1000 submissions
   auth.ts       — mock authentication helpers
 
 components/
@@ -59,7 +60,7 @@ components/
   ui/                       — customized shadcn components + Vaul drawer
 
 hooks/
-  use-store.ts              — TanStack Query hooks for tasks/submissions
+  use-store.ts              — TanStack Query hooks (sole state manager, no pub/sub)
 
 app/
   login/page.tsx          — mock login page
@@ -102,8 +103,14 @@ PRD says "should handle 1000s of tasks." Virtualization renders only visible row
 **Why isolated field components?**
 Composer has `TitleField`, `RewardField`, etc. Each owns validation state via `useFormContext`. Easier to test and modify.
 
-**Why localStorage for state persistence?**
-Appropriate for 120–500 mock tasks. At production volume (10 k+ tasks with large `details` blobs) this would need an IndexedDB migration to avoid the 5–10 MB storage ceiling and synchronous-write jank.
+**Why IndexedDB via idb-keyval?**
+Migrated from localStorage to eliminate the 5MB quota ceiling and main-thread blocking that causes jank. `idb-keyval` provides a simple async key-value API that scales to production volumes without synchronous write issues.
+
+**Why base64 data URIs for images?**
+Previously used ephemeral `blob:` URLs that disappeared on page reload. Now images are read as base64 via FileReader and stored directly in IndexedDB, ensuring evidence screenshots persist across sessions.
+
+**Why TanStack Query as single source of truth?**
+Removed the conflicting `useSyncExternalStore` pub/sub implementation. TanStack Query now strictly manages all state and loading flags, including the PRD-mandated 1-3s simulated fetch delays.
 
 ## Customized shadcn Components
 

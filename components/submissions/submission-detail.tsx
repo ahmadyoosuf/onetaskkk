@@ -1,8 +1,9 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import type { Submission, SubmissionStatus } from "@/lib/types"
-import { Calendar, Check, Clock, ExternalLink, FileText, ImageIcon, MessageSquare, User, X } from "lucide-react"
+import { Separator } from "@/components/ui/separator"
+import type { Submission, SubmissionStatus, Task, TASK_TYPE_META } from "@/lib/types"
+import { Calendar, Check, Clock, DollarSign, ExternalLink, FileText, ImageIcon, Info, Mail, MessageSquare, Share2, ThumbsUp, User, X } from "lucide-react"
 
 const STATUS_LABELS: Record<SubmissionStatus, string> = {
   pending: "Pending",
@@ -10,9 +11,22 @@ const STATUS_LABELS: Record<SubmissionStatus, string> = {
   rejected: "Rejected",
 }
 
+const TASK_TYPE_ICONS: Record<string, React.ReactNode> = {
+  social_media_posting: <Share2 className="h-4 w-4" />,
+  email_sending: <Mail className="h-4 w-4" />,
+  social_media_liking: <ThumbsUp className="h-4 w-4" />,
+}
+
+const TASK_TYPE_LABELS: Record<string, string> = {
+  social_media_posting: "Social Media Posting",
+  email_sending: "Email Sending",
+  social_media_liking: "Social Media Liking",
+}
+
 type SubmissionDetailProps = {
   submission: Submission
-  taskTitle?: string
+  task?: Task | null  // Full task object for ADHD UX - shows all context
+  taskTitle?: string  // Fallback if task not provided
   onApprove: () => void
   onReject: () => void
   isReviewing: boolean
@@ -20,11 +34,14 @@ type SubmissionDetailProps = {
 
 export function SubmissionDetail({
   submission,
+  task,
   taskTitle,
   onApprove,
   onReject,
   isReviewing,
 }: SubmissionDetailProps) {
+  const displayTitle = task?.title || taskTitle
+
   return (
     <>
       <div className="space-y-4">
@@ -34,8 +51,108 @@ export function SubmissionDetail({
             {STATUS_LABELS[submission.status]}
           </Badge>
         </div>
-        {taskTitle && <p className="truncate text-sm text-muted-foreground">{taskTitle}</p>}
 
+        {/* Task Context Section - PRD ADHD UX Requirement */}
+        {task && (
+          <div className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
+            <div className="flex items-center gap-2">
+              <Info className="h-4 w-4 text-primary" />
+              <span className="text-xs font-medium text-primary">Task Context</span>
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex items-start gap-2">
+                <div className="mt-0.5 text-muted-foreground">
+                  {TASK_TYPE_ICONS[task.type]}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-sm">{task.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {TASK_TYPE_LABELS[task.type]}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 text-xs font-medium text-success">
+                  <DollarSign className="h-3 w-3" />
+                  {task.reward.toFixed(2)}
+                </div>
+              </div>
+
+              {task.description && (
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {task.description}
+                </p>
+              )}
+
+              {/* Task-specific details for context */}
+              <div className="mt-2 space-y-1 text-xs">
+                {task.type === "social_media_posting" && (
+                  <>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <span className="font-medium">Platform:</span>
+                      <span className="capitalize">{task.taskDetails.platform}</span>
+                    </div>
+                    <div className="rounded bg-muted/50 p-2">
+                      <span className="font-medium text-muted-foreground">Required Post:</span>
+                      <p className="mt-1 whitespace-pre-wrap">{task.taskDetails.postContent}</p>
+                    </div>
+                  </>
+                )}
+                {task.type === "email_sending" && (
+                  <>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <span className="font-medium">Target Email:</span>
+                      <span>{task.taskDetails.targetEmail}</span>
+                    </div>
+                    <div className="rounded bg-muted/50 p-2">
+                      <span className="font-medium text-muted-foreground">Required Content:</span>
+                      <p className="mt-1 whitespace-pre-wrap">{task.taskDetails.emailContent}</p>
+                    </div>
+                  </>
+                )}
+                {task.type === "social_media_liking" && (
+                  <>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <span className="font-medium">Platform:</span>
+                      <span className="capitalize">{task.taskDetails.platform}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <span className="font-medium">Post to Like:</span>
+                      <a
+                        href={task.taskDetails.postUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline truncate"
+                      >
+                        {task.taskDetails.postUrl}
+                      </a>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Detailed instructions collapsible */}
+              {task.details && (
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-xs font-medium text-primary hover:underline">
+                    View Full Instructions
+                  </summary>
+                  <div className="mt-2 rounded bg-muted/50 p-2 text-xs whitespace-pre-wrap">
+                    {task.details}
+                  </div>
+                </details>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Fallback: just show title if no full task */}
+        {!task && displayTitle && (
+          <p className="truncate text-sm text-muted-foreground">{displayTitle}</p>
+        )}
+
+        <Separator />
+
+        {/* Submitter Info */}
         <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary shrink-0">
             <User className="h-5 w-5" />
@@ -46,11 +163,12 @@ export function SubmissionDetail({
           </div>
         </div>
 
+        {/* Submission Evidence */}
         {submission.postUrl && (
           <div className="space-y-2">
             <Label className="flex items-center gap-2 text-xs text-muted-foreground">
               <ExternalLink className="h-3 w-3" />
-              Post URL
+              Submitted Post URL
             </Label>
             <a
               href={submission.postUrl}
@@ -68,7 +186,7 @@ export function SubmissionDetail({
           <div className="space-y-2">
             <Label className="flex items-center gap-2 text-xs text-muted-foreground">
               <FileText className="h-3 w-3" />
-              Email Content
+              Submitted Email Content
             </Label>
             <div className="rounded-lg border border-border/30 bg-background p-3 text-sm whitespace-pre-wrap">
               {submission.emailContent}
@@ -82,15 +200,26 @@ export function SubmissionDetail({
               <ImageIcon className="h-3 w-3" />
               Evidence Screenshot
             </Label>
-            <a
-              href={submission.screenshotUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 text-sm text-primary hover:underline break-all"
-            >
-              {submission.screenshotUrl}
-              <ExternalLink className="h-3 w-3 shrink-0" />
-            </a>
+            {/* Display base64 images inline, link for URLs */}
+            {submission.screenshotUrl.startsWith("data:") ? (
+              <div className="rounded-lg border border-border/30 overflow-hidden">
+                <img
+                  src={submission.screenshotUrl}
+                  alt="Evidence screenshot"
+                  className="w-full h-auto max-h-64 object-contain bg-muted/30"
+                />
+              </div>
+            ) : (
+              <a
+                href={submission.screenshotUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-sm text-primary hover:underline break-all"
+              >
+                {submission.screenshotUrl}
+                <ExternalLink className="h-3 w-3 shrink-0" />
+              </a>
+            )}
           </div>
         )}
 

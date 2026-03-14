@@ -6,9 +6,11 @@ import {
   type ColumnDef,
   type SortingState,
   type RowSelectionState,
+  type PaginationState,
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
+  getPaginationRowModel,
   useReactTable,
 } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
@@ -29,7 +31,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { ArrowUpDown, Edit2, Eye, Heart, Mail, MoreHorizontal, Share2, Trash2 } from "lucide-react"
+import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Edit2, Eye, Heart, Mail, MoreHorizontal, Share2, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Task, TaskStatus, TaskType, Submission } from "@/lib/types"
 import { TASK_TYPE_META } from "@/lib/types"
@@ -55,6 +57,8 @@ type TasksTableProps = {
   onSelectionChange: (selectedTasks: Set<string>) => void
 }
 
+const PAGE_SIZE = 10
+
 export function TasksTable({
   tasks,
   submissions,
@@ -64,6 +68,10 @@ export function TasksTable({
   onSelectionChange,
 }: TasksTableProps) {
   const [sorting, setSorting] = useState<SortingState>([])
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: PAGE_SIZE,
+  })
 
   // Convert Set to RowSelectionState
   const rowSelection = useMemo(() => {
@@ -283,47 +291,103 @@ export function TasksTable({
     state: {
       sorting,
       rowSelection,
+      pagination,
     },
     enableRowSelection: true,
     onSortingChange: setSorting,
     onRowSelectionChange: handleRowSelectionChange,
+    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
   })
 
   return (
-    <Table>
-      <TableHeader>
-        {table.getHeaderGroups().map((headerGroup) => (
-          <TableRow key={headerGroup.id}>
-            {headerGroup.headers.map((header) => (
-              <TableHead
-                key={header.id}
-                className={cn(header.id === "select" && "w-10", header.id === "actions" && "w-10")}
-              >
-                {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-              </TableHead>
-            ))}
-          </TableRow>
-        ))}
-      </TableHeader>
-      <TableBody>
-        {table.getRowModel().rows?.length ? (
-          table.getRowModel().rows.map((row) => (
-            <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className={row.getIsSelected() ? "bg-primary/5" : ""}>
-              {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+    <div className="space-y-4">
+      <Table>
+        <TableHeader>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <TableRow key={headerGroup.id}>
+              {headerGroup.headers.map((header) => (
+                <TableHead
+                  key={header.id}
+                  className={cn(header.id === "select" && "w-10", header.id === "actions" && "w-10")}
+                >
+                  {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                </TableHead>
               ))}
             </TableRow>
-          ))
-        ) : (
-          <TableRow>
-            <TableCell colSpan={columns.length} className="h-24 text-center">
-              No tasks found.
-            </TableCell>
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows?.length ? (
+            table.getRowModel().rows.map((row) => (
+              <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className={row.getIsSelected() ? "bg-primary/5" : ""}>
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                ))}
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={columns.length} className="h-24 text-center">
+                No tasks found.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+      
+      {/* Pagination Controls */}
+      {tasks.length > PAGE_SIZE && (
+        <div className="flex items-center justify-between px-2">
+          <p className="text-sm text-muted-foreground">
+            Showing {pagination.pageIndex * pagination.pageSize + 1} to{" "}
+            {Math.min((pagination.pageIndex + 1) * pagination.pageSize, tasks.length)} of {tasks.length} tasks
+          </p>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => table.setPageIndex(0)}
+              disabled={!table.getCanPreviousPage()}
+            >
+              <ChevronsLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="px-2 text-sm">
+              Page {pagination.pageIndex + 1} of {table.getPageCount()}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+              disabled={!table.getCanNextPage()}
+            >
+              <ChevronsRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

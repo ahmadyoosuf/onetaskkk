@@ -35,7 +35,7 @@ import {
   DrawerDescription,
 } from "@/components/ui/drawer"
 import {
-  Clock, Check, X, FileText, Filter, Layers, ChevronRight,
+  Clock, Check, X, FileText, Filter, Layers, ChevronRight, ArrowUpDown,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTasks, useSubmissions, useUpdateSubmissionStatus } from "@/hooks/use-store"
@@ -62,6 +62,7 @@ type SubmissionListRow =
 
 // URL state parsers for nuqs
 const statusFilterParser = parseAsStringLiteral(["all", "pending", "approved", "rejected"] as const).withDefault("all")
+const sortByParser = parseAsStringLiteral(["newest", "oldest", "status"] as const).withDefault("newest")
 
 function SubmissionsContent() {
   const { toast } = useToast()
@@ -75,6 +76,7 @@ function SubmissionsContent() {
   const [statusFilter, setStatusFilter] = useQueryState("status", statusFilterParser)
   const [taskFilter, setTaskFilter] = useQueryState("task", parseAsString.withDefault("all"))
   const [groupByTask, setGroupByTask] = useQueryState("group", parseAsBoolean.withDefault(false))
+  const [sortBy, setSortBy] = useQueryState("sort", sortByParser)
   
   const [showReviewDialog, setShowReviewDialog] = useState(false)
   const [reviewAction, setReviewAction] = useState<"approved" | "rejected">("approved")
@@ -99,8 +101,23 @@ function SubmissionsContent() {
     if (taskFilter !== "all") {
       result = result.filter((s) => s.taskId === taskFilter)
     }
+    
+    // Apply sorting (PRD requirement)
+    const statusOrder: Record<SubmissionStatus, number> = { pending: 0, approved: 1, rejected: 2 }
+    switch (sortBy) {
+      case "newest":
+        result = [...result].sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime())
+        break
+      case "oldest":
+        result = [...result].sort((a, b) => a.submittedAt.getTime() - b.submittedAt.getTime())
+        break
+      case "status":
+        result = [...result].sort((a, b) => statusOrder[a.status] - statusOrder[b.status])
+        break
+    }
+    
     return result
-  }, [submissions, statusFilter, taskFilter])
+  }, [submissions, statusFilter, taskFilter, sortBy])
 
   const listRows = useMemo<SubmissionListRow[]>(() => {
     if (!groupByTask) {
@@ -321,6 +338,17 @@ function SubmissionsContent() {
                   ))}
                 </SelectContent>
               </Select>
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+                <SelectTrigger className="w-full sm:w-36">
+                  <ArrowUpDown className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
+                  <SelectValue placeholder="Sort" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="oldest">Oldest First</SelectItem>
+                  <SelectItem value="status">By Status</SelectItem>
+                </SelectContent>
+              </Select>
               <Button
                 variant={groupByTask ? "secondary" : "outline"}
                 size="sm"
@@ -456,7 +484,7 @@ function SubmissionsContent() {
                 <CardContent className="p-4">
                   <SubmissionDetail
                     submission={selectedSubmission}
-                    taskTitle={taskMap.get(selectedSubmission.taskId)?.title}
+                    task={taskMap.get(selectedSubmission.taskId)}
                     onApprove={() => handleReview("approved")}
                     onReject={() => handleReview("rejected")}
                     isReviewing={isReviewing}
@@ -490,7 +518,7 @@ function SubmissionsContent() {
             <div className="overflow-y-auto p-4">
               <SubmissionDetail
                 submission={selectedSubmission}
-                taskTitle={taskMap.get(selectedSubmission.taskId)?.title}
+                task={taskMap.get(selectedSubmission.taskId)}
                 onApprove={() => handleReview("approved")}
                 onReject={() => handleReview("rejected")}
                 isReviewing={isReviewing}

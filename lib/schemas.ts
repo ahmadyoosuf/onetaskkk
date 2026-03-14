@@ -8,8 +8,9 @@ const baseTaskSchema = z.object({
     .max(100, "Title must be less than 100 characters"),
   description: z
     .string()
-    .min(20, "Description must be at least 20 characters")
-    .max(500, "Description must be less than 500 characters"),
+    .max(500, "Description must be less than 500 characters")
+    .optional()
+    .or(z.literal("")),
   details: z
     .string()
     .min(20, "Detailed instructions must be at least 20 characters")
