@@ -6,16 +6,9 @@ Engineering notes and AI assistance context during development.
 
 ## Prompt 1: Project Scaffolding & Architecture Planning
 
-Started by reading through the PRD requirements carefully. The platform needs 4 main screens: Task Composer (admin creates tasks), Tasks Feed (workers browse/claim), Tasks Management (admin CRUD), and Submissions Review (admin approves/rejects).
+Scaffold a new Next.js app for a micro-tasking platform with four screens: Task Composer (admin creates tasks), Tasks Feed (workers browse/claim), Tasks Management (admin CRUD table), and Submissions Review (admin approves/rejects). No backend needed — use a client-side mock store since this is a frontend evaluation. Use react-hook-form + zod for the composer form, TanStack Virtual for the task and submission lists (PRD says "1000s of tasks" so virtualization is non-negotiable), and shadcn/ui as the component foundation.
 
-Initial architecture decision: went with a client-side mock store instead of setting up a full backend since the PRD emphasizes frontend evaluation. Used AI to help scaffold the initial file structure and component hierarchy.
-
-Key technical choices made:
-- **react-hook-form + zod** for the composer form - the PRD specifically calls out form validation as important, and zod gives us runtime validation that matches TypeScript types
-- **TanStack Virtual** for the task/submission lists - PRD mentions "1000s of tasks" so virtualization is non-negotiable for performance
-- **shadcn/ui** as component foundation - matches the recommended stack and gives accessible primitives
-
-Spent time debugging the initial TanStack Virtual setup. The cards were rendering but overlapping each other badly. Turns out I was using a fixed `estimateSize` of 108px but the actual card height varied based on description length. AI suggested using `measureElement` callback which dynamically measures each row - this fixed the overlap issue completely.
+While setting up TanStack Virtual the cards were rendering but overlapping badly. The fixed `estimateSize` of 108px didn't account for variable card heights based on description length. Fix it using the `measureElement` callback to dynamically measure each row, and add `data-index` attributes so the measurement works correctly:
 
 ```typescript
 // Before (broken):
@@ -26,20 +19,11 @@ estimateSize: () => 96,
 measureElement: (el) => el.getBoundingClientRect().height
 ```
 
-Also added `data-index` attribute to each row div which is required for measureElement to work properly.
-
 ---
 
 ## Prompt 2: TypeScript Discriminated Unions for Task Types
 
-The three task types (form_submission, email_sending, social_media_liking) each have completely different detail fields:
-- Form submission needs `targetUrl` and `formFields[]`
-- Email sending needs `targetEmail` and `emailContent`
-- Social media needs `postUrl` and `platform`
-
-Initially tried a single `Task` interface with optional fields everywhere - TypeScript wasn't catching errors when I accessed `task.details.postUrl` on a form_submission task. Asked AI for help structuring this properly.
-
-Solution was discriminated unions with a `type` field as the discriminant:
+The three task types (form_submission, email_sending, social_media_liking) each have completely different detail fields. Right now they're in a single `Task` interface with optional fields everywhere and TypeScript isn't catching errors when I access `task.details.postUrl` on a form_submission task. Fix this using a discriminated union with `type` as the discriminant:
 
 ```typescript
 type Task = FormSubmissionTask | EmailSendingTask | SocialMediaTask
@@ -51,23 +35,20 @@ interface FormSubmissionTask {
 }
 ```
 
-Now TypeScript narrows correctly inside `if (task.type === "form_submission")` blocks. Also created corresponding zod schemas that mirror the types using `z.discriminatedUnion()` - this was tricky because the zod API is slightly different from the TS syntax.
-
-Hit a wall when the zod schema wasn't validating correctly. Error was cryptic: "Invalid discriminator value". Turned out I had a typo in one of the literal values (`"form_submision"` missing an 's'). AI helped spot this by comparing the schema literals against the type literals.
+Also create matching zod schemas using `z.discriminatedUnion()` that mirror the TypeScript types. There's a validation error — "Invalid discriminator value" — it's a typo in one of the literal values (`"form_submision"` missing an 's'), fix that too.
 
 ---
 
 ## Prompt 3: Design System Implementation
 
-Referenced the secDash design for visual direction - clean, professional, warm tones. Key design tokens:
-- **Primary:** Indigo (#4F46E5) - professional but not boring
-- **Background:** Warm off-white (#FAFAF8) - easier on eyes than pure white
-- **Borders:** Ghost borders at 30% opacity - subtle separation without harsh lines
-- **Font:** Space Grotesk for headings (geometric, modern), system sans for body (performance)
+Implement the design system with these tokens:
+- **Primary:** Indigo (#4F46E5)
+- **Background:** Warm off-white (#FAFAF8)
+- **Borders:** Ghost borders at 30% opacity
+- **Font:** Space Grotesk for headings, system sans for body
 
-Implemented the glass morphism header with `backdrop-blur-xl` and semi-transparent background. Had to be careful about z-index stacking with the mobile bottom sheets.
+Add a glass morphism header with `backdrop-blur-xl`. Add `prefers-reduced-motion` support — use `0.01ms` not `0ms` because some browsers ignore the latter:
 
-Added `prefers-reduced-motion` support throughout:
 ```css
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -77,31 +58,15 @@ Added `prefers-reduced-motion` support throughout:
 }
 ```
 
-Using `transition-duration: 0.01ms` rather than `0ms` because some browsers ignore the latter entirely.
-
-Mobile-first approach: designed the card layout for 320px width first, then enhanced for larger screens. The filter dropdowns were tricky - on mobile they take full width, on desktop they sit inline. Used `flex-wrap` with `min-w-0` on the flex children to handle this gracefully.
+Design mobile-first at 320px, then enhance for larger screens. The filter dropdowns should be full-width on mobile and inline on desktop — use `flex-wrap` with `min-w-0` on flex children to handle this.
 
 ---
 
 ## Prompt 4: State Management & Reactivity Bug
 
-Found a critical bug: creating a task in the Composer, then navigating to the Feed, the new task wouldn't appear. Had to refresh the page to see it.
+There's a bug: creating a task in the Composer then navigating to the Feed doesn't show the new task. The Feed only updates on full page refresh. The root cause is that `useState` captures the initial value at mount time — when Composer adds to the store, the Feed's local state snapshot doesn't update.
 
-Root cause: the issue was in how the store was initialized:
-
-```typescript
-// Bug: useState captures initial value at mount time
-const [tasks] = useState(() => getInitialTasks())
-```
-
-When the Feed component mounts, it creates its own snapshot of the tasks array. When Composer adds a task to the store, the Feed's local state doesn't update because useState doesn't re-run the initializer.
-
-Considered several solutions:
-1. **Zustand** - overkill for this project, adds dependency
-2. **React Context** - would need to lift state way up, prop drilling nightmare
-3. **Custom pub/sub** - lightweight, fits the use case
-
-Went with option 3. Asked AI to help implement a minimal pub/sub pattern:
+Fix this with a minimal custom pub/sub pattern and `useSyncExternalStore`:
 
 ```typescript
 const listeners = new Set<() => void>()
@@ -116,33 +81,20 @@ function notify() {
 }
 ```
 
-Then used `useSyncExternalStore` (React 18 hook specifically designed for external stores) to subscribe components to changes:
-
-```typescript
-export function useTasks(): Task[] {
-  return useSyncExternalStore(subscribe, getTasksSnapshot, getTasksSnapshot)
-}
-```
-
-The snapshot needs to be referentially stable - returning a new array reference on every call causes infinite re-renders. Fixed by caching the snapshot and only updating it in `notify()`.
+The snapshot must be referentially stable — returning a new array reference on every call causes infinite re-renders. Cache the snapshot and only update it inside `notify()`.
 
 ---
 
 ## Prompt 5: Code Review & Production Readiness
 
-Self-review before submission. Found several issues:
+Do a pre-submission code review and fix everything that would fail in production:
 
-1. **TypeScript `ignoreBuildErrors: true`** was in next.config.js - this was a crutch from early development. Removed it and fixed the ~15 type errors that surfaced. Most were missing null checks on `selectedTask?.id` patterns.
+1. Remove `ignoreBuildErrors: true` from next.config.js and fix the type errors that surface (mostly missing null checks on `selectedTask?.id` patterns).
+2. Remove all unused imports (`useEffect`, `useCallback`, etc).
+3. Remove all `console.log` debug statements left in the store.
+4. Add missing `.gitignore` entries: `.env*.local`, `.vercel`, standard Next.js ignores.
+5. Fix mobile touch targets — some buttons are only 32px tall, below the 44px minimum. Add `min-h-[44px]` but scope it carefully so it doesn't affect Badge components. The broad selector is wrong:
 
-2. **Unused imports** scattered throughout - `useEffect` imported but not used in page.tsx, `useCallback` imported unnecessarily. ESLint caught these once I enabled strict mode.
-
-3. **Console.logs left in** - had debugging statements like `console.log("task created", task)` in the store. Removed all of them.
-
-4. **`.gitignore` was missing entries** - added `.env*.local`, `.vercel`, and other standard Next.js ignores.
-
-5. **Mobile touch targets** - some buttons were only 32px tall, below the 44px minimum. Added `min-h-[44px]` to interactive elements, scoped carefully to avoid affecting Badge components.
-
-AI flagged that the touch target CSS was too broad:
 ```css
 /* Too broad - affects badges, chips, etc */
 button, a { min-height: 44px; }
@@ -155,111 +107,89 @@ button:not([data-state]):not(.touch-target-sm) { min-height: 44px; }
 
 ## Prompt 6: TanStack Query & Simulated Latency
 
-PRD explicitly requires simulated network delays (fetches and mutations). Retrofitted this into the existing store.
+The PRD explicitly requires simulated network delays. Add async fetchers with artificial delays — fetch delay should be randomised 1-3s, mutations should be randomised 3-5s:
 
-Created async fetchers with artificial delays. Fetch delay started at a fixed 2s but this was later revised (see Prompt 8).
-
-Mutations got random delays between 3-5 seconds to simulate variable network conditions:
 ```typescript
 const delay = 3000 + Math.random() * 2000
 await new Promise(r => setTimeout(r, delay))
 ```
 
-Switched from SWR to TanStack Query for data fetching. TanStack Query fit better with the existing store pattern and gave cleaner mutation handling with `invalidateQueries`. The hybrid approach means initial load shows a loading state, but after that, local mutations appear immediately (optimistic) while the cache stays in sync.
+Switch from SWR to TanStack Query. TanStack Query fits better with the store pattern and has cleaner mutation handling via `invalidateQueries`.
 
-Also scaled up mock data from 5 tasks to 500 tasks and 1000 submissions to properly stress-test the virtualizer. Verified smooth scrolling on mobile with Chrome DevTools throttling.
+Also scale up mock data from 5 tasks to 500 tasks and 1000 submissions to properly stress-test the virtualizer. Verify smooth scrolling on mobile using Chrome DevTools throttling.
 
 ---
 
 ## Prompt 7: Submissions Page, Details Field, and Admin Table Refactors
 
-Three focused refactors:
+Three focused changes:
 
-**1. Task details field to Markdown.** The composer was storing HTML from a rich-text editor. Switched it to a plain textarea outputting Markdown, with `react-markdown` rendering it in detail panels. Cleaner storage, no sanitization headaches.
+**1.** Switch the composer details field from a rich-text HTML editor to a plain textarea outputting Markdown. Render it with `react-markdown` in detail panels. Cleaner storage, no sanitization headaches.
 
-**2. TanStack Table for admin tasks.** The hand-rolled table was getting hard to extend. Replaced it with a TanStack Table implementation (`@tanstack/react-table`). Got sortable columns, row selection, and action menus with much less custom code.
+**2.** Replace the hand-rolled admin tasks table with a TanStack Table implementation (`@tanstack/react-table`) to get sortable columns, row selection, and action menus with less custom code.
 
-**3. Bulk edit label fix.** The bulk edit dialog was labeling the field "Max Submissions" but the PRD uses "Amount". Updated the label everywhere it appeared including the composer form field.
+**3.** The bulk edit dialog labels the field "Max Submissions" but the PRD calls it "Amount". Fix the label everywhere it appears including in the composer form.
 
-Also stripped fake trend math from the stats cards. The percentages were calculated from the current data in a way that didn't mean anything (dividing by total + 3, etc.). Replaced with static values since there's no historical data to trend against.
+Also strip the fake trend math from the stats cards — the percentages are calculated in a way that means nothing (dividing by total + 3, etc.). Replace with static values since there's no historical data.
 
 ---
 
 ## Prompt 8: Lexical Rich-Text Editor
 
-Replaced the plain textarea in the composer details field with a proper Lexical rich-text editor. The requirement is that the stored value stays Markdown, so the editor needs to output Markdown on every change.
+Replace the plain textarea in the composer details field with a Lexical rich-text editor. The stored value must stay as Markdown, so the editor needs to output Markdown on every change.
 
-Integration with react-hook-form was the main complexity. Lexical is not a standard controlled input, so `register()` doesn't work. Used `Controller` instead, which wraps Lexical and wires it up manually. `OnChangePlugin` fires on every editor state change, calls `$convertToMarkdownString(TRANSFORMERS)` inside `editorState.read()`, and passes the result to `field.onChange`. For edit mode, `$convertFromMarkdownString` seeds the editor from the existing form value in `initialConfig.editorState`.
+Wire Lexical into react-hook-form using `Controller` (not `register` — Lexical isn't a standard controlled input). Use `OnChangePlugin` to fire on every editor state change, call `$convertToMarkdownString(TRANSFORMERS)` inside `editorState.read()`, and pass the result to `field.onChange`. For edit mode, seed the editor from the existing form value using `$convertFromMarkdownString` in `initialConfig.editorState`.
 
-Added a toolbar with bold, italic, strikethrough, inline code, H2, H3, blockquote, undo, and redo. Also enabled `MarkdownShortcutPlugin` so users can type Markdown syntax directly.
+Add a toolbar with bold, italic, strikethrough, inline code, H2, H3, blockquote, undo, and redo. Enable `MarkdownShortcutPlugin` so users can type Markdown syntax directly.
 
-Hit a build failure when deploying: `$wrapNodes` from `@lexical/selection` was deprecated in v0.33+ and its recursive type signature caused TypeScript to throw "excessive stack depth" during compilation. Switched to `$setBlocksType` which is the current API. Also had a version mismatch where `@lexical/selection` was accidentally pinned to `^0.41.0` while all other Lexical packages were at `^0.33.0`. Fixed both.
+There's a build failure: `$wrapNodes` from `@lexical/selection` is deprecated in v0.33+ and its recursive type signature causes TypeScript to throw "excessive stack depth". Switch to `$setBlocksType`. Also fix a version mismatch where `@lexical/selection` is pinned to `^0.41.0` while all other Lexical packages are at `^0.33.0`.
 
 ---
 
 ## Prompt 9: Mobile Drawers, Fetch Delay Fix, and Form Reset
 
-Several PRD compliance fixes and UX improvements:
+Fix four PRD compliance issues:
 
-**1. Vaul bottom-sheet drawers.** The app has a 70% mobile audience per the PRD. Replaced Dialog-based mobile detail views on both the submissions and worker feed pages with Vaul drawers. Vaul gives proper drag-to-dismiss, spring physics, and the correct visual weight for a bottom sheet. Created a shared `components/ui/drawer.tsx` wrapping Vaul with design system tokens.
+**1.** The app has a 70% mobile audience per the PRD. Replace Dialog-based mobile detail views on the submissions and worker feed pages with Vaul bottom-sheet drawers. Create a shared `components/ui/drawer.tsx` wrapping Vaul with design system tokens.
 
-**2. Submissions page refactor.** The submissions page had duplicate detail UI coded inline for both desktop (panel) and mobile (dialog). Replaced both with the existing `SubmissionDetail` component.
+**2.** The submissions page has duplicate detail UI coded inline for desktop (panel) and mobile (dialog). Replace both with the shared `SubmissionDetail` component.
 
-**3. Fetch delay corrected.** The PRD specifies 1-3 seconds for data fetching, not a fixed 2 seconds. Updated the store to use `randomFetchDelay()` which returns a value in that range. Mutations were already randomised in the correct 3-5s range.
+**3.** The fetch delay is a fixed 2 seconds but the PRD specifies 1-3 seconds. Change it to use a `randomFetchDelay()` that returns a value in that range.
 
-**4. Composer form reset.** After creating a task the app was always redirecting to `/admin/tasks`. Added a success dialog instead that gives two options: "View All Tasks" (redirect) or "Create Another Task" (reset form and stay). `reset()` from react-hook-form clears all fields back to defaults.
-
-Also aligned the login page test mocks with the actual fetch-based auth implementation. The tests were mocking a direct function call but the real implementation uses `fetch()` to hit an API route.
+**4.** After creating a task, the app always redirects to `/admin/tasks`. Instead show a success dialog with two options: "View All Tasks" (redirect) or "Create Another Task" (reset the form and stay on the page using `reset()` from react-hook-form).
 
 ---
 
 ## Prompt 10: Dark Mode
 
-Added a complete dark mode to the app. Design direction: deep navy base (not pure black), layered card surfaces, indigo primary kept vibrant but slightly lighter for contrast on dark backgrounds.
+Add complete dark mode. Use a deep navy base (not pure black), layered card surfaces, and keep indigo primary vibrant but slightly lighter for dark background contrast.
 
-Implementation has three parts:
+Three parts to implement:
 
-**CSS tokens.** Added a `.dark` block in `globals.css` with a full set of overrides for every design token. Background is `hsl(228 22% 9%)`, cards at `hsl(228 20% 13%)` and `hsl(228 20% 11%)` for layering, primary brightened to `hsl(240 70% 68%)`.
+**CSS tokens.** Add a `.dark` block in `globals.css` overriding every design token. Background `hsl(228 22% 9%)`, cards at `hsl(228 20% 13%)` and `hsl(228 20% 11%)` for layering, primary at `hsl(240 70% 68%)`.
 
-**ThemeProvider.** A client component that reads preference from `localStorage` (key: `onetaskkk-theme`), falls back to `prefers-color-scheme` on first visit, applies `.dark` to `<html>`, and exposes `theme`/`setTheme` via context. Supports `"light"`, `"dark"`, and `"system"` values.
+**ThemeProvider.** A client component that reads from `localStorage` (key: `onetaskkk-theme`), falls back to `prefers-color-scheme` on first visit, applies `.dark` to `<html>`, and exposes `theme`/`setTheme` via context. Support `"light"`, `"dark"`, and `"system"`.
 
-**Anti-flash script.** The server always renders without `.dark` since it doesn't know the user's preference. Added a tiny inline `<script>` in `layout.tsx` that runs synchronously before any rendering, reads `localStorage`, and adds `.dark` to `<html>` immediately. This causes a React hydration mismatch warning in dev (the server HTML doesn't have the class but the client does) but that's expected and safe. Same pattern used by next-themes.
+**Anti-flash script.** Add a tiny inline `<script>` in `layout.tsx` that runs synchronously before any rendering, reads `localStorage`, and applies `.dark` to `<html>` immediately. This will cause a React hydration mismatch warning in dev — that's expected and safe, same pattern as next-themes.
 
-ThemeToggle component placed in the app-shell header and also inside the user dropdown menu as a three-way Light/Dark/System control.
-
----
+Put a ThemeToggle in the app-shell header and also inside the user dropdown as a three-way Light/Dark/System control.
 
 ---
 
 ## Prompt 11: IndexedDB Migration & State Management Overhaul
 
-Major architectural corrections to address production-readiness concerns:
+Replace synchronous localStorage with async idb-keyval (IndexedDB) in store.ts to eliminate 5MB quota crashes and main-thread blocking. Rewrite image-upload.tsx to read files as base64 data URIs using FileReader instead of ephemeral blob: URLs so evidence persists across sessions.
 
-**1. localStorage to IndexedDB.** The 5MB localStorage ceiling was a ticking time bomb with 500 tasks + base64 images. Migrated to `idb-keyval` which wraps IndexedDB in a simple async key-value API. All store operations are now async. The `initializeStore()` function handles first-run seeding and subsequent hydration from IndexedDB.
+Gut the redundant useSyncExternalStore implementation in use-store.ts so TanStack Query strictly manages all state and loading flags (restoring the PRD-mandated 1-3s simulated fetch delays). Make the description field truly optional in schemas.ts. Inject the full task details and description into SubmissionDetail to satisfy the PRD's ADHD UX requirement.
 
-**2. Image persistence via base64.** The image upload component was using `URL.createObjectURL()` which creates ephemeral `blob:` URLs that vanish on page reload. Rewrote to use FileReader to convert images to base64 data URIs. Images now persist in IndexedDB alongside the submission data.
-
-**3. Gutted useSyncExternalStore.** The pub/sub pattern was conflicting with TanStack Query's own reactivity. Removed the custom `subscribe()`/`notify()` machinery entirely. TanStack Query now manages all state and loading flags, including the PRD-mandated 1-3s simulated fetch delays via `queryFn`.
-
-**4. Description field made optional.** The zod schema had a 20-character minimum on description which blocked creating tasks with short or empty descriptions. Changed to `.optional().or(z.literal(""))`.
-
-**5. SubmissionDetail now shows full task context.** PRD's ADHD UX requirement: users shouldn't have to remember what task they're reviewing. Added collapsible task details (title, description, type-specific fields, instructions) directly in the submission detail panel.
-
-**6. Submissions page sortBy.** Implemented the missing sort dropdown with three options: Newest First, Oldest First, By Status. Uses nuqs for URL state persistence.
-
-**7. TasksTable pagination.** Added TanStack Table pagination (10 items per page) with full navigation controls to prevent DOM explosion on large task sets.
-
-**8. Mobile card virtualization.** The admin tasks page mobile view was rendering all 500 cards. Wrapped in TanStack Virtual with `estimateSize: 200` and `overscan: 5`.
-
-**9. Bulk edit validation.** Added guard to prevent setting maxSubmissions below any selected task's currentSubmissions. Shows toast with the minimum allowed value.
+Implement the missing sortBy (date/status) functionality on the Submissions page. Prevent DOM explosion on the Admin Tasks page by adding pagination to TasksTable and virtualizing the mobile card list. Add validation to block bulk-editing maxSubmissions below any selected task's currentSubmissions.
 
 ---
 
 ## Prompt 12: Unified API Layer & ADHD UX Fixes
 
-Continued architectural hardening:
+Stop the direct store import pattern by moving all data operations behind a unified `api` object so Client Components never touch raw data arrays directly, truly mimicking the "Server Experience" mandated by the PRD:
 
-**1. Unified `api` object.** PRD mandates "Server Experience" - Client Components should never touch raw data arrays. Created `api` object in store.ts that encapsulates all CRUD operations:
 ```typescript
 export const api = {
   tasks: { list, get, create, update, updateStatus, delete },
@@ -267,13 +197,10 @@ export const api = {
   users: { current, admin },
 }
 ```
-Updated `use-store.ts` and worker page to exclusively use this API layer. Makes future migration to real API routes trivial.
 
-**2. Mock data distribution fix.** Submissions were only being assigned to the first 200 tasks due to `taskIndex = i % 200`. Changed to `i % generatedTasks.length` so all 500 tasks get submissions.
+Fix the ADHD/common sense UX failure on the worker feed by widening the instructions panel — it is currently too narrow to read. Add mandatory confirmation dialogs to all destructive Admin actions (Bulk Delete) to prevent accidental data loss.
 
-**3. Widened instructions panel.** Worker feed detail panel was `lg:w-80 xl:w-96` which cramped the task instructions. Widened to `lg:w-96 xl:w-[28rem]` for ADHD-friendly readability.
-
-**4. Bulk delete confirmation dialog.** Added mandatory confirmation for bulk delete with explicit warning about permanent deletion and orphaned submissions. Prevents accidental data loss per ADHD UX requirement.
+Repair the lazy mock data logic in store.ts which currently only assigns submissions to the first 200 tasks. Distribute the 1,000 mock submissions across the entire 500-task set by changing `taskIndex = i % 200` to `taskIndex = i % generatedTasks.length`.
 
 ---
 
