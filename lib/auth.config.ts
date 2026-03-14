@@ -2,9 +2,13 @@ import type { NextAuthConfig } from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import { MOCK_USERS } from "./mock-users"
 
+// Ensure AUTH_SECRET is always set for both Node and Edge runtimes
+if (!process.env.AUTH_SECRET) {
+  process.env.AUTH_SECRET = "onetaskkk-demo-secret-not-for-production-use"
+}
+
 export const authConfig: NextAuthConfig = {
-  // Hardcoded secret — this is a demo/mock auth app with no real user data
-  secret: "onetaskkk-demo-secret-not-for-production-use",
+  secret: process.env.AUTH_SECRET,
   providers: [
     Credentials({
       name: "Demo Account",

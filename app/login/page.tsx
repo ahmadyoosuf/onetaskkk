@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useState, useMemo, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,16 +12,22 @@ import { Badge } from "@/components/ui/badge"
 import { LogIn, ShieldCheck, ListTodo, ArrowLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { MOCK_USERS } from "@/lib/mock-users"
-import { loginAction } from "./actions"
 
 export default function LoginPage() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const roleParam = searchParams.get("role") as "worker" | "admin" | null
   
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [csrfToken, setCsrfToken] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+
+  // Fetch CSRF token on mount
+  useEffect(() => {
+    fetch("/api/auth/csrf")
+      .then((res) => res.json())
+      .then((data) => setCsrfToken(data.csrfToken))
+      .catch(() => {})
+  }, [])
 
   // Filter users based on the selected role from URL parameter
   const filteredUsers = useMemo(() => {
@@ -31,31 +37,12 @@ export default function LoginPage() {
 
   const roleLabel = roleParam === "admin" ? "Admin" : roleParam === "worker" ? "Worker" : null
 
-  const handleLogin = async () => {
-    if (!selectedUserId) return
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      const result = await loginAction(selectedUserId)
-
-      if (result?.error) {
-        setError(result.error)
-        setIsLoading(false)
-        return
-      }
-
-      if (result?.redirectTo) {
-        router.push(result.redirectTo)
-        router.refresh()
-      }
-    } catch {
-      setError("An unexpected error occurred.")
-      setIsLoading(false)
-    }
-  }
-
   const selectedUser = filteredUsers.find((u) => u.id === selectedUserId)
+
+  // Determine redirect URL based on selected user's role
+  const callbackUrl = selectedUser
+    ? selectedUser.role === "admin" ? "/admin/tasks" : "/worker"
+    : "/"
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
@@ -98,13 +85,6 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Error Message */}
-          {error && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
-            </div>
-          )}
-
           {/* User Selection */}
           <div className="space-y-2">
             <Label className="text-sm text-muted-foreground">Choose an account</Label>
@@ -185,21 +165,30 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Submit */}
-          <Button
-            onClick={handleLogin}
-            disabled={!selectedUserId || isLoading}
-            className="w-full h-11"
+          {/* Submit via direct form POST — bypasses the broken signIn server action on Next.js 16 */}
+          <form
+            action="/api/auth/callback/credentials"
+            method="POST"
+            onSubmit={() => setIsLoading(true)}
           >
-            {isLoading ? (
-              "Signing in..."
-            ) : (
-              <>
-                <LogIn className="mr-2 h-4 w-4" />
-                Sign In
-              </>
-            )}
-          </Button>
+            <input type="hidden" name="csrfToken" value={csrfToken} />
+            <input type="hidden" name="userId" value={selectedUserId ?? ""} />
+            <input type="hidden" name="callbackUrl" value={callbackUrl} />
+            <Button
+              type="submit"
+              disabled={!selectedUserId || isLoading || !csrfToken}
+              className="w-full h-11"
+            >
+              {isLoading ? (
+                "Signing in..."
+              ) : (
+                <>
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Sign In
+                </>
+              )}
+            </Button>
+          </form>
 
           <p className="text-xs text-muted-foreground text-center">
             This is a demo app using Auth.js for session management.
