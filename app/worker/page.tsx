@@ -7,7 +7,7 @@ import { useVirtualizer } from "@tanstack/react-virtual"
 import { useQueryState, parseAsStringLiteral } from "nuqs"
 import { useToast } from "@/hooks/use-toast"
 import { AppShell } from "@/components/app-shell"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -50,7 +50,7 @@ const sortByParser = parseAsStringLiteral(["newest", "reward"] as const).withDef
 
 function TasksFeedContent() {
   const { toast } = useToast()
-  const { tasks, isLoading, error } = useTasks()
+  const { tasks, isLoading } = useTasks()
   const { submissions } = useSubmissions()
   const createSubmissionMutation = useCreateSubmission()
   const currentUser = getCurrentUser()
@@ -357,7 +357,6 @@ function TasksFeedContent() {
             <TaskDetail
               task={selectedTask}
               isSubmitLocked={isSubmitLocked}
-              variant="mobile"
               onSubmit={() => {
                 setShowMobileDetail(false)
                 setShowSubmitDialog(true)

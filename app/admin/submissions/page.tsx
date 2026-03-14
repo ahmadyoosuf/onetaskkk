@@ -5,7 +5,7 @@ import { useVirtualizer } from "@tanstack/react-virtual"
 import { useQueryState, parseAsStringLiteral, parseAsBoolean, parseAsString } from "nuqs"
 import { useToast } from "@/hooks/use-toast"
 import { AppShell } from "@/components/app-shell"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
@@ -27,8 +27,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
-  Clock, Check, X, FileText, ExternalLink, Eye, ChevronDown,
-  MessageSquare, ImageIcon, Filter, Layers, ChevronRight, User, Calendar
+  Clock, Check, X, FileText, Filter, Layers, ChevronRight
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTasks, useSubmissions, useUpdateSubmissionStatus } from "@/hooks/use-store"
@@ -58,7 +57,7 @@ const statusFilterParser = parseAsStringLiteral(["all", "pending", "approved", "
 
 function SubmissionsContent() {
   const { toast } = useToast()
-  const { submissions, isLoading: isLoadingSubmissions, error } = useSubmissions()
+  const { submissions, isLoading: isLoadingSubmissions } = useSubmissions()
   const { tasks, isLoading: isLoadingTasks } = useTasks()
   const updateSubmissionStatusMutation = useUpdateSubmissionStatus()
   const isDataLoading = isLoadingSubmissions || isLoadingTasks
@@ -475,7 +474,6 @@ function SubmissionsContent() {
               onApprove={() => handleReview("approved")}
               onReject={() => handleReview("rejected")}
               isReviewing={isReviewing}
-              variant="mobile"
             />
           )}
         </DialogContent>

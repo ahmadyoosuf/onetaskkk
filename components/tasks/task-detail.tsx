@@ -1,7 +1,6 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { CardDescription, CardTitle } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
 import { TASK_TYPE_META, type Task, type TaskType } from "@/lib/types"
 import { Calendar, DollarSign, ExternalLink, Heart, Mail, Send, Share2, Users } from "lucide-react"
 
@@ -83,25 +82,19 @@ type TaskDetailProps = {
   task: Task
   isSubmitLocked: boolean
   onSubmit: () => void
-  variant?: "desktop" | "mobile"
 }
 
-export function TaskDetail({ task, isSubmitLocked, onSubmit, variant = "desktop" }: TaskDetailProps) {
+export function TaskDetail({ task, isSubmitLocked, onSubmit }: TaskDetailProps) {
   const Icon = TASK_ICONS[task.type]
-  const isMobile = variant === "mobile"
 
   return (
-    <div className={cn("space-y-4", isMobile && "pt-2")}>
+    <div className="space-y-4">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
           <Icon className="h-5 w-5" />
         </div>
         <div className="min-w-0">
-          {isMobile ? (
-            <h3 className="text-base font-semibold">{task.title}</h3>
-          ) : (
-            <CardTitle className="text-base truncate">{task.title}</CardTitle>
-          )}
+          <CardTitle className="text-base truncate">{task.title}</CardTitle>
           <CardDescription className="text-xs">{TASK_TYPE_META[task.type].label}</CardDescription>
         </div>
       </div>
@@ -111,14 +104,14 @@ export function TaskDetail({ task, isSubmitLocked, onSubmit, variant = "desktop"
       <TaskInstructionDetails task={task} />
 
       <div className="grid grid-cols-2 gap-2">
-        <div className={cn("rounded-lg border border-border/30 text-center", isMobile ? "p-3" : "p-2.5")}>
-          <DollarSign className={cn("mx-auto text-success", isMobile ? "h-5 w-5" : "h-4 w-4")} />
-          <p className={cn("font-semibold", isMobile ? "mt-1 text-lg" : "mt-0.5 text-base")}>${task.reward.toFixed(2)}</p>
+        <div className="rounded-lg border border-border/30 p-2.5 text-center">
+          <DollarSign className="mx-auto h-4 w-4 text-success" />
+          <p className="mt-0.5 text-base font-semibold">${task.reward.toFixed(2)}</p>
           <p className="text-xs text-muted-foreground">Reward</p>
         </div>
-        <div className={cn("rounded-lg border border-border/30 text-center", isMobile ? "p-3" : "p-2.5")}>
-          <Users className={cn("mx-auto text-primary", isMobile ? "h-5 w-5" : "h-4 w-4")} />
-          <p className={cn("font-semibold", isMobile ? "mt-1 text-lg" : "mt-0.5 text-base")}>
+        <div className="rounded-lg border border-border/30 p-2.5 text-center">
+          <Users className="mx-auto h-4 w-4 text-primary" />
+          <p className="mt-0.5 text-base font-semibold">
             {task.maxSubmissions - task.currentSubmissions}
           </p>
           <p className="text-xs text-muted-foreground">Spots Left</p>
@@ -126,19 +119,19 @@ export function TaskDetail({ task, isSubmitLocked, onSubmit, variant = "desktop"
       </div>
 
       {task.deadline && (
-        <div className={cn("flex items-center gap-2 text-muted-foreground", isMobile ? "text-sm" : "text-xs")}>
-          <Calendar className={cn(isMobile ? "h-4 w-4" : "h-3 w-3")} />
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Calendar className="h-3 w-3" />
           Deadline: {task.deadline.toLocaleDateString()}
         </div>
       )}
 
       {isSubmitLocked && (
-        <p className={cn("rounded-lg border border-warning/20 bg-warning/10 p-3 text-warning", isMobile ? "text-sm" : "text-xs")}>
+        <p className="rounded-lg border border-warning/20 bg-warning/10 p-3 text-xs text-warning">
           You have already submitted this task. Additional submissions are disabled.
         </p>
       )}
 
-      <Button className="w-full" size={isMobile ? "default" : "sm"} onClick={onSubmit} disabled={isSubmitLocked}>
+      <Button className="w-full" size="sm" onClick={onSubmit} disabled={isSubmitLocked}>
         <Send className="mr-2 h-4 w-4" />
         Submit Work
       </Button>

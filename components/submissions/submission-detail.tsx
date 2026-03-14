@@ -1,7 +1,6 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { cn } from "@/lib/utils"
 import type { Submission, SubmissionStatus } from "@/lib/types"
 import { Calendar, Check, Clock, ExternalLink, FileText, ImageIcon, MessageSquare, User, X } from "lucide-react"
 
@@ -11,7 +10,6 @@ type SubmissionDetailProps = {
   onApprove: () => void
   onReject: () => void
   isReviewing: boolean
-  variant?: "desktop" | "mobile"
 }
 
 const STATUS_STYLES: Record<SubmissionStatus, { label: string; className: string }> = {
@@ -26,14 +24,11 @@ export function SubmissionDetail({
   onApprove,
   onReject,
   isReviewing,
-  variant = "desktop",
 }: SubmissionDetailProps) {
-  const isMobile = variant === "mobile"
-
   return (
     <>
-      <div className={cn("space-y-4", isMobile && "pt-2")}>
-        <div className={cn("flex items-center justify-between gap-2", isMobile && "pb-2")}>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-2">
           <h3 className="text-base font-semibold">Submission Details</h3>
           <Badge variant="outline" className={STATUS_STYLES[submission.status].className}>
             {STATUS_STYLES[submission.status].label}
@@ -119,8 +114,8 @@ export function SubmissionDetail({
         {submission.status === "pending" && (
           <div className="flex gap-2 pt-2">
             <Button
-              size={isMobile ? "default" : "sm"}
-              className={cn("flex-1 bg-success hover:bg-success/90", isMobile && "h-11")}
+              size="sm"
+              className="flex-1 bg-success hover:bg-success/90"
               onClick={onApprove}
               disabled={isReviewing}
             >
@@ -128,9 +123,9 @@ export function SubmissionDetail({
               Approve
             </Button>
             <Button
-              size={isMobile ? "default" : "sm"}
+              size="sm"
               variant="destructive"
-              className={cn("flex-1", isMobile && "h-11")}
+              className="flex-1"
               onClick={onReject}
               disabled={isReviewing}
             >
