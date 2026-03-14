@@ -12,7 +12,7 @@ export function MaxSubmissionsField() {
   return (
     <div className="space-y-2">
       <Label htmlFor="maxSubmissions" className={error ? "text-destructive" : ""}>
-        Max Submissions
+        Amount
       </Label>
       <Controller
         name="maxSubmissions"

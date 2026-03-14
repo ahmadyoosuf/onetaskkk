@@ -1,3 +1,4 @@
+import ReactMarkdown from "react-markdown"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { CardDescription, CardTitle } from "@/components/ui/card"
@@ -101,10 +102,9 @@ export function TaskDetail({ task, isSubmitLocked, onSubmit }: TaskDetailProps) 
 
       <p className="text-sm text-muted-foreground">{task.description}</p>
 
-      <div
-        className="prose prose-sm max-w-none rounded-lg border border-border/30 bg-muted/30 p-3"
-        dangerouslySetInnerHTML={{ __html: task.details }}
-      />
+      <div className="prose prose-sm max-w-none rounded-lg border border-border/30 bg-muted/30 p-3">
+        <ReactMarkdown>{task.details}</ReactMarkdown>
+      </div>
 
       <TaskInstructionDetails task={task} />
 

@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { useQueryState, parseAsStringLiteral } from "nuqs"
+import ReactMarkdown from "react-markdown"
 import { useToast } from "@/hooks/use-toast"
 import { AppShell } from "@/components/app-shell"
 import { ErrorBoundary, DataErrorState } from "@/components/error-boundary"
@@ -382,10 +383,9 @@ function TasksFeedContent() {
               <div className="space-y-4 pt-2">
                 <p className="text-sm text-muted-foreground">{selectedTask.description}</p>
 
-                <div
-                  className="prose prose-sm max-w-none rounded-lg border border-border/30 bg-muted/30 p-3"
-                  dangerouslySetInnerHTML={{ __html: selectedTask.details }}
-                />
+                <div className="prose prose-sm max-w-none rounded-lg border border-border/30 bg-muted/30 p-3">
+                  <ReactMarkdown>{selectedTask.details}</ReactMarkdown>
+                </div>
 
                 <TaskInstructionDetails task={selectedTask} />
                 

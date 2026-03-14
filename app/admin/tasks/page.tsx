@@ -5,19 +5,12 @@ import Link from "next/link"
 import { useQueryState, parseAsStringLiteral, parseAsString } from "nuqs"
 import { AppShell } from "@/components/app-shell"
 import { ErrorBoundary } from "@/components/error-boundary"
+import { TasksTable } from "@/components/admin/tasks-table"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Checkbox } from "@/components/ui/checkbox"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -213,26 +206,6 @@ function TasksManagementContent() {
     setBulkEditField(field)
     setBulkEditValue("")
     setShowBulkEditDialog(true)
-  }
-
-  const toggleTaskSelection = (taskId: string) => {
-    setSelectedTasks((prev) => {
-      const next = new Set(prev)
-      if (next.has(taskId)) {
-        next.delete(taskId)
-      } else {
-        next.add(taskId)
-      }
-      return next
-    })
-  }
-
-  const toggleAllSelection = () => {
-    if (selectedTasks.size === filteredTasks.length) {
-      setSelectedTasks(new Set())
-    } else {
-      setSelectedTasks(new Set(filteredTasks.map((t) => t.id)))
-    }
   }
 
   // Stats with mock trend data (simulating week-over-week changes)
@@ -435,7 +408,7 @@ function TasksManagementContent() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
                     <DropdownMenuItem onClick={() => openBulkEditDialog("amount")}>
-                      Edit Amount (Max Submissions)
+                      Edit Amount
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => openBulkEditDialog("campaignId")}>
                       Edit Campaign ID
@@ -454,7 +427,7 @@ function TasksManagementContent() {
           </Card>
         )}
 
-        {/* Tasks Table - Desktop */}
+        {/* Tasks Table - Desktop (TanStack Table) */}
         <Card className="border-border/30 hidden md:block">
           <CardHeader>
             <CardTitle className="text-lg">All Tasks</CardTitle>
@@ -468,152 +441,14 @@ function TasksManagementContent() {
                 <div className="h-20 rounded bg-muted animate-pulse" />
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-10">
-                      <Checkbox
-                        checked={selectedTasks.size === filteredTasks.length && filteredTasks.length > 0}
-                        onCheckedChange={toggleAllSelection}
-                        aria-label="Select all tasks"
-                      />
-                    </TableHead>
-                    <TableHead>Task</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Campaign</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Reward</TableHead>
-                    <TableHead>Progress</TableHead>
-                    <TableHead className="w-10"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredTasks.map((task) => {
-                    const Icon = TASK_ICONS[task.type]
-                    const meta = TASK_TYPE_META[task.type]
-                    const progress = (task.currentSubmissions / task.maxSubmissions) * 100
-                    const taskSubmissions = submissions.filter((s) => s.taskId === task.id)
-                    const pendingCount = taskSubmissions.filter((s) => s.status === "pending").length
-
-                    return (
-                      <TableRow key={task.id} className={selectedTasks.has(task.id) ? "bg-primary/5" : ""}>
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedTasks.has(task.id)}
-                            onCheckedChange={() => toggleTaskSelection(task.id)}
-                            aria-label={`Select ${task.title}`}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                              <Icon className="h-4 w-4" />
-                            </div>
-                            <div>
-                              <p className="font-medium">{task.title}</p>
-                              <p className="text-xs text-muted-foreground line-clamp-1">
-                                {task.description}
-                              </p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="border-border/30">
-                            {meta.label}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {task.campaignId ? (
-                            <Badge variant="secondary" className="text-xs">
-                              {task.campaignId}
-                            </Badge>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Badge 
-                                variant={task.status}
-                                className="cursor-pointer hover:opacity-80 transition-opacity"
-                              >
-                                {TASK_STATUS_LABELS[task.status]}
-                              </Badge>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start">
-                              <DropdownMenuItem 
-                                onClick={() => handleStatusChange(task.id, "open")}
-                                className={task.status === "open" ? "bg-muted" : ""}
-                              >
-                                Open
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => handleStatusChange(task.id, "completed")}
-                                className={task.status === "completed" ? "bg-muted" : ""}
-                              >
-                                Completed
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => handleStatusChange(task.id, "cancelled")}
-                                className={task.status === "cancelled" ? "bg-muted" : ""}
-                              >
-                                Cancelled
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                        <TableCell className="text-right font-mono">
-                          ${task.reward.toFixed(2)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Progress value={progress} className="w-20 h-2" />
-                            <span className="text-xs text-muted-foreground whitespace-nowrap">
-                              {task.currentSubmissions}/{task.maxSubmissions}
-                            </span>
-                            {pendingCount > 0 && (
-                              <Badge variant="secondary" className="text-xs bg-warning/10 text-warning border-warning/20">
-                                {pendingCount} pending
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem asChild>
-                                <Link href={`/admin/composer?edit=${task.id}`}>
-                                  <Edit2 className="mr-2 h-4 w-4" />
-                                  Edit Task
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem asChild>
-                                <Link href={`/admin/submissions?task=${task.id}`}>
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  View Submissions
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                className="text-destructive"
-                                onClick={() => handleDelete(task.id)}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Task
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
+              <TasksTable
+                tasks={filteredTasks}
+                submissions={submissions}
+                onStatusChange={handleStatusChange}
+                onDelete={handleDelete}
+                selectedTasks={selectedTasks}
+                onSelectionChange={setSelectedTasks}
+              />
             )}
           </CardContent>
         </Card>
@@ -653,7 +488,17 @@ function TasksManagementContent() {
                   <div className="flex items-start gap-3">
                     <Checkbox
                       checked={selectedTasks.has(task.id)}
-                      onCheckedChange={() => toggleTaskSelection(task.id)}
+                      onCheckedChange={() => {
+                        setSelectedTasks((prev) => {
+                          const next = new Set(prev)
+                          if (next.has(task.id)) {
+                            next.delete(task.id)
+                          } else {
+                            next.add(task.id)
+                          }
+                          return next
+                        })
+                      }}
                       className="mt-1"
                     />
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
@@ -746,7 +591,7 @@ function TasksManagementContent() {
           <div className="space-y-4 py-4">
             {bulkEditField === "amount" ? (
               <div className="space-y-2">
-                <Label htmlFor="bulkAmount">New Max Submissions</Label>
+                <Label htmlFor="bulkAmount">Amount</Label>
                 <Input
                   id="bulkAmount"
                   type="number"
