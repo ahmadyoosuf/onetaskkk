@@ -170,48 +170,100 @@ button:not([data-state]):not(.touch-target-sm) { min-height: 44px; }
 
 ---
 
-## Session 6: SWR Integration & Simulated Latency
+## Session 6: TanStack Query & Simulated Latency
 
 **Date:** March 14, 2026  
 **Duration:** ~1.5 hours
 
-PRD explicitly requires SWR for data fetching and simulated network delays (2s for fetches, 1-3s for mutations). Retrofitted this into the existing store.
+PRD explicitly requires simulated network delays (fetches and mutations). Retrofitted this into the existing store.
 
-Created async fetchers with artificial delays:
-```typescript
-export async function fetchTasks(): Promise<Task[]> {
-  await new Promise(r => setTimeout(r, 2000)) // 2s delay per PRD
-  return [...tasks].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-}
-```
+Created async fetchers with artificial delays. Fetch delay started at a fixed 2s but this was later revised (see Session 8).
 
-Mutations got random delays between 1-3 seconds to simulate variable network conditions:
+Mutations got random delays between 3-5 seconds to simulate variable network conditions:
 ```typescript
-const delay = 1000 + Math.random() * 2000
+const delay = 3000 + Math.random() * 2000
 await new Promise(r => setTimeout(r, delay))
 ```
 
-Updated hooks to use SWR while maintaining local reactivity for optimistic updates:
-```typescript
-export function useTasks() {
-  const { data, isLoading } = useSWR("tasks", fetchTasks, {
-    fallbackData: getTasksSnapshot(),
-  })
-  const snapshot = useSyncExternalStore(subscribe, getTasksSnapshot, getTasksSnapshot)
-  return { tasks: data || snapshot, isLoading }
-}
-```
+Switched from SWR to TanStack Query for data fetching. TanStack Query fit better with the existing store pattern and gave cleaner mutation handling with `invalidateQueries`. The hybrid approach means initial load shows a loading state, but after that, local mutations appear immediately (optimistic) while the cache stays in sync.
 
-This hybrid approach means: initial load shows loading state for 2s, but after that, local mutations appear instantly (optimistic) while the SWR cache stays in sync.
+Also scaled up mock data from 5 tasks to 500 tasks and 1000 submissions to properly stress-test the virtualizer. Verified smooth scrolling on mobile with Chrome DevTools throttling.
 
-Also scaled up mock data from 5 tasks to 120 tasks and 300 submissions to properly stress-test the virtualizer. Verified smooth scrolling on mobile with Chrome DevTools throttling.
+---
+
+## Session 7: Submissions Page, Details Field, and Admin Table Refactors
+
+**Date:** March 14, 2026  
+**Duration:** ~2 hours
+
+Three focused refactors in one session:
+
+**1. Task details field to Markdown.** The composer was storing HTML from a rich-text editor. Switched it to a plain textarea outputting Markdown, with `react-markdown` rendering it in detail panels. Cleaner storage, no sanitization headaches.
+
+**2. TanStack Table for admin tasks.** The hand-rolled table was getting hard to extend. Replaced it with a TanStack Table implementation (`@tanstack/react-table`). Got sortable columns, row selection, and action menus for free with much less custom code.
+
+**3. Bulk edit label fix.** The bulk edit dialog was labeling the field "Max Submissions" but the PRD uses "Amount". Updated the label everywhere it appeared including the composer form field.
+
+Also stripped fake trend math from the stats cards. The percentages were calculated from the current data in a way that didn't mean anything (dividing by total + 3, etc.). Replaced with static values since there's no historical data to trend against.
+
+---
+
+## Session 8: Lexical Rich-Text Editor
+
+**Date:** March 14, 2026  
+**Duration:** ~1.5 hours
+
+Replaced the plain textarea in the composer details field with a proper Lexical rich-text editor. The requirement is that the stored value stays Markdown, so the editor needs to output Markdown on every change.
+
+Integration with react-hook-form was the main complexity. Lexical is not a standard controlled input, so `register()` doesn't work. Used `Controller` instead, which wraps Lexical and wires it up manually. `OnChangePlugin` fires on every editor state change, calls `$convertToMarkdownString(TRANSFORMERS)` inside `editorState.read()`, and passes the result to `field.onChange`. For edit mode, `$convertFromMarkdownString` seeds the editor from the existing form value in `initialConfig.editorState`.
+
+Added a toolbar with bold, italic, strikethrough, inline code, H2, H3, blockquote, undo, and redo. Also enabled `MarkdownShortcutPlugin` so users can type Markdown syntax directly.
+
+Hit a build failure when deploying: `$wrapNodes` from `@lexical/selection` was deprecated in v0.33+ and its recursive type signature caused TypeScript to throw "excessive stack depth" during compilation. Switched to `$setBlocksType` which is the current API. Also had a version mismatch where `@lexical/selection` was accidentally pinned to `^0.41.0` while all other Lexical packages were at `^0.33.0`. Fixed both.
+
+---
+
+## Session 9: Mobile Drawers, Fetch Delay Fix, and Form Reset
+
+**Date:** March 14, 2026  
+**Duration:** ~2 hours
+
+Several PRD compliance fixes and UX improvements:
+
+**1. Vaul bottom-sheet drawers.** The app has a 70% mobile audience per the PRD. Dialog components feel wrong on mobile. Replaced Dialog-based mobile detail views on both the submissions and worker feed pages with Vaul drawers. Vaul gives proper drag-to-dismiss, spring physics, and the correct visual weight for a bottom sheet. Created a shared `components/ui/drawer.tsx` wrapping Vaul with design system tokens.
+
+**2. Submissions page refactor.** The submissions page had duplicate detail UI coded inline for both desktop (panel) and mobile (dialog). Replaced both with the existing `SubmissionDetail` component. No more divergence between what desktop and mobile users see.
+
+**3. Fetch delay corrected.** The PRD specifies 1-3 seconds for data fetching, not a fixed 2 seconds. Updated the store to use `randomFetchDelay()` which returns a value in that range. Mutations were already randomised in the correct 3-5s range.
+
+**4. Composer form reset.** After creating a task the app was always redirecting to `/admin/tasks`. Added a success dialog instead that gives two options: "View All Tasks" (redirect) or "Create Another Task" (reset form and stay). `reset()` from react-hook-form clears all fields back to defaults.
+
+Also aligned the login page test mocks with the actual fetch-based auth implementation. The tests were mocking a direct function call but the real implementation uses `fetch()` to hit an API route.
+
+---
+
+## Session 10: Dark Mode
+
+**Date:** March 15, 2026  
+**Duration:** ~1 hour
+
+Added a complete dark mode to the app. The design direction was deep navy base (not pure black), layered card surfaces, and the indigo primary kept vibrant but slightly lighter for contrast on dark backgrounds.
+
+Implementation has three parts:
+
+**CSS tokens.** Added a `.dark` block in `globals.css` with a full set of overrides for every design token. Background is `hsl(228 22% 9%)`, cards at `hsl(228 20% 13%)` and `hsl(228 20% 11%)` for layering, primary brightened to `hsl(240 70% 68%)`.
+
+**ThemeProvider.** A client component that reads preference from `localStorage` (key: `onetaskkk-theme`), falls back to `prefers-color-scheme` on first visit, applies `.dark` to `<html>`, and exposes `theme`/`setTheme` via context. Supports `"light"`, `"dark"`, and `"system"` values.
+
+**Anti-flash script.** The server always renders without `.dark` since it doesn't know the user's preference. Without a fix, dark mode users see a white flash before React hydrates. Added a tiny inline `<script>` in `layout.tsx` that runs synchronously before any rendering, reads `localStorage`, and adds `.dark` to `<html>` immediately. This causes a React hydration mismatch warning in dev (the server HTML doesn't have the class but the client does) but that's expected and safe. It's the same pattern used by next-themes and every other theme implementation.
+
+ThemeToggle component placed in the app-shell header and also inside the user dropdown menu as a three-way Light/Dark/System control.
 
 ---
 
 ## AI Tools Used
 
-- **Claude (via v0.dev)** - Architecture decisions, debugging assistance, code review
-- **GitHub Copilot** - Inline completions for repetitive patterns
+- **Claude (via v0.dev)** - All architecture decisions, debugging, code generation, and refactoring across all sessions
+- **Claude.ai** - Architecture discussion and trade-off analysis between sessions (localStorage vs IndexedDB scale question, Lexical integration approach)
 
-Total AI-assisted time: ~8 hours across 6 sessions  
-Estimated time saved: ~4-6 hours (mainly on debugging and boilerplate)
+Total AI-assisted development time: ~15 hours across 10 sessions
