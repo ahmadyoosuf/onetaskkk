@@ -43,6 +43,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  if (typeof window !== 'undefined') throw new Error('DEV_TEST_ERROR: This is a temporary test error for development preview.');
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
