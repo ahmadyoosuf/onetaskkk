@@ -4,7 +4,17 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, ListTodo, ClipboardCheck, PlusCircle, ArrowLeftRight } from "lucide-react"
+import { LayoutDashboard, ListTodo, ClipboardCheck, PlusCircle, ArrowLeftRight, LogOut, User } from "lucide-react"
+import { useAuth } from "@/components/providers/auth-provider"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Badge } from "@/components/ui/badge"
 
 type AppRole = "worker" | "admin"
 
@@ -26,6 +36,7 @@ interface AppShellProps {
 
 export function AppShell({ children, role }: AppShellProps) {
   const pathname = usePathname()
+  const { user, logout, initials } = useAuth()
   const activeRole: AppRole = role ?? (pathname.startsWith("/admin") ? "admin" : "worker")
   const navItems = NAV_ITEMS[activeRole]
 
@@ -75,14 +86,51 @@ export function AppShell({ children, role }: AppShellProps) {
             })}
           </nav>
 
-          {/* Switch Role */}
-          <Link
-            href="/"
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground shrink-0 touch-feedback"
-          >
-            <ArrowLeftRight className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Switch Role</span>
-          </Link>
+          {/* User Menu */}
+          <div className="flex items-center gap-2">
+            <Link
+              href="/"
+              className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground shrink-0 touch-feedback"
+            >
+              <ArrowLeftRight className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Switch</span>
+            </Link>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button 
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-medium transition-colors hover:bg-primary/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                  aria-label="User menu"
+                >
+                  {initials || <User className="h-4 w-4" />}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                {user && (
+                  <>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium">{user.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="text-xs">
+                      <Badge variant="outline" className="mr-2 text-[10px] capitalize">
+                        {user.role}
+                      </Badge>
+                      Current Role
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Sign out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </header>
 

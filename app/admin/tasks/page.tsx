@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, Suspense } from "react"
 import Link from "next/link"
+import { useQueryState, parseAsStringLiteral, parseAsString } from "nuqs"
 import { AppShell } from "@/components/app-shell"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -47,8 +48,7 @@ import {
   DollarSign, ListTodo, Clock, Users, TrendingUp, TrendingDown, Edit2
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { deleteTask, updateTaskStatus, updateTask } from "@/lib/store"
-import { useSubmissions, useTasks } from "@/hooks/use-store"
+import { useSubmissions, useTasks, useDeleteTask, useUpdateTaskStatus, useUpdateTask } from "@/hooks/use-store"
 import { useToast } from "@/hooks/use-toast"
 import type { Task, TaskType, TaskStatus } from "@/lib/types"
 import { TASK_TYPE_META } from "@/lib/types"
@@ -65,15 +65,26 @@ const STATUS_STYLES: Record<TaskStatus, { label: string; className: string }> = 
   cancelled: { label: "Cancelled", className: "bg-destructive/10 text-destructive border-destructive/20" },
 }
 
-export default function TasksManagementPage() {
-  const { tasks, isLoading } = useTasks()
+// URL state parsers for nuqs
+const statusFilterParser = parseAsStringLiteral(["all", "open", "completed", "cancelled"] as const).withDefault("all")
+const sortByParser = parseAsStringLiteral(["newest", "oldest", "reward", "submissions"] as const).withDefault("newest")
+
+function TasksManagementContent() {
+  const { tasks, isLoading, error } = useTasks()
   const { submissions, isLoading: isLoadingSubmissions } = useSubmissions()
   const { toast } = useToast()
+  
+  // Mutation hooks
+  const deleteTaskMutation = useDeleteTask()
+  const updateTaskStatusMutation = useUpdateTaskStatus()
+  const updateTaskMutation = useUpdateTask()
+  
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set())
-  const [isMutating, setIsMutating] = useState(false)
-  const [campaignFilter, setCampaignFilter] = useState<string>("all")
-  const [statusFilter, setStatusFilter] = useState<"all" | TaskStatus>("all")
-  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "reward" | "submissions">("newest")
+  
+  // URL state management with nuqs
+  const [statusFilter, setStatusFilter] = useQueryState("status", statusFilterParser)
+  const [campaignFilter, setCampaignFilter] = useQueryState("campaign", parseAsString.withDefault("all"))
+  const [sortBy, setSortBy] = useQueryState("sort", sortByParser)
   
   // Bulk edit dialog state (PRD requirement)
   const [showBulkEditDialog, setShowBulkEditDialog] = useState(false)
@@ -126,10 +137,12 @@ export default function TasksManagementPage() {
     return result
   }, [tasks, campaignFilter, statusFilter, sortBy])
 
+  // Check if any mutation is in progress
+  const isMutating = deleteTaskMutation.isPending || updateTaskStatusMutation.isPending || updateTaskMutation.isPending
+
   const handleDelete = async (taskId: string) => {
-    setIsMutating(true)
     try {
-      await deleteTask(taskId)
+      await deleteTaskMutation.mutateAsync(taskId)
       setSelectedTasks((prev) => {
         const next = new Set(prev)
         next.delete(taskId)
@@ -138,59 +151,51 @@ export default function TasksManagementPage() {
       toast({ title: "Task deleted", description: "The task has been permanently removed." })
     } catch {
       toast({ title: "Delete failed", description: "Something went wrong. Please try again.", variant: "destructive" })
-    } finally {
-      setIsMutating(false)
     }
   }
 
   const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
-    setIsMutating(true)
     try {
-      await updateTaskStatus(taskId, newStatus)
+      await updateTaskStatusMutation.mutateAsync({ id: taskId, status: newStatus })
       toast({ title: "Status updated", description: `Task marked as ${newStatus}.` })
     } catch {
       toast({ title: "Update failed", description: "Something went wrong. Please try again.", variant: "destructive" })
-    } finally {
-      setIsMutating(false)
     }
   }
 
   const handleBulkStatusChange = async (newStatus: TaskStatus) => {
-    setIsMutating(true)
     try {
-      await Promise.all(Array.from(selectedTasks).map((taskId) => updateTaskStatus(taskId, newStatus)))
+      await Promise.all(Array.from(selectedTasks).map((taskId) => 
+        updateTaskStatusMutation.mutateAsync({ id: taskId, status: newStatus })
+      ))
       toast({ title: "Status updated", description: `${selectedTasks.size} tasks marked as ${newStatus}.` })
     } catch {
       toast({ title: "Update failed", description: "Something went wrong. Please try again.", variant: "destructive" })
-    } finally {
-      setIsMutating(false)
     }
   }
 
   const handleBulkDelete = async () => {
-    setIsMutating(true)
     try {
-      await Promise.all(Array.from(selectedTasks).map((taskId) => deleteTask(taskId)))
+      await Promise.all(Array.from(selectedTasks).map((taskId) => deleteTaskMutation.mutateAsync(taskId)))
       const count = selectedTasks.size
       setSelectedTasks(new Set())
       toast({ title: "Tasks deleted", description: `${count} task${count > 1 ? "s" : ""} permanently removed.` })
     } catch {
       toast({ title: "Delete failed", description: "Something went wrong. Please try again.", variant: "destructive" })
-    } finally {
-      setIsMutating(false)
     }
   }
 
   // PRD requirement: Bulk edit amount and campaign ID
   const handleBulkEdit = async () => {
     if (!bulkEditValue.trim()) return
-    setIsMutating(true)
     try {
       const updates = bulkEditField === "amount"
         ? { maxSubmissions: parseInt(bulkEditValue, 10) }
         : { campaignId: bulkEditValue.trim() || undefined }
       
-      await Promise.all(Array.from(selectedTasks).map((taskId) => updateTask(taskId, updates)))
+      await Promise.all(Array.from(selectedTasks).map((taskId) => 
+        updateTaskMutation.mutateAsync({ id: taskId, updates })
+      ))
       const count = selectedTasks.size
       toast({ 
         title: "Tasks updated", 
@@ -200,8 +205,6 @@ export default function TasksManagementPage() {
       setBulkEditValue("")
     } catch {
       toast({ title: "Update failed", description: "Something went wrong. Please try again.", variant: "destructive" })
-    } finally {
-      setIsMutating(false)
     }
   }
 
@@ -267,7 +270,7 @@ export default function TasksManagementPage() {
             </Select>
             
             {/* Campaign Filter */}
-            <Select value={campaignFilter} onValueChange={setCampaignFilter}>
+            <Select value={campaignFilter} onValueChange={(v) => setCampaignFilter(v)}>
               <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder="Campaign" />
               </SelectTrigger>
@@ -782,5 +785,25 @@ export default function TasksManagementPage() {
         </DialogContent>
       </Dialog>
     </AppShell>
+  )
+}
+
+export default function TasksManagementPage() {
+  return (
+    <Suspense fallback={
+      <AppShell role="admin">
+        <div className="space-y-6">
+          <div className="h-8 w-48 bg-muted animate-pulse rounded" />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-24 bg-muted animate-pulse rounded" />
+            ))}
+          </div>
+          <div className="h-64 bg-muted animate-pulse rounded" />
+        </div>
+      </AppShell>
+    }>
+      <TasksManagementContent />
+    </Suspense>
   )
 }

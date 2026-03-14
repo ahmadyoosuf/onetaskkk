@@ -2,6 +2,9 @@ import type { Metadata, Viewport } from 'next'
 import { Space_Grotesk, IBM_Plex_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from '@/components/ui/toaster'
+import { QueryProvider } from '@/components/providers/query-provider'
+import { AuthProvider } from '@/components/providers/auth-provider'
+import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import './globals.css'
 
 const spaceGrotesk = Space_Grotesk({
@@ -39,7 +42,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${spaceGrotesk.variable} ${ibmPlexMono.variable} font-sans antialiased`}>
-        {children}
+        <QueryProvider>
+          <NuqsAdapter>
+            <AuthProvider>
+              {children}
+            </AuthProvider>
+          </NuqsAdapter>
+        </QueryProvider>
         <Toaster />
         <Analytics />
       </body>
