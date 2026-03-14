@@ -66,8 +66,17 @@ For a demo with no persistence, a simple `getTasks()`/`createTask()` module is c
 
 - Submissions page has 120 pre-seeded entries to test virtualization
 - Create a task via Composer, verify it appears in Tasks Management
-- Filter submissions by status and task, verify counts update
+- Status updates in Tasks Management are interactive — click the status badge to change
+- Filter submissions by status and task, verify counts update reactively
 - Mobile: all screens work at 375px viewport
+
+## ADHD-Friendly UX
+
+- **Reduced motion support** — respects `prefers-reduced-motion` to disable animations for users sensitive to motion
+- **Clear visual hierarchy** — consistent use of color tokens (primary, success, destructive) to signal action vs state
+- **Minimal cognitive load** — status badges are clickable (not buried in menus), task count shows progress at a glance
+- **Consistent spacing** — all sections use the same spacing scale (gap-4, p-4) to make layout predictable
+- **Glass header** — sticky, always visible — easy reference point when scrolling
 
 ## AI Prompts
 
