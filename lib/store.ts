@@ -280,7 +280,7 @@ export function getTask(id: string): Task | undefined {
 
 type CreateTaskInputBase = {
   title: string
-  description: string
+  description?: string
   details: string
   reward: number
   maxSubmissions: number
