@@ -10,6 +10,10 @@ const baseTaskSchema = z.object({
     .string()
     .min(20, "Description must be at least 20 characters")
     .max(500, "Description must be less than 500 characters"),
+  details: z
+    .string()
+    .min(20, "Detailed instructions must be at least 20 characters")
+    .max(5000, "Detailed instructions must be less than 5000 characters"),
   reward: z
     .number({ invalid_type_error: "Reward is required" })
     .min(0.1, "Minimum reward is $0.10")

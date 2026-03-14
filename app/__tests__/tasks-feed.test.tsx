@@ -52,13 +52,14 @@ describe("TasksFeedPage", () => {
       type: "social_media_posting",
       title: "Post product launch announcement",
       description: "Share our product launch on your LinkedIn profile.",
+      details: "<p>Share this post and include the product hashtag so we can verify it.</p>",
       reward: 5,
       maxSubmissions: 10,
       allowMultipleSubmissions: false,
       currentSubmissions: 2,
       status: "open",
       createdAt: new Date("2026-03-10T10:00:00Z"),
-      details: {
+      taskDetails: {
         platform: "linkedin",
         postContent: "Excited to announce the launch of onetaskkk!",
       },

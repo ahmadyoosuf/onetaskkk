@@ -55,19 +55,19 @@ function TaskInstructionDetails({ task }: { task: Task }) {
           <div className="flex items-center justify-between gap-3">
             <span className="text-muted-foreground">Platform</span>
             <Badge variant="outline" className="capitalize text-xs">
-              {task.details.platform}
+              {task.taskDetails.platform}
             </Badge>
           </div>
-          {task.details.accountHandle && (
+          {task.taskDetails.accountHandle && (
             <div className="flex items-center justify-between gap-3">
               <span className="text-muted-foreground">Tag</span>
-              <span className="font-mono text-xs">{task.details.accountHandle}</span>
+              <span className="font-mono text-xs">{task.taskDetails.accountHandle}</span>
             </div>
           )}
           <div>
             <span className="text-muted-foreground text-xs">Post Content:</span>
             <p className="mt-1 rounded border border-border/30 bg-background p-2 text-xs leading-relaxed">
-              {task.details.postContent}
+              {task.taskDetails.postContent}
             </p>
           </div>
         </>
@@ -77,12 +77,12 @@ function TaskInstructionDetails({ task }: { task: Task }) {
         <>
           <div className="flex items-center justify-between gap-3">
             <span className="text-muted-foreground">Send to</span>
-            <span className="font-mono text-xs">{task.details.targetEmail}</span>
+            <span className="font-mono text-xs">{task.taskDetails.targetEmail}</span>
           </div>
           <div>
             <span className="text-muted-foreground text-xs">Email Content:</span>
             <p className="mt-1 rounded border border-border/30 bg-background p-2 text-xs">
-              {task.details.emailContent}
+              {task.taskDetails.emailContent}
             </p>
           </div>
         </>
@@ -93,13 +93,13 @@ function TaskInstructionDetails({ task }: { task: Task }) {
           <div className="flex items-center justify-between gap-3">
             <span className="text-muted-foreground">Platform</span>
             <Badge variant="outline" className="capitalize text-xs">
-              {task.details.platform}
+              {task.taskDetails.platform}
             </Badge>
           </div>
           <div className="flex items-center justify-between gap-3">
             <span className="text-muted-foreground">Post</span>
             <a
-              href={task.details.postUrl}
+              href={task.taskDetails.postUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1 text-primary hover:underline text-xs"
@@ -408,7 +408,12 @@ function TasksFeedContent() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">{selectedTask.description}</p>
-                
+
+                <div
+                  className="prose prose-sm max-w-none rounded-lg border border-border/30 bg-muted/30 p-3"
+                  dangerouslySetInnerHTML={{ __html: selectedTask.details }}
+                />
+
                 {/* Task Details */}
                 <TaskInstructionDetails task={selectedTask} />
 
@@ -492,6 +497,11 @@ function TasksFeedContent() {
               </DialogHeader>
               <div className="space-y-4 pt-2">
                 <p className="text-sm text-muted-foreground">{selectedTask.description}</p>
+
+                <div
+                  className="prose prose-sm max-w-none rounded-lg border border-border/30 bg-muted/30 p-3"
+                  dangerouslySetInnerHTML={{ __html: selectedTask.details }}
+                />
 
                 <TaskInstructionDetails task={selectedTask} />
                 
