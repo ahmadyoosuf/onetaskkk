@@ -1,49 +1,52 @@
 # onetaskkk
 
-Micro-task marketplace - workers complete tasks, admins review submissions.
+Micro-task marketplace — workers complete tasks, admins manage and review submissions.
 
 ## Quick Start
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Open [http://localhost:3000](http://localhost:3000) and log in with any demo account from `/login`.
 
 ## Validation
 
 ```bash
-npm run lint
-npm test
-npm run build
+pnpm lint
+pnpm test
+pnpm build
 ```
 
-## Screens
+## Routes
 
-| Route | Description |
-|-------|-------------|
-| `/` | Role Picker - choose Worker or Admin mode |
-| `/worker` | Tasks Feed - browse and submit tasks |
-| `/admin/composer` | Create tasks (3 types) |
-| `/admin/tasks` | Task overview with stats |
-| `/admin/submissions` | Review and approve/reject |
+| Route | Role | Description |
+|-------|------|-------------|
+| `/login` | Public | Demo login — pick a mock account |
+| `/` | Public | Role picker |
+| `/worker` | Worker | Task feed — browse, filter, submit |
+| `/admin/composer` | Admin | Create / edit tasks (3 types) |
+| `/admin/tasks` | Admin | Task management with stats |
+| `/admin/submissions` | Admin | Review, approve, or reject submissions |
 
 ## Task Types
 
-- **Social Media Posting** - Workers post content on their social accounts (LinkedIn, Twitter, Instagram)
-- **Email Sending** - Workers send templated emails to specified recipients
-- **Social Media Liking** - Workers engage with posts on social platforms
+- **Social Media Posting** — post content on LinkedIn, Twitter, or Instagram
+- **Email Sending** — send templated emails to specified recipients
+- **Social Media Liking** — engage with posts on social platforms
 
 ## Stack
 
-Next.js 16, React 19, Tailwind v4, Shadcn UI, react-hook-form + zod, TanStack Virtual
+Next.js 16, React 19, TypeScript, Tailwind CSS v4, shadcn UI, Lexical (rich-text Markdown editor), TanStack Query, TanStack Table, TanStack Virtual, react-hook-form + zod, nuqs, Vaul (bottom-sheet drawer)
 
 ## Notes
 
-- **Role Switching**: Landing page (`/`) lets users pick Worker or Admin mode. Each mode shows only relevant navigation tabs with a "Switch Role" button to return to the picker.
-- TanStack Query drives async loading/error states while consuming mocked async fetchers with network delay behavior.
-- The in-memory external store remains the live source for optimistic UI updates.
+- All data is in-memory (500 tasks, 1000 submissions) — no backend or database.
+- localStorage is appropriate at this mock scale; an IndexedDB migration would be needed at production volume.
+- Fetch delay is randomised 1–3 s; mutation delay is randomised 3–5 s per PRD spec.
+- Dark mode is fully implemented with system-preference detection and `localStorage` persistence.
+- 70 % mobile audience assumed — bottom-sheet drawers (Vaul) replace dialogs on small screens.
 
 ## Architecture
 
