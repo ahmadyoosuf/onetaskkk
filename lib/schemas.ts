@@ -106,4 +106,13 @@ export const emailSubmissionSchema = z.object({
 
 export type SocialMediaSubmissionData = z.infer<typeof socialMediaSubmissionSchema>
 export type EmailSubmissionData = z.infer<typeof emailSubmissionSchema>
-export type SubmissionFormData = SocialMediaSubmissionData | EmailSubmissionData
+
+// Flat merged type for react-hook-form — all fields from both schemas,
+// with task-type-specific fields marked optional. This satisfies
+// react-hook-form's FieldValues constraint while still allowing
+// discriminated access in the submit handler.
+export type SubmissionFormData = {
+  screenshotUrl: string
+  postUrl?: string
+  emailContent?: string
+}
