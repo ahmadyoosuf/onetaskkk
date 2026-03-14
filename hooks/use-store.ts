@@ -1,18 +1,13 @@
 "use client"
 
-import { useSyncExternalStore, useCallback } from "react"
-import { subscribe, getTasks, getSubmissions } from "@/lib/store"
+import { useSyncExternalStore } from "react"
+import { subscribe, getTasksSnapshot, getSubmissionsSnapshot } from "@/lib/store"
 import type { Task, Submission } from "@/lib/types"
 
 export function useTasks(): Task[] {
-  return useSyncExternalStore(
-    subscribe,
-    () => getTasks(),
-    () => getTasks()
-  )
+  return useSyncExternalStore(subscribe, getTasksSnapshot, getTasksSnapshot)
 }
 
-export function useSubmissions(taskId?: string): Submission[] {
-  const getSnapshot = useCallback(() => getSubmissions(taskId), [taskId])
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+export function useSubmissions(): Submission[] {
+  return useSyncExternalStore(subscribe, getSubmissionsSnapshot, getSubmissionsSnapshot)
 }

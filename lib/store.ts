@@ -10,7 +10,21 @@ export function subscribe(listener: Listener): () => void {
 }
 
 function notify() {
+  tasksSnapshot = [...tasks]
+  submissionsSnapshot = [...submissions]
   listeners.forEach((listener) => listener())
+}
+
+// Cached snapshots for useSyncExternalStore (must be referentially stable)
+let tasksSnapshot: Task[] = []
+let submissionsSnapshot: Submission[] = []
+
+export function getTasksSnapshot(): Task[] {
+  return tasksSnapshot
+}
+
+export function getSubmissionsSnapshot(): Submission[] {
+  return submissionsSnapshot
 }
 
 // ─── Mock Data Generation ───────────────────────────────────
@@ -138,6 +152,10 @@ function generateMockSubmissions(): Submission[] {
 // ─── In-Memory Store ────────────────────────────────────────
 let tasks: Task[] = generateMockTasks()
 let submissions: Submission[] = generateMockSubmissions()
+
+// Initialize snapshots
+tasksSnapshot = [...tasks]
+submissionsSnapshot = [...submissions]
 
 const users: User[] = [
   { id: "admin-1", name: "Admin User", email: "admin@yoke.app", role: "admin" },

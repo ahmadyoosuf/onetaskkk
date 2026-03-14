@@ -67,9 +67,7 @@ export default function TaskComposerPage() {
         deadline: data.deadline,
         details: {
           targetUrl: data.targetUrl,
-          formFields: typeof data.formFields === "string" 
-            ? data.formFields.split(",").map((f) => f.trim()).filter(Boolean)
-            : data.formFields,
+          formFields: data.formFields.split(",").map((f) => f.trim()).filter(Boolean),
         },
       })
     } else if (data.type === "email_sending") {
