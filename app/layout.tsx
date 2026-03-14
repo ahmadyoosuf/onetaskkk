@@ -45,7 +45,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  throw new Error('DEV_TEST_ERROR: Temporary test error');
+  const requiredVar = process.env.MISSING_TEST_ENV_VAR;
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
