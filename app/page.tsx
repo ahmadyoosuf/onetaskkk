@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { useToast } from "@/hooks/use-toast"
 import { AppShell } from "@/components/app-shell"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -40,6 +41,7 @@ const TASK_ICONS: Record<TaskType, typeof FileText> = {
 }
 
 export default function TasksFeedPage() {
+  const { toast } = useToast()
   const [tasks] = useState(() => getTasks())
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showSubmitDialog, setShowSubmitDialog] = useState(false)
@@ -71,6 +73,10 @@ export default function TasksFeedPage() {
       userName: user.name,
       proof: data.proof,
       liveAppUrl: data.liveAppUrl || undefined,
+    })
+    toast({
+      title: "Submission received",
+      description: `Your work on "${selectedTask.title}" has been submitted for review.`,
     })
     setShowSubmitDialog(false)
     reset()

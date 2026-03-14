@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { useVirtualizer } from "@tanstack/react-virtual"
+import { useToast } from "@/hooks/use-toast"
 import { AppShell } from "@/components/app-shell"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -39,6 +40,7 @@ const STATUS_STYLES: Record<SubmissionStatus, { label: string; className: string
 }
 
 function SubmissionsContent() {
+  const { toast } = useToast()
   const searchParams = useSearchParams()
   const taskIdFromUrl = searchParams.get("task")
   const parentRef = useRef<HTMLDivElement>(null)
@@ -80,6 +82,10 @@ function SubmissionsContent() {
     if (!selectedSubmission) return
     updateSubmissionStatus(selectedSubmission.id, reviewAction, adminNotes || undefined)
     setSubmissions(getSubmissions())
+    toast({
+      title: `Submission ${reviewAction}`,
+      description: `${selectedSubmission.userName}'s submission has been ${reviewAction}.`,
+    })
     setShowReviewDialog(false)
     setAdminNotes("")
     setSelectedSubmission(null)
