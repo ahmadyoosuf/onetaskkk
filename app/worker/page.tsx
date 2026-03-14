@@ -301,7 +301,7 @@ function TasksFeedContent() {
                                   </p>
                                 </div>
                                 <div className="shrink-0 text-right">
-                                  <p className="text-base sm:text-lg font-semibold text-success">${task.reward.toFixed(2)}</p>
+                                  <p className="text-base sm:text-lg font-semibold text-success">A${task.reward.toFixed(2)}</p>
                                   <p className="text-[10px] text-muted-foreground">per task</p>
                                 </div>
                               </div>

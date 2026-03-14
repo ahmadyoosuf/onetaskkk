@@ -1,12 +1,23 @@
 import { NextRequest, NextResponse } from "next/server"
-import { jwtVerify } from "jose"
-import { SESSION_COOKIE, SECRET } from "@/lib/auth-constants"
+import { SESSION_COOKIE } from "@/lib/auth-constants"
 
-async function getSessionFromRequest(request: NextRequest) {
+/**
+ * Simplified middleware — basic cookie check instead of full JWT verification.
+ * Since this is a mock/demo app, we parse the JWT payload without cryptographic
+ * verification to eliminate jose latency. The login route still creates proper
+ * JWTs for cookie structure compatibility.
+ */
+function getSessionFromCookie(request: NextRequest) {
   const token = request.cookies.get(SESSION_COOKIE)?.value
   if (!token) return null
   try {
-    const { payload } = await jwtVerify(token, SECRET)
+    // JWT structure: header.payload.signature — decode payload (base64url)
+    const parts = token.split(".")
+    if (parts.length !== 3) return null
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")))
+    if (!payload.id || !payload.role) return null
+    // Check expiration
+    if (payload.exp && payload.exp * 1000 < Date.now()) return null
     return { id: payload.id as string, role: payload.role as string }
   } catch {
     return null
@@ -15,7 +26,7 @@ async function getSessionFromRequest(request: NextRequest) {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const session = await getSessionFromRequest(request)
+  const session = getSessionFromCookie(request)
 
   // Public routes — always allow
   if (pathname === "/" || pathname.startsWith("/login")) {

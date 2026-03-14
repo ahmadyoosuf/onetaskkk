@@ -111,7 +111,7 @@ export function TaskDetail({ task, isSubmitLocked, onSubmit }: TaskDetailProps) 
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-lg border border-border/30 p-2.5 text-center">
           <DollarSign className="mx-auto h-4 w-4 text-success" />
-          <p className="mt-0.5 text-base font-semibold">${task.reward.toFixed(2)}</p>
+          <p className="mt-0.5 text-base font-semibold">A${task.reward.toFixed(2)}</p>
           <p className="text-xs text-muted-foreground">Reward</p>
         </div>
         <div className="rounded-lg border border-border/30 p-2.5 text-center">

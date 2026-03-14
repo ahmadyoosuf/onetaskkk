@@ -2,8 +2,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import type { Submission, SubmissionStatus, Task, TASK_TYPE_META } from "@/lib/types"
-import { Calendar, Check, Clock, DollarSign, ExternalLink, FileText, ImageIcon, Info, Mail, MessageSquare, Share2, ThumbsUp, User, X } from "lucide-react"
+import type { Submission, SubmissionStatus, Task } from "@/lib/types"
+import { Calendar, Check, Clock, ExternalLink, FileText, Info, Mail, MessageSquare, Share2, ThumbsUp, User, X } from "lucide-react"
+import { EvidenceImage } from "./evidence-image"
 
 const STATUS_LABELS: Record<SubmissionStatus, string> = {
   pending: "Pending",
@@ -72,8 +73,7 @@ export function SubmissionDetail({
                   </p>
                 </div>
                 <div className="flex items-center gap-1 text-xs font-medium text-success">
-                  <DollarSign className="h-3 w-3" />
-                  {task.reward.toFixed(2)}
+                  A${task.reward.toFixed(2)}
                 </div>
               </div>
 
@@ -130,16 +130,11 @@ export function SubmissionDetail({
                 )}
               </div>
 
-              {/* Detailed instructions collapsible */}
+              {/* Full instructions always visible (PRD ADHD/Reduce Drag requirement) */}
               {task.details && (
-                <details className="mt-2">
-                  <summary className="cursor-pointer text-xs font-medium text-primary hover:underline">
-                    View Full Instructions
-                  </summary>
-                  <div className="mt-2 rounded bg-muted/50 p-2 text-xs whitespace-pre-wrap">
-                    {task.details}
-                  </div>
-                </details>
+                <div className="mt-2 rounded bg-muted/50 p-2 text-xs whitespace-pre-wrap">
+                  {task.details}
+                </div>
               )}
             </div>
           </div>
@@ -195,32 +190,7 @@ export function SubmissionDetail({
         )}
 
         {submission.screenshotUrl && (
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2 text-xs text-muted-foreground">
-              <ImageIcon className="h-3 w-3" />
-              Evidence Screenshot
-            </Label>
-            {/* Display base64 images inline, link for URLs */}
-            {submission.screenshotUrl.startsWith("data:") ? (
-              <div className="rounded-lg border border-border/30 overflow-hidden">
-                <img
-                  src={submission.screenshotUrl}
-                  alt="Evidence screenshot"
-                  className="w-full h-auto max-h-64 object-contain bg-muted/30"
-                />
-              </div>
-            ) : (
-              <a
-                href={submission.screenshotUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm text-primary hover:underline break-all"
-              >
-                {submission.screenshotUrl}
-                <ExternalLink className="h-3 w-3 shrink-0" />
-              </a>
-            )}
-          </div>
+          <EvidenceImage screenshotUrl={submission.screenshotUrl} />
         )}
 
         {submission.adminNotes && (
