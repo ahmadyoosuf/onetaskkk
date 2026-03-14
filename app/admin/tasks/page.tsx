@@ -16,9 +16,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
   Dialog,
@@ -489,6 +486,11 @@ function TasksManagementContent() {
                         Submissions
                       </Button>
                     </Link>
+                    <Link href={`/admin/composer?edit=${task.id}`}>
+                      <Button variant="outline" size="sm" className="h-9 px-3">
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </Link>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="sm" className="h-9 px-2">
@@ -496,21 +498,19 @@ function TasksManagementContent() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger>Change Status</DropdownMenuSubTrigger>
-                          <DropdownMenuSubContent>
-                            <DropdownMenuItem onClick={() => handleStatusChange(task.id, "open")}>
-                              Open
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleStatusChange(task.id, "completed")}>
-                              Completed
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleStatusChange(task.id, "cancelled")}>
-                              Cancelled
-                            </DropdownMenuItem>
-                          </DropdownMenuSubContent>
-                        </DropdownMenuSub>
-                        <DropdownMenuItem 
+                        <DropdownMenuItem onClick={() => handleStatusChange(task.id, "open")}
+                          className={task.status === "open" ? "bg-muted" : ""}>
+                          Set to Open
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleStatusChange(task.id, "completed")}
+                          className={task.status === "completed" ? "bg-muted" : ""}>
+                          Set to Completed
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleStatusChange(task.id, "cancelled")}
+                          className={task.status === "cancelled" ? "bg-muted" : ""}>
+                          Set to Cancelled
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
                           className="text-destructive"
                           onClick={() => handleDelete(task.id)}
                         >
