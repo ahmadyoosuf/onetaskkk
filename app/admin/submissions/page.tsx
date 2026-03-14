@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useMemo, Suspense } from "react"
+import { useState, useMemo, useRef, Suspense } from "react"
+import { useVirtualizer } from "@tanstack/react-virtual"
 import { useSearchParams } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { AppShell } from "@/components/app-shell"
@@ -53,6 +54,7 @@ function SubmissionsContent() {
   const [adminNotes, setAdminNotes] = useState("")
   const [groupByTask, setGroupByTask] = useState(false)
   const [showMobileDetail, setShowMobileDetail] = useState(false)
+  const parentRef = useRef<HTMLDivElement>(null)
 
   // Handle submission selection - show mobile sheet on small screens
   const handleSubmissionSelect = (submission: Submission) => {
@@ -72,6 +74,14 @@ function SubmissionsContent() {
     }
     return result
   }, [submissions, statusFilter, taskFilter])
+
+  const virtualizer = useVirtualizer({
+    count: filteredSubmissions.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 64,
+    measureElement: (el) => el.getBoundingClientRect().height,
+    overscan: 5,
+  })
 
   // Group submissions by task
   const groupedSubmissions = useMemo(() => {
@@ -238,55 +248,81 @@ function SubmissionsContent() {
                 ))}
               </div>
             ) : (
-            <div className="space-y-1.5 rounded-lg border border-border/30 p-2">
+            <div
+              ref={parentRef}
+              className="overflow-auto scrollbar-hide rounded-lg border border-border/30"
+              style={{ height: "calc(100svh - 300px)" }}
+            >
               {filteredSubmissions.length === 0 ? (
                 <div className="flex h-32 items-center justify-center">
                   <p className="text-muted-foreground">No submissions found.</p>
                 </div>
               ) : (
-                filteredSubmissions.map((submission) => {
-                  const task = getTask(submission.taskId)
-                  const statusStyle = STATUS_STYLES[submission.status]
-                  const StatusIcon = statusStyle.icon
-                  const isSelected = selectedSubmission?.id === submission.id
+                <div
+                  style={{
+                    height: `${virtualizer.getTotalSize()}px`,
+                    width: "100%",
+                    position: "relative",
+                  }}
+                >
+                  {virtualizer.getVirtualItems().map((virtualRow) => {
+                    const submission = filteredSubmissions[virtualRow.index]
+                    const task = getTask(submission.taskId)
+                    const statusStyle = STATUS_STYLES[submission.status]
+                    const StatusIcon = statusStyle.icon
+                    const isSelected = selectedSubmission?.id === submission.id
 
-                  return (
-                    <div
-                      key={submission.id}
-                      onClick={() => handleSubmissionSelect(submission)}
-                      className={cn(
-                        "flex cursor-pointer items-center justify-between gap-3 rounded-lg border p-3 transition-all touch-feedback",
-                        isSelected
-                          ? "border-primary/50 bg-primary/5"
-                          : "border-border/20 hover:border-border/40 hover:bg-muted/30"
-                      )}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className={cn(
-                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-                          statusStyle.className
-                        )}>
-                          <StatusIcon className="h-4 w-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-medium text-sm truncate">{submission.userName}</p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {task?.title || "Unknown Task"}
-                          </p>
+                    return (
+                      <div
+                        key={submission.id}
+                        data-index={virtualRow.index}
+                        ref={virtualizer.measureElement}
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          transform: `translateY(${virtualRow.start}px)`,
+                          padding: "2px 4px",
+                        }}
+                      >
+                        <div
+                          onClick={() => handleSubmissionSelect(submission)}
+                          className={cn(
+                            "flex cursor-pointer items-center justify-between gap-3 rounded-lg border p-3 transition-all touch-feedback",
+                            isSelected
+                              ? "border-primary/50 bg-primary/5"
+                              : "border-border/20 hover:border-border/40 hover:bg-muted/30"
+                          )}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={cn(
+                              "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                              statusStyle.className
+                            )}>
+                              <StatusIcon className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-medium text-sm truncate">{submission.userName}</p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {task?.title || "Unknown Task"}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="hidden sm:block text-xs text-muted-foreground">
+                              {submission.submittedAt.toLocaleDateString()}
+                            </span>
+                            <ChevronRight className={cn(
+                              "h-4 w-4 text-muted-foreground transition-transform",
+                              isSelected && "rotate-90"
+                            )} />
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="hidden sm:block text-xs text-muted-foreground">
-                          {submission.submittedAt.toLocaleDateString()}
-                        </span>
-                        <ChevronRight className={cn(
-                          "h-4 w-4 text-muted-foreground transition-transform",
-                          isSelected && "rotate-90"
-                        )} />
-                      </div>
-                    </div>
-                  )
-                })
+                    )
+                  })}
+                </div>
               )}
             </div>
             )}
