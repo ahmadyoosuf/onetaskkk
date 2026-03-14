@@ -298,12 +298,12 @@ function TasksManagementContent() {
                 <SelectItem value="submissions">Most Submissions</SelectItem>
               </SelectContent>
             </Select>
-            <Button asChild size="sm" className="w-full sm:w-auto">
-              <Link href="/admin/composer">
+            <Link href="/admin/composer">
+              <Button size="sm" className="w-full sm:w-auto">
                 <Plus className="mr-2 h-4 w-4" />
                 New Task
-              </Link>
-            </Button>
+              </Button>
+            </Link>
           </div>
         </div>
 
@@ -688,12 +688,12 @@ function TasksManagementContent() {
                   </div>
 
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" asChild className="flex-1 h-9">
-                      <Link href={`/admin/submissions?task=${task.id}`}>
+                    <Link href={`/admin/submissions?task=${task.id}`} className="flex-1">
+                      <Button variant="outline" size="sm" className="w-full h-9">
                         <Eye className="mr-1.5 h-3.5 w-3.5" />
                         Submissions
-                      </Link>
-                    </Button>
+                      </Button>
+                    </Link>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="sm" className="h-9 px-2">
