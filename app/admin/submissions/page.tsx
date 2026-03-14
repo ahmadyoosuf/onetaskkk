@@ -625,7 +625,7 @@ function SubmissionsContent() {
 export default function SubmissionsPage() {
   return (
     <Suspense fallback={
-      <AppShell>
+      <AppShell role="admin">
         <div className="flex items-center justify-center h-64">
           <div className="text-muted-foreground">Loading submissions...</div>
         </div>

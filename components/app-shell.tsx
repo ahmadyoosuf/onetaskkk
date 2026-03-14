@@ -3,18 +3,30 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, ListTodo, ClipboardCheck, PlusCircle } from "lucide-react"
+import { LayoutDashboard, ListTodo, ClipboardCheck, PlusCircle, ArrowLeftRight } from "lucide-react"
 
-const NAV_ITEMS = [
-  { href: "/", label: "Feed", icon: ListTodo },
-  { href: "/admin/composer", label: "Compose", icon: PlusCircle },
-  { href: "/admin/tasks", label: "Tasks", icon: LayoutDashboard },
-  { href: "/admin/submissions", label: "Submissions", icon: ClipboardCheck },
-] as const
+type AppRole = "worker" | "admin"
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+const NAV_ITEMS: Record<AppRole, { href: string; label: string; icon: typeof ListTodo }[]> = {
+  worker: [
+    { href: "/worker", label: "Feed", icon: ListTodo },
+  ],
+  admin: [
+    { href: "/admin/composer", label: "Compose", icon: PlusCircle },
+    { href: "/admin/tasks", label: "Tasks", icon: LayoutDashboard },
+    { href: "/admin/submissions", label: "Submissions", icon: ClipboardCheck },
+  ],
+}
+
+interface AppShellProps {
+  children: React.ReactNode
+  role?: AppRole
+}
+
+export function AppShell({ children, role }: AppShellProps) {
   const pathname = usePathname()
-  const visibleNavItems = NAV_ITEMS
+  const activeRole: AppRole = role ?? (pathname.startsWith("/admin") ? "admin" : "worker")
+  const navItems = NAV_ITEMS[activeRole]
 
   return (
     <div className="min-h-screen bg-background">
@@ -34,11 +46,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           {/* Navigation */}
           <nav className="flex items-center gap-0.5 overflow-x-auto scrollbar-hide">
-            {visibleNavItems.map((item) => {
-              const isActive = pathname === item.href || 
-                (item.href !== "/" && pathname.startsWith(item.href))
+            {navItems.map((item) => {
+              const isActive =
+                pathname === item.href ||
+                (item.href !== "/worker" && pathname.startsWith(item.href))
               const Icon = item.icon
-              
+
               return (
                 <Link
                   key={item.href}
@@ -57,11 +70,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
-          {/* User indicator */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <div className="h-2 w-2 rounded-full bg-success animate-breathe" />
-            <span className="hidden sm:inline text-xs text-muted-foreground">Demo</span>
-          </div>
+          {/* Switch Role */}
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground shrink-0 touch-feedback"
+          >
+            <ArrowLeftRight className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Switch Role</span>
+          </Link>
         </div>
       </header>
 

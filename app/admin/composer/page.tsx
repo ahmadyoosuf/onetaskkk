@@ -120,7 +120,7 @@ export default function TaskComposerPage() {
   }
 
   return (
-    <AppShell>
+    <AppShell role="admin">
       <div className="mx-auto max-w-2xl space-y-6">
         {/* Page Header */}
         <div>

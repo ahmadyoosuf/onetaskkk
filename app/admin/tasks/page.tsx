@@ -138,7 +138,7 @@ export default function TasksManagementPage() {
   const totalSubmissions = submissions.length
 
   return (
-    <AppShell>
+      <AppShell role="admin">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
