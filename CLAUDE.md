@@ -6,11 +6,15 @@ Frontend evaluation — micro-task platform with admin and worker roles.
 
 - Next.js 16 + React 19 + TypeScript
 - Tailwind CSS v4
-- Shadcn UI (customized design system)
+- shadcn UI (customized design system)
+- Lexical + `@lexical/react` + `@lexical/markdown` (rich-text task details editor, outputs Markdown)
 - TanStack Query (data fetching & mutations)
+- TanStack Table (admin tasks table)
 - react-hook-form + zod (form validation)
-- TanStack Virtual (virtualized lists)
+- TanStack Virtual (virtualized worker feed)
 - nuqs (URL state management)
+- Vaul (bottom-sheet drawer for mobile detail views)
+- `react-markdown` (renders stored Markdown in detail panels)
 
 ## Routes
 
@@ -41,45 +45,65 @@ lib/
   auth.ts       — mock authentication helpers
 
 components/
-  app-shell.tsx           — shared layout with glass header + user menu
-  error-boundary.tsx      — error handling components
+  app-shell.tsx             — shared layout with glass header, user menu, theme toggle
+  error-boundary.tsx        — error handling components
   providers/
-    query-provider.tsx    — TanStack Query provider
-    auth-provider.tsx     — Authentication context + redirects
-  composer/               — isolated form field components
-  ui/                     — customized shadcn components
+    query-provider.tsx      — TanStack Query provider
+    auth-provider.tsx       — authentication context + redirects
+    theme-provider.tsx      — dark/light/system theme with localStorage persistence
+  composer/                 — isolated form field components (Lexical editor for details)
+  admin/
+    tasks-table.tsx         — TanStack Table implementation for admin tasks
+  submissions/
+    submission-detail.tsx   — shared detail panel used by both desktop and mobile
+  ui/                       — customized shadcn components + Vaul drawer
 
 hooks/
-  use-store.ts            — TanStack Query hooks for tasks/submissions
+  use-store.ts              — TanStack Query hooks for tasks/submissions
 
 app/
-  login/page.tsx          — Mock login page
-  page.tsx                — Role Picker
-  worker/page.tsx         — Tasks Feed (nuqs for URL state)
-  admin/composer/         — Task Composer
-  admin/tasks/            — Tasks Management (nuqs for URL state)
-  admin/submissions/      — Submissions (nuqs for URL state)
+  login/page.tsx          — mock login page
+  page.tsx                — role picker
+  worker/page.tsx         — tasks feed (nuqs URL state, Vaul drawer for mobile)
+  admin/composer/         — task composer (Lexical rich-text, post-create dialog)
+  admin/tasks/            — tasks management (TanStack Table, nuqs URL state)
+  admin/submissions/      — submissions (SubmissionDetail component, Vaul drawer)
 ```
 
 ## Key Decisions
 
-**Why TanStack Query?**  
-PRD explicitly recommends it. Provides automatic caching, loading states, and mutation invalidation. Replaced SWR.
+**Why TanStack Query?**
+PRD explicitly recommends it. Provides automatic caching, loading states, and mutation invalidation.
 
-**Why nuqs for URL state?**  
+**Why TanStack Table for admin tasks?**
+Replaces a custom hand-rolled table with a headless, sortable, row-selection-aware implementation that scales cleanly.
+
+**Why nuqs for URL state?**
 PRD recommends it. Filter states (type, sort, status) persist in URL for shareability and browser navigation.
 
-**Why mock auth?**  
-PRD says "lay out basic mock authentication." Demonstrates auth flow without real backend.
+**Why Lexical for the details field?**
+Rich-text authoring with Markdown output. `$convertToMarkdownString(TRANSFORMERS)` runs inside `OnChangePlugin` and feeds the string to react-hook-form via `Controller`. Seeded from existing value via `$convertFromMarkdownString` for edit mode.
 
-**Why discriminated unions for Task?**  
-Each task type has different `details` shape. Union types let TypeScript enforce correct field access per type.
+**Why Vaul for mobile drawers?**
+70 % mobile audience per PRD. Vaul bottom-sheets feel native on iOS/Android; `Dialog` components do not.
 
-**Why TanStack Virtual?**  
+**Why `SubmissionDetail` as a shared component?**
+Eliminates duplicate detail UI between the desktop panel and mobile drawer on the submissions page.
+
+**Why mock auth?**
+PRD says "lay out basic mock authentication." Demonstrates auth flow without a real backend.
+
+**Why discriminated unions for Task?**
+Each task type has a different `details` shape. Union types let TypeScript enforce correct field access per type.
+
+**Why TanStack Virtual?**
 PRD says "should handle 1000s of tasks." Virtualization renders only visible rows — no DOM bloat.
 
-**Why isolated field components?**  
+**Why isolated field components?**
 Composer has `TitleField`, `RewardField`, etc. Each owns validation state via `useFormContext`. Easier to test and modify.
+
+**Why localStorage for state persistence?**
+Appropriate for 120–500 mock tasks. At production volume (10 k+ tasks with large `details` blobs) this would need an IndexedDB migration to avoid the 5–10 MB storage ceiling and synchronous-write jank.
 
 ## Customized shadcn Components
 
@@ -90,8 +114,8 @@ Composer has `TitleField`, `RewardField`, etc. Each owns validation state via `u
 
 ## Network Delays (PRD Compliance)
 
-- Fetch delay: 2 seconds
-- Mutation delay: 3-5 seconds (random)
+- Fetch delay: 1–3 seconds (randomised)
+- Mutation delay: 3–5 seconds (randomised)
 
 ## Testing Notes
 
