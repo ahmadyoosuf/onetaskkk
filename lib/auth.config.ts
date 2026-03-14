@@ -3,6 +3,8 @@ import Credentials from "next-auth/providers/credentials"
 import { MOCK_USERS } from "./mock-users"
 
 export const authConfig: NextAuthConfig = {
+  // Hardcoded secret — this is a demo/mock auth app with no real user data
+  secret: "onetaskkk-demo-secret-not-for-production-use",
   providers: [
     Credentials({
       name: "Demo Account",
