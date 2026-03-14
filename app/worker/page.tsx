@@ -32,7 +32,7 @@ import { Share2, Mail, Heart, DollarSign, Users, ExternalLink, Send, Filter, Cal
 import { cn } from "@/lib/utils"
 import { createSubmission, getCurrentUser } from "@/lib/store"
 import { useSubmissions, useTasks } from "@/hooks/use-store"
-import { socialMediaSubmissionSchema, emailSubmissionSchema, type SocialMediaSubmissionData, type EmailSubmissionData } from "@/lib/schemas"
+import { socialMediaSubmissionSchema, emailSubmissionSchema } from "@/lib/schemas"
 import type { Task, TaskType } from "@/lib/types"
 import { TASK_TYPE_META } from "@/lib/types"
 
@@ -137,14 +137,18 @@ export default function TasksFeedPage() {
   }
 
   // Dynamic schema based on selected task type (PRD requirement)
-  const currentSchema = selectedTask?.type === "email_sending" 
-    ? emailSubmissionSchema 
-    : socialMediaSubmissionSchema
+  const isEmailTask = selectedTask?.type === "email_sending"
+  const currentSchema = isEmailTask ? emailSubmissionSchema : socialMediaSubmissionSchema
 
-  const { register, handleSubmit, reset, formState: { errors, isValid } } = useForm<SocialMediaSubmissionData | EmailSubmissionData>({
+  const { register, handleSubmit, reset, formState: { errors, isValid } } = useForm({
     resolver: zodResolver(currentSchema),
     mode: "onChange",
   })
+
+  // Reset form when task selection changes to ensure validation matches the new schema
+  useEffect(() => {
+    reset()
+  }, [selectedTask?.id, reset])
 
   const filteredTasks = useMemo(() => {
     let result = tasks.filter((t) => t.status === "open")
@@ -176,7 +180,8 @@ export default function TasksFeedPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const onSubmit = async (data: SocialMediaSubmissionData | EmailSubmissionData) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const onSubmit = async (data: Record<string, any>) => {
     if (!selectedTask) return
     setIsSubmitting(true)
     try {
@@ -552,7 +557,7 @@ export default function TasksFeedPage() {
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-2">
             {/* Task-type-specific fields per PRD */}
-            {selectedTask?.type === "email_sending" ? (
+            {isEmailTask ? (
               // Email Sending: Email Content + Screenshot
               <div className="space-y-2">
                 <Label htmlFor="emailContent">
@@ -562,10 +567,10 @@ export default function TasksFeedPage() {
                   id="emailContent"
                   placeholder="Paste the full email you sent to the recipient..."
                   className="min-h-32 resize-none"
-                  {...register("emailContent" as "emailContent")}
+                  {...register("emailContent")}
                 />
                 {errors.emailContent && (
-                  <p className="text-xs text-destructive">{(errors as { emailContent?: { message?: string } }).emailContent?.message}</p>
+                  <p className="text-xs text-destructive">{String(errors.emailContent.message ?? "")}</p>
                 )}
               </div>
             ) : (
@@ -578,10 +583,10 @@ export default function TasksFeedPage() {
                   id="postUrl"
                   type="url"
                   placeholder="https://linkedin.com/posts/... or https://twitter.com/..."
-                  {...register("postUrl" as "postUrl")}
+                  {...register("postUrl")}
                 />
                 {errors.postUrl && (
-                  <p className="text-xs text-destructive">{(errors as { postUrl?: { message?: string } }).postUrl?.message}</p>
+                  <p className="text-xs text-destructive">{String(errors.postUrl.message ?? "")}</p>
                 )}
                 <p className="text-xs text-muted-foreground">
                   {selectedTask?.type === "social_media_posting" 
@@ -603,7 +608,7 @@ export default function TasksFeedPage() {
                 {...register("screenshotUrl")}
               />
               {errors.screenshotUrl && (
-                <p className="text-xs text-destructive">{errors.screenshotUrl?.message}</p>
+                <p className="text-xs text-destructive">{String(errors.screenshotUrl.message ?? "")}</p>
               )}
               <p className="text-xs text-muted-foreground">
                 Upload your screenshot to an image host and paste the URL here
