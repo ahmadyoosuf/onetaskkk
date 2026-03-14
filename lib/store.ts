@@ -36,6 +36,7 @@ function saveToStorage<T>(key: string, data: T[]): void {
 function withTaskDefaults(task: Task): Task {
   return {
     ...task,
+    details: task.details ?? "<p>No additional details provided.</p>",
     allowMultipleSubmissions: task.allowMultipleSubmissions ?? true,
   }
 }
@@ -147,6 +148,7 @@ function generateMockTasks(): Task[] {
       type,
       title: `${template.title}${i > 0 ? ` #${i + 1}` : ""}`,
       description: template.description,
+      details: `<p><strong>Instructions:</strong> Complete the task exactly as specified.</p><ul><li>Follow all steps carefully.</li><li>Submit proof when finished.</li></ul><p>This task is part of our quality review workflow and includes additional validation before approval.</p>`,
       reward: parseFloat((0.5 + Math.random() * 9.5).toFixed(2)),
       maxSubmissions: maxSubs,
       allowMultipleSubmissions: i % 4 !== 0,
@@ -159,13 +161,13 @@ function generateMockTasks(): Task[] {
     
     if (type === "social_media_posting") {
       const t = template as typeof TASK_TEMPLATES.social_media_posting[0]
-      tasks.push({ ...baseTask, details: { platform: t.platform, postContent: t.postContent, accountHandle: t.accountHandle } } as Task)
+      tasks.push({ ...baseTask, taskDetails: { platform: t.platform, postContent: t.postContent, accountHandle: t.accountHandle } } as Task)
     } else if (type === "email_sending") {
       const t = template as typeof TASK_TEMPLATES.email_sending[0]
-      tasks.push({ ...baseTask, details: { emailContent: t.emailContent, targetEmail: t.targetEmail } } as Task)
+      tasks.push({ ...baseTask, taskDetails: { emailContent: t.emailContent, targetEmail: t.targetEmail } } as Task)
     } else {
       const t = template as typeof TASK_TEMPLATES.social_media_liking[0]
-      tasks.push({ ...baseTask, details: { postUrl: t.postUrl, platform: t.platform } } as Task)
+      tasks.push({ ...baseTask, taskDetails: { postUrl: t.postUrl, platform: t.platform } } as Task)
     }
   }
   
@@ -255,6 +257,7 @@ export function getTask(id: string): Task | undefined {
 type CreateTaskInputBase = {
   title: string
   description: string
+  details: string
   reward: number
   maxSubmissions: number
   allowMultipleSubmissions: boolean
@@ -263,15 +266,16 @@ type CreateTaskInputBase = {
 }
 
 type CreateTaskInput = 
-  | (CreateTaskInputBase & { type: "social_media_posting"; details: { platform: Platform; postContent: string; accountHandle?: string } })
-  | (CreateTaskInputBase & { type: "email_sending"; details: { emailContent: string; targetEmail: string } })
-  | (CreateTaskInputBase & { type: "social_media_liking"; details: { postUrl: string; platform: Platform } })
+  | (CreateTaskInputBase & { type: "social_media_posting"; taskDetails: { platform: Platform; postContent: string; accountHandle?: string } })
+  | (CreateTaskInputBase & { type: "email_sending"; taskDetails: { emailContent: string; targetEmail: string } })
+  | (CreateTaskInputBase & { type: "social_media_liking"; taskDetails: { postUrl: string; platform: Platform } })
 
 export async function createTask(input: CreateTaskInput): Promise<Task> {
   const newTask: Task = {
     id: `task-${Date.now()}`,
     title: input.title,
     description: input.description,
+    details: input.details,
     reward: input.reward,
     maxSubmissions: input.maxSubmissions,
     allowMultipleSubmissions: input.allowMultipleSubmissions,
@@ -281,7 +285,7 @@ export async function createTask(input: CreateTaskInput): Promise<Task> {
     deadline: input.deadline,
     campaignId: input.campaignId,
     type: input.type,
-    details: input.details,
+    taskDetails: input.taskDetails,
   } as Task
   
   await simulateMutationDelay(null)

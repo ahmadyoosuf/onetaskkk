@@ -22,10 +22,11 @@ describe("store — task operations", () => {
       type: "social_media_posting",
       title: "My Test Task",
       description: "A description",
+      details: "<p>This is a detailed instruction block for this task.</p>",
       reward: 5,
       maxSubmissions: 100,
       allowMultipleSubmissions: false,
-      details: { platform: "linkedin", postContent: "Check out our product launch!" },
+      taskDetails: { platform: "linkedin", postContent: "Check out our product launch!" },
     })
     await vi.runAllTimersAsync()
     const task = await promise
@@ -81,7 +82,7 @@ describe("store — task operations", () => {
     const supportedPlatforms = new Set(["linkedin", "twitter", "instagram"])
     const socialTasks = store.getTasks().filter((task) => task.type === "social_media_liking")
 
-    expect(socialTasks.every((task) => supportedPlatforms.has(task.details.platform))).toBe(true)
+    expect(socialTasks.every((task) => supportedPlatforms.has(task.taskDetails.platform))).toBe(true)
   })
 
   it("updateTask updates only provided fields and preserves the rest", async () => {
@@ -124,10 +125,11 @@ describe("store — submission operations", () => {
       type: "social_media_posting",
       title: "Submission Test Task",
       description: "A dedicated task for submission behavior tests.",
+      details: "<p>Submit with valid evidence links and include all requested information.</p>",
       reward: 4,
       maxSubmissions: 25,
       allowMultipleSubmissions: true,
-      details: { platform: "twitter", postContent: "Test post content for submission" },
+      taskDetails: { platform: "twitter", postContent: "Test post content for submission" },
     })
     await vi.runAllTimersAsync()
     const task = await taskPromise
@@ -158,10 +160,11 @@ describe("store — submission operations", () => {
       type: "email_sending",
       title: "Single Attempt Task",
       description: "Only one submission per worker is allowed.",
+      details: "<p>Only one valid submission is accepted for each worker account.</p>",
       reward: 2,
       maxSubmissions: 10,
       allowMultipleSubmissions: false,
-      details: { targetEmail: "owner@example.com", emailContent: "Send this exact message." },
+      taskDetails: { targetEmail: "owner@example.com", emailContent: "Send this exact message." },
     })
     await vi.runAllTimersAsync()
     const task = await taskPromise
@@ -284,10 +287,11 @@ describe("store — localStorage persistence", () => {
       type: "email_sending",
       title: "Persisted Task",
       description: "Survives reload",
+      details: "<p>This task verifies details persistence across reloads.</p>",
       reward: 3,
       maxSubmissions: 50,
       allowMultipleSubmissions: true,
-      details: { targetEmail: "test@example.com", emailContent: "Hello!" },
+      taskDetails: { targetEmail: "test@example.com", emailContent: "Hello!" },
     })
     await vi.runAllTimersAsync()
     await promise

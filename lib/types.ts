@@ -10,6 +10,7 @@ export interface BaseTask {
   type: TaskType
   title: string
   description: string
+  details: string
   reward: number
   maxSubmissions: number
   allowMultipleSubmissions: boolean
@@ -22,7 +23,7 @@ export interface BaseTask {
 
 export interface SocialMediaPostingTask extends BaseTask {
   type: "social_media_posting"
-  details: {
+  taskDetails: {
     platform: Platform
     postContent: string
     accountHandle?: string
@@ -31,7 +32,7 @@ export interface SocialMediaPostingTask extends BaseTask {
 
 export interface EmailSendingTask extends BaseTask {
   type: "email_sending"
-  details: {
+  taskDetails: {
     emailContent: string
     targetEmail: string
   }
@@ -39,7 +40,7 @@ export interface EmailSendingTask extends BaseTask {
 
 export interface SocialMediaLikingTask extends BaseTask {
   type: "social_media_liking"
-  details: {
+  taskDetails: {
     postUrl: string
     platform: Platform
   }

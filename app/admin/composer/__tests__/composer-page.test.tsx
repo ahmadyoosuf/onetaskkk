@@ -19,6 +19,10 @@ vi.mock("@/hooks/use-toast", () => ({
   useToast: () => ({ toast: mockToast }),
 }))
 
+
+vi.mock("@/components/composer/details-field", () => ({
+  DetailsField: () => <div />, 
+}))
 vi.mock("@/lib/store", () => ({
   createTask: (...args: unknown[]) => mockCreateTask(...args),
 }))

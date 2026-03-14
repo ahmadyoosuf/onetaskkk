@@ -50,13 +50,14 @@ describe("TasksManagementPage", () => {
         type: "email_sending",
         title: "Send launch email",
         description: "Send the prepared launch email to the target address.",
+        details: "<p>Use the approved copy and send it to the listed recipient.</p>",
         reward: 7,
         maxSubmissions: 20,
         allowMultipleSubmissions: true,
         currentSubmissions: 2,
         status: "open",
         createdAt: new Date("2026-03-10T10:00:00Z"),
-        details: {
+        taskDetails: {
           targetEmail: "launch@example.com",
           emailContent: "Share the launch details.",
         },
