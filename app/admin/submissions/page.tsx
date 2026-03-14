@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dialog"
 import {
   Clock, Check, X, FileText, ExternalLink, Eye, ChevronDown,
-  MessageSquare, ImageIcon, Filter, Layers
+  MessageSquare, ImageIcon, Filter, Layers, ChevronRight, User, Calendar
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getTask, updateSubmissionStatus } from "@/lib/store"
