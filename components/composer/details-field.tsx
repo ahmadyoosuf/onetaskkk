@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { Controller, useFormContext } from "react-hook-form"
 import { $createParagraphNode, $createTextNode, $getRoot, $getSelection, $isRangeSelection, FORMAT_TEXT_COMMAND } from "lexical"
+import { $generateHtmlFromNodes } from "@lexical/html"
 import { LexicalComposer } from "@lexical/react/LexicalComposer"
 import { ContentEditable } from "@lexical/react/LexicalContentEditable"
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext"
@@ -104,13 +105,9 @@ function RichEditor({ value, onChange }: { value: string; onChange: (value: stri
         <HistoryPlugin />
         <InitialValuePlugin value={value} />
         <OnChangePlugin
-          onChange={(editorState) => {
+          onChange={(editorState, editor) => {
             editorState.read(() => {
-              const text = $getRoot().getTextContent().trim()
-              const html = text
-                .split("\n")
-                .map((line) => `<p>${line || "<br/>"}</p>`)
-                .join("")
+              const html = $generateHtmlFromNodes(editor, null)
               onChange(html)
             })
           }}

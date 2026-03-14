@@ -101,6 +101,11 @@ export function TaskDetail({ task, isSubmitLocked, onSubmit }: TaskDetailProps) 
 
       <p className="text-sm text-muted-foreground">{task.description}</p>
 
+      <div
+        className="prose prose-sm max-w-none rounded-lg border border-border/30 bg-muted/30 p-3"
+        dangerouslySetInnerHTML={{ __html: task.details }}
+      />
+
       <TaskInstructionDetails task={task} />
 
       <div className="grid grid-cols-2 gap-2">

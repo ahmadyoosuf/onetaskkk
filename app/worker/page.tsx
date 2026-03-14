@@ -8,7 +8,7 @@ import { useQueryState, parseAsStringLiteral } from "nuqs"
 import { useToast } from "@/hooks/use-toast"
 import { AppShell } from "@/components/app-shell"
 import { ErrorBoundary, DataErrorState } from "@/components/error-boundary"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -403,69 +403,12 @@ function TasksFeedContent() {
         <div className="hidden lg:block lg:w-80 xl:w-96">
           {selectedTask ? (
             <Card className="border-border/30 sticky top-20">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
-                    {(() => {
-                      const Icon = TASK_ICONS[selectedTask.type]
-                      return <Icon className="h-5 w-5" />
-                    })()}
-                  </div>
-                  <div className="min-w-0">
-                    <CardTitle className="text-base truncate">{selectedTask.title}</CardTitle>
-                    <CardDescription className="text-xs">{TASK_TYPE_META[selectedTask.type].label}</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">{selectedTask.description}</p>
-
-                <div
-                  className="prose prose-sm max-w-none rounded-lg border border-border/30 bg-muted/30 p-3"
-                  dangerouslySetInnerHTML={{ __html: selectedTask.details }}
+              <CardContent className="p-4">
+                <TaskDetail
+                  task={selectedTask}
+                  isSubmitLocked={isSubmitLocked}
+                  onSubmit={() => setShowSubmitDialog(true)}
                 />
-
-                {/* Task Details */}
-                <TaskInstructionDetails task={selectedTask} />
-
-                {/* Stats */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-lg border border-border/30 p-2.5 text-center">
-                    <DollarSign className="mx-auto h-4 w-4 text-success" />
-                    <p className="mt-0.5 text-base font-semibold">${selectedTask.reward.toFixed(2)}</p>
-                    <p className="text-xs text-muted-foreground">Reward</p>
-                  </div>
-                  <div className="rounded-lg border border-border/30 p-2.5 text-center">
-                    <Users className="mx-auto h-4 w-4 text-primary" />
-                    <p className="mt-0.5 text-base font-semibold">
-                      {selectedTask.maxSubmissions - selectedTask.currentSubmissions}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Spots Left</p>
-                  </div>
-                </div>
-
-                {selectedTask.deadline && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Calendar className="h-3 w-3" />
-                    Deadline: {selectedTask.deadline.toLocaleDateString()}
-                  </div>
-                )}
-
-                {isSubmitLocked && (
-                  <p className="rounded-lg border border-warning/20 bg-warning/10 p-3 text-xs text-warning">
-                    You have already submitted this task. Additional submissions are disabled.
-                  </p>
-                )}
-
-                <Button
-                  className="w-full"
-                  size="sm"
-                  onClick={() => setShowSubmitDialog(true)}
-                  disabled={isSubmitLocked}
-                >
-                  <Send className="mr-2 h-4 w-4" />
-                  Submit Work
-                </Button>
               </CardContent>
             </Card>
           ) : (
