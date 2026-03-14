@@ -1,0 +1,228 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+/* ─── Design Tokens ─────────────────────────────────────────── */
+:root {
+  /* Surfaces */
+  --background:          hsl(60 30% 96%);
+  --foreground:          hsl(235 60% 22%);
+  --card:                hsl(60 20% 98%);
+  --card-foreground:     hsl(235 60% 22%);
+  --popover:             hsl(60 20% 98%);
+  --popover-foreground:  hsl(235 60% 22%);
+
+  /* Brand */
+  --primary:             hsl(240 60% 55%);
+  --primary-foreground:  hsl(0 0% 100%);
+  --primary-hsl:         240 60% 55%;
+
+  /* Neutrals */
+  --secondary:           hsl(240 40% 92%);
+  --secondary-foreground:hsl(240 50% 35%);
+  --muted:               hsl(240 20% 92%);
+  --muted-foreground:    hsl(235 20% 50%);
+  --accent:              hsl(240 60% 75%);
+  --accent-foreground:   hsl(240 60% 20%);
+
+  /* Semantic */
+  --destructive:         hsl(0 72% 51%);
+  --destructive-foreground: hsl(0 0% 98%);
+  --success:             hsl(152 60% 42%);
+  --success-foreground:  hsl(0 0% 100%);
+  --warning:             hsl(38 92% 50%);
+  --warning-foreground:  hsl(38 80% 15%);
+  --info:                hsl(217 91% 60%);
+  --info-foreground:     hsl(0 0% 98%);
+
+  /* Severity scale */
+  --severity-critical:   hsl(0 72% 51%);
+  --severity-high:       hsl(0 60% 45%);
+  --severity-medium:     hsl(38 92% 50%);
+  --severity-low:        hsl(48 96% 45%);
+  --severity-info:       hsl(217 91% 60%);
+
+  /* Chrome */
+  --border:              hsl(235 40% 82%);
+  --input:               hsl(240 30% 90%);
+  --ring:                hsl(240 60% 55%);
+  --radius:              0.5rem;
+
+  /* Sidebar */
+  --sidebar:             hsl(60 20% 97%);
+  --sidebar-foreground:  hsl(235 60% 22%);
+  --sidebar-primary:     hsl(240 60% 55%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent:      hsl(240 40% 92%);
+  --sidebar-accent-foreground:  hsl(235 60% 22%);
+  --sidebar-border:      hsl(235 40% 82%);
+  --sidebar-ring:        hsl(240 60% 55%);
+
+  /* Charts */
+  --chart-1: hsl(240 60% 55%);
+  --chart-2: hsl(152 60% 42%);
+  --chart-3: hsl(38 92% 50%);
+  --chart-4: hsl(217 91% 60%);
+  --chart-5: hsl(0 72% 51%);
+}
+
+@theme inline {
+  --font-sans: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --color-background:           var(--background);
+  --color-foreground:           var(--foreground);
+  --color-card:                 var(--card);
+  --color-card-foreground:      var(--card-foreground);
+  --color-popover:              var(--popover);
+  --color-popover-foreground:   var(--popover-foreground);
+  --color-primary:              var(--primary);
+  --color-primary-foreground:   var(--primary-foreground);
+  --color-secondary:            var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted:                var(--muted);
+  --color-muted-foreground:     var(--muted-foreground);
+  --color-accent:               var(--accent);
+  --color-accent-foreground:    var(--accent-foreground);
+  --color-destructive:          var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success:              var(--success);
+  --color-success-foreground:   var(--success-foreground);
+  --color-warning:              var(--warning);
+  --color-warning-foreground:   var(--warning-foreground);
+  --color-info:                 var(--info);
+  --color-info-foreground:      var(--info-foreground);
+  --color-severity-critical:    var(--severity-critical);
+  --color-severity-high:        var(--severity-high);
+  --color-severity-medium:      var(--severity-medium);
+  --color-severity-low:         var(--severity-low);
+  --color-severity-info:        var(--severity-info);
+  --color-border:               var(--border);
+  --color-input:                var(--input);
+  --color-ring:                 var(--ring);
+  --color-chart-1:              var(--chart-1);
+  --color-chart-2:              var(--chart-2);
+  --color-chart-3:              var(--chart-3);
+  --color-chart-4:              var(--chart-4);
+  --color-chart-5:              var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar:              var(--sidebar);
+  --color-sidebar-foreground:   var(--sidebar-foreground);
+  --color-sidebar-primary:      var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent:       var(--sidebar-accent);
+  --color-sidebar-accent-foreground:  var(--sidebar-accent-foreground);
+  --color-sidebar-border:       var(--sidebar-border);
+  --color-sidebar-ring:         var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    /* Smooth scrolling on iOS */
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+    /* Safe area padding for notched devices */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Minimum touch target size (44x44 per Apple HIG) — only interactive buttons/links */
+  button:not(.touch-target-sm):not([data-state]),
+  [role="button"]:not(.touch-target-sm) {
+    min-height: 44px;
+    @apply touch-manipulation;
+  }
+
+  a {
+    @apply touch-manipulation;
+  }
+
+  /* Allow smaller buttons with explicit override */
+  .touch-target-sm {
+    min-height: 36px;
+  }
+}
+
+/* ─── Utility Classes ────────────────────────────────────────── */
+@layer utilities {
+  /* Glassmorphism — matches SecDash .glass */
+  .glass {
+    background: hsla(60, 20%, 98%, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* Staggered card entrance */
+  .animate-fade-in-up {
+    animation: fadeInUp 0.4s ease-out forwards;
+  }
+
+  /* Breathing pulse — for live/active state indicators */
+  .animate-breathe {
+    animation: breathe 3s ease-in-out infinite;
+  }
+
+  /* Native-feeling touch feedback */
+  .touch-feedback {
+    @apply transition-all duration-75;
+  }
+  .touch-feedback:active {
+    @apply scale-[0.98] opacity-80;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes breathe {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.4;
+    box-shadow: 0 0 0 0 hsl(240 60% 55% / 0.3);
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+    box-shadow: 0 0 40px 20px hsl(240 60% 55% / 0.1);
+  }
+}
+
+/* Respect user's motion preferences (ADHD-friendly) */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
