@@ -43,40 +43,7 @@ export const authConfig: NextAuthConfig = {
       }
       return session
     },
-    async authorized({ auth, request }) {
-      const isLoggedIn = !!auth?.user
-      const { pathname } = request.nextUrl
 
-      // Public routes
-      const publicRoutes = ["/", "/login"]
-      const isPublicRoute = publicRoutes.includes(pathname) || pathname.startsWith("/login")
-
-      if (isPublicRoute) {
-        return true
-      }
-
-      // Protected routes require authentication
-      if (!isLoggedIn) {
-        return false
-      }
-
-      // Role-based access control
-      const isAdminRoute = pathname.startsWith("/admin")
-      const isWorkerRoute = pathname.startsWith("/worker")
-      const userRole = auth.user.role
-
-      // Admin routes require admin role
-      if (isAdminRoute && userRole !== "admin") {
-        return Response.redirect(new URL("/worker", request.url))
-      }
-
-      // Worker routes require worker role
-      if (isWorkerRoute && userRole !== "worker") {
-        return Response.redirect(new URL("/admin/tasks", request.url))
-      }
-
-      return true
-    },
   },
   pages: {
     signIn: "/login",
