@@ -30,8 +30,8 @@ importers:
         specifier: ^0.33.0
         version: 0.33.1
       '@lexical/selection':
-        specifier: ^0.41.0
-        version: 0.41.0
+        specifier: ^0.33.0
+        version: 0.33.1
       '@radix-ui/react-checkbox':
         specifier: 1.3.3
         version: 1.3.3(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -629,9 +629,6 @@ packages:
 
   '@lexical/selection@0.33.1':
     resolution: {integrity: sha512-KXPkdCDdVfIUXmkwePu9DAd3kLjL0aAqL5G9CMCFsj7RG9lLvvKk7kpivrAIbRbcsDzO44QwsFPisZHbX4ioXA==}
-
-  '@lexical/selection@0.41.0':
-    resolution: {integrity: sha512-1s7/kNyRzcv5uaTwsUL28NpiisqTf5xZ1zNukLsCN1xY+TWbv9RE9OxIv+748wMm4pxNczQe/UbIBODkbeknLw==}
 
   '@lexical/table@0.33.1':
     resolution: {integrity: sha512-pzB11i1Y6fzmy0IPUKJyCdhVBgXaNOxJUxrQJWdKNYCh1eMwwMEQvj+8inItd/11aUkjcdHjwDTht8gL2UHKiQ==}
@@ -2630,9 +2627,6 @@ packages:
   lexical@0.33.1:
     resolution: {integrity: sha512-+kiCS/GshQmCs/meMb8MQT4AMvw3S3Ef0lSCv2Xi6Itvs59OD+NjQWNfYkDteIbKtVE/w0Yiqh56VyGwIb8UcA==}
 
-  lexical@0.41.0:
-    resolution: {integrity: sha512-pNIm5+n+hVnJHB9gYPDYsIO5Y59dNaDU9rJmPPsfqQhP2ojKFnUoPbcRnrI9FJLXB14sSumcY8LUw7Sq70TZqA==}
-
   lib0@0.2.117:
     resolution: {integrity: sha512-DeXj9X5xDCjgKLU/7RR+/HQEVzuuEUiwldwOGsHK/sfAfELGWEyTcf0x+uOvCvK3O2zPmZePXWL85vtia6GyZw==}
     engines: {node: '>=16'}
@@ -4221,10 +4215,6 @@ snapshots:
   '@lexical/selection@0.33.1':
     dependencies:
       lexical: 0.33.1
-
-  '@lexical/selection@0.41.0':
-    dependencies:
-      lexical: 0.41.0
 
   '@lexical/table@0.33.1':
     dependencies:
@@ -6286,8 +6276,6 @@ snapshots:
       type-check: 0.4.0
 
   lexical@0.33.1: {}
-
-  lexical@0.41.0: {}
 
   lib0@0.2.117:
     dependencies:

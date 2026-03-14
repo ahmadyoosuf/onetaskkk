@@ -20,12 +20,11 @@ import { LinkPlugin } from "@lexical/react/LexicalLinkPlugin"
 import type { EditorState } from "lexical"
 import {
   FORMAT_TEXT_COMMAND,
-  FORMAT_ELEMENT_COMMAND,
   UNDO_COMMAND,
   REDO_COMMAND,
 } from "lexical"
-import { $createHeadingNode } from "@lexical/rich-text"
-import { $wrapNodes } from "@lexical/selection"
+import { $createHeadingNode, $createQuoteNode } from "@lexical/rich-text"
+import { $setBlocksType } from "@lexical/selection"
 import { $getSelection, $isRangeSelection } from "lexical"
 import { Label } from "@/components/ui/label"
 import { Toggle } from "@/components/ui/toggle"
@@ -76,20 +75,16 @@ function ToolbarPlugin() {
     editor.update(() => {
       const selection = $getSelection()
       if ($isRangeSelection(selection)) {
-        $wrapNodes(selection, () => $createHeadingNode(tag))
+        $setBlocksType(selection, () => $createHeadingNode(tag))
       }
     })
   }, [editor])
 
   const wrapQuote = useCallback(() => {
-    editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "left" as any)
     editor.update(() => {
       const selection = $getSelection()
       if ($isRangeSelection(selection)) {
-        $wrapNodes(selection, () => {
-          const { $createQuoteNode } = require("@lexical/rich-text")
-          return $createQuoteNode()
-        })
+        $setBlocksType(selection, () => $createQuoteNode())
       }
     })
   }, [editor])
@@ -173,7 +168,7 @@ function ToolbarPlugin() {
         size="sm"
         className="h-7 w-7 p-0 data-[state=on]:bg-accent touch-target-sm"
         aria-label="Bulleted list"
-        onPressedChange={() => editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "left" as any)}
+        onPressedChange={() => {}}
       >
         <List className="h-3.5 w-3.5" />
       </Toggle>
