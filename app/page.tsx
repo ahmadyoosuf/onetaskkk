@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useRef } from "react"
+import { useMemo, useState, useRef, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useVirtualizer } from "@tanstack/react-virtual"
@@ -47,9 +47,19 @@ export default function TasksFeedPage() {
   const tasks = useTasks()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showSubmitDialog, setShowSubmitDialog] = useState(false)
+  const [showMobileDetail, setShowMobileDetail] = useState(false)
   const [typeFilter, setTypeFilter] = useState<TaskType | "all">("all")
   const [sortBy, setSortBy] = useState<"newest" | "reward">("newest")
   const parentRef = useRef<HTMLDivElement>(null)
+
+  // Handle task selection - show mobile sheet on small screens
+  const handleTaskSelect = (task: Task) => {
+    setSelectedTask(task)
+    // Check if mobile (lg breakpoint = 1024px)
+    if (window.innerWidth < 1024) {
+      setShowMobileDetail(true)
+    }
+  }
 
   const { register, handleSubmit, reset, formState: { errors, isValid } } = useForm<SubmissionFormData>({
     resolver: zodResolver(submissionSchema),
@@ -70,8 +80,8 @@ export default function TasksFeedPage() {
   const virtualizer = useVirtualizer({
     count: filteredTasks.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 100,
-    overscan: 5,
+    estimateSize: () => 108, // Card height + padding (pb-2 = 8px)
+    overscan: 3,
   })
 
   const onSubmit = (data: SubmissionFormData) => {
@@ -141,7 +151,7 @@ export default function TasksFeedPage() {
           ) : (
             <div
               ref={parentRef}
-              className="h-[50vh] sm:h-[calc(100vh-220px)] overflow-auto"
+              className="h-[calc(100vh-200px)] sm:h-[calc(100vh-180px)] overflow-auto scrollbar-hide rounded-lg"
             >
               <div
                 style={{
@@ -167,11 +177,11 @@ export default function TasksFeedPage() {
                         width: "100%",
                         height: `${virtualRow.size}px`,
                         transform: `translateY(${virtualRow.start}px)`,
+                        paddingBottom: "8px",
                       }}
-                      className="pr-2 sm:pr-4 pb-2"
                     >
                       <Card
-                        onClick={() => setSelectedTask(task)}
+                        onClick={() => handleTaskSelect(task)}
                         className={cn(
                           "cursor-pointer border-border/30 transition-all hover:border-primary/30 h-full touch-feedback",
                           isSelected && "border-primary/50 bg-primary/5 ring-1 ring-primary/20"
@@ -351,7 +361,10 @@ export default function TasksFeedPage() {
       </div>
 
       {/* Mobile Task Detail Sheet */}
-      <Dialog open={!!selectedTask && typeof window !== "undefined" && window.innerWidth < 1024} onOpenChange={(open) => !open && setSelectedTask(null)}>
+      <Dialog open={showMobileDetail && !!selectedTask} onOpenChange={(open) => {
+        setShowMobileDetail(open)
+        if (!open) setSelectedTask(null)
+      }}>
         <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
           {selectedTask && (
             <>
