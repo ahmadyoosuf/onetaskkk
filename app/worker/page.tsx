@@ -7,6 +7,7 @@ import { useVirtualizer } from "@tanstack/react-virtual"
 import { useQueryState, parseAsStringLiteral } from "nuqs"
 import { useToast } from "@/hooks/use-toast"
 import { AppShell } from "@/components/app-shell"
+import { ErrorBoundary, DataErrorState } from "@/components/error-boundary"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -119,7 +120,7 @@ const sortByParser = parseAsStringLiteral(["newest", "reward"] as const).withDef
 
 function TasksFeedContent() {
   const { toast } = useToast()
-  const { tasks, isLoading, error } = useTasks()
+  const { tasks, isLoading, error, refetch } = useTasks()
   const { submissions } = useSubmissions()
   const createSubmissionMutation = useCreateSubmission()
   const currentUser = getCurrentUser()
@@ -258,10 +259,19 @@ function TasksFeedContent() {
           </div>
 
           {/* Task Feed */}
-          {isLoading ? (
+          {error ? (
+            <DataErrorState
+              title="Failed to load tasks"
+              description="We couldn't load available tasks right now."
+              error={error}
+              onRetry={refetch}
+            />
+          ) : isLoading ? (
             <Card className="border-border/30 border-dashed">
-              <CardContent className="flex h-32 items-center justify-center">
-                <p className="text-muted-foreground animate-pulse">Loading tasks...</p>
+              <CardContent className="space-y-3 p-4">
+                <div className="h-4 w-2/5 rounded bg-muted animate-pulse" />
+                <div className="h-20 rounded bg-muted animate-pulse" />
+                <div className="h-20 rounded bg-muted animate-pulse" />
               </CardContent>
             </Card>
           ) : filteredTasks.length === 0 ? (
@@ -638,7 +648,9 @@ export default function TasksFeedPage() {
         </div>
       </AppShell>
     }>
-      <TasksFeedContent />
+      <ErrorBoundary>
+        <TasksFeedContent />
+      </ErrorBoundary>
     </Suspense>
   )
 }
