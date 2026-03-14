@@ -347,7 +347,7 @@ function TasksManagementContent() {
                 <DollarSign className="h-5 w-5" />
               </div>
               <div className="mt-3">
-                <p className="text-2xl font-semibold">${totalRewards.toFixed(2)}</p>
+                <p className="text-2xl font-semibold">A${totalRewards.toFixed(2)}</p>
                 <p className="text-sm text-muted-foreground">Paid Out</p>
               </div>
             </CardContent>
@@ -533,7 +533,7 @@ function TasksManagementContent() {
                             <Badge variant={task.status} className="text-xs">
                               {TASK_STATUS_LABELS[task.status]}
                             </Badge>
-                            <span className="text-sm font-mono font-medium text-success">${task.reward.toFixed(2)}</span>
+                            <span className="text-sm font-mono font-medium text-success">A${task.reward.toFixed(2)}</span>
                             {pendingCount > 0 && (
                               <Badge variant="secondary" className="text-xs bg-warning/10 text-warning border-warning/20">
                                 {pendingCount} pending

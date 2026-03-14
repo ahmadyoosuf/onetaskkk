@@ -220,7 +220,7 @@ export function TasksTable({
           </Button>
         ),
         cell: ({ row }) => (
-          <span className="font-mono">${row.original.reward.toFixed(2)}</span>
+          <span className="font-mono">A${row.original.reward.toFixed(2)}</span>
         ),
       },
       {

@@ -17,8 +17,8 @@ const baseTaskSchema = z.object({
     .max(5000, "Detailed instructions must be less than 5000 characters"),
   reward: z
     .number({ invalid_type_error: "Reward is required" })
-    .min(0.1, "Minimum reward is $0.10")
-    .max(1000, "Maximum reward is $1000"),
+    .min(0.1, "Minimum reward is A$0.10")
+    .max(1000, "Maximum reward is A$1,000"),
   maxSubmissions: z
     .number({ invalid_type_error: "Max submissions is required" })
     .int("Must be a whole number")

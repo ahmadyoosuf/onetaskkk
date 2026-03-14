@@ -1,12 +1,19 @@
-import { get, set } from "idb-keyval"
+import { get, set, createStore } from "idb-keyval"
 import type { Task, Submission, User, TaskType, Platform } from "./types"
 
 // ─── IndexedDB Persistence ────────────────────────────────────
+// Main store for structured data (tasks, submissions without images)
 const STORAGE_KEYS = {
   tasks: "taskmarket_tasks_v2",
   submissions: "taskmarket_submissions_v2",
   initialized: "taskmarket_initialized_v2",
 } as const
+
+// Separate IndexedDB store for base64 images (keyed by submission ID)
+// Prevents JSON stringification crashes from 500MB+ serialization
+const filesStore = typeof window !== "undefined"
+  ? createStore("taskmarket-files", "evidence")
+  : null
 
 function reviveDates(_key: string, value: unknown): unknown {
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
@@ -20,11 +27,9 @@ async function loadFromIndexedDB<T>(key: string): Promise<T[] | null> {
   try {
     const raw = await get(key)
     if (!raw) return null
-    // idb-keyval stores objects directly, but we stored JSON strings for date revival
     if (typeof raw === "string") {
       return JSON.parse(raw, reviveDates) as T[]
     }
-    // Handle direct object storage with manual date revival
     return JSON.parse(JSON.stringify(raw), reviveDates) as T[]
   } catch {
     return null
@@ -34,15 +39,34 @@ async function loadFromIndexedDB<T>(key: string): Promise<T[] | null> {
 async function saveToIndexedDB<T>(key: string, data: T[]): Promise<void> {
   if (typeof window === "undefined") return
   try {
-    // Store as JSON string to preserve date serialization
     await set(key, JSON.stringify(data))
   } catch {
     // Ignore storage errors
   }
 }
 
+// ─── Evidence Files Store ────────────────────────────────────
+// Store/retrieve base64 images separately from submission JSON
+export async function saveEvidenceFile(submissionId: string, base64: string): Promise<void> {
+  if (!filesStore) return
+  try {
+    await set(submissionId, base64, filesStore)
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export async function getEvidenceFile(submissionId: string): Promise<string | null> {
+  if (!filesStore) return null
+  try {
+    const data = await get(submissionId, filesStore)
+    return (data as string) ?? null
+  } catch {
+    return null
+  }
+}
+
 function withTaskDefaults(task: Task): Task {
-  // Patch missing taskDetails for tasks persisted before the discriminated union refactor
   let taskDetails = (task as Task & { taskDetails?: unknown }).taskDetails
   if (!taskDetails) {
     if (task.type === "social_media_posting") {
@@ -63,9 +87,9 @@ function withTaskDefaults(task: Task): Task {
 }
 
 // ─── Simulated Network Delays (per PRD) ─────────────────────
-const FETCH_DELAY_MIN = 1000 // 1-3 seconds for data fetching (PRD requirement)
+const FETCH_DELAY_MIN = 1000
 const FETCH_DELAY_MAX = 3000
-const MUTATION_DELAY_MIN = 3000 // 3-5 seconds for mutations (PRD requirement)
+const MUTATION_DELAY_MIN = 3000
 const MUTATION_DELAY_MAX = 5000
 
 function randomFetchDelay(): number {
@@ -114,7 +138,6 @@ function generateMockTasks(): Task[] {
   const tasks: Task[] = []
   const types: TaskType[] = ["social_media_posting", "email_sending", "social_media_liking"]
   
-  // Generate 100+ tasks for virtualizer stress testing
   for (let i = 0; i < 500; i++) {
     const type = types[i % 3]
     const templates = TASK_TEMPLATES[type]
@@ -125,9 +148,29 @@ function generateMockTasks(): Task[] {
     const maxSubs = [50, 100, 200, 300, 500][Math.floor(Math.random() * 5)]
     const currentSubs = isCompleted ? maxSubs : Math.floor(Math.random() * maxSubs * 0.8)
     
-    // Assign tasks to campaigns for bulk operations
     const campaigns = ["spring-launch", "q2-marketing", "social-boost", "engagement-2026", undefined]
     const campaignId = campaigns[i % campaigns.length]
+
+    // PRD: Include at least 10 expired tasks for status filter testing
+    // Tasks 490-499 get past deadlines to simulate expired state
+    const isExpiredSlot = i >= 490
+    let deadline: Date | undefined
+    let status: string
+
+    if (isExpiredSlot) {
+      // Expired: deadline in the past, task still "open" (missed deadline)
+      deadline = new Date(now.getTime() - (Math.floor(Math.random() * 14) + 1) * 24 * 60 * 60 * 1000)
+      status = "open"
+    } else if (isCompleted) {
+      status = "completed"
+      deadline = Math.random() > 0.6 ? new Date(now.getTime() + (Math.random() * 30) * 24 * 60 * 60 * 1000) : undefined
+    } else if (isCancelled) {
+      status = "cancelled"
+      deadline = undefined
+    } else {
+      status = "open"
+      deadline = Math.random() > 0.6 ? new Date(now.getTime() + (Math.random() * 30) * 24 * 60 * 60 * 1000) : undefined
+    }
     
     const baseTask = {
       id: `task-${i + 1}`,
@@ -139,9 +182,9 @@ function generateMockTasks(): Task[] {
       maxSubmissions: maxSubs,
       allowMultipleSubmissions: i % 4 !== 0,
       currentSubmissions: currentSubs,
-      status: isCompleted ? "completed" : isCancelled ? "cancelled" : "open",
+      status,
       createdAt: new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000),
-      deadline: Math.random() > 0.6 ? new Date(now.getTime() + (Math.random() * 30) * 24 * 60 * 60 * 1000) : undefined,
+      deadline,
       campaignId,
     }
     
@@ -170,11 +213,10 @@ function generateMockSubmissions(generatedTasks: Task[]): Submission[] {
   const submissions: Submission[] = []
   const now = new Date()
   
-  // Generate submissions spread across the tasks
   const statuses: Array<"pending" | "approved" | "rejected"> = ["pending", "approved", "rejected"]
   
   for (let i = 0; i < 1000; i++) {
-    // PRD fix: Spread submissions across ALL tasks (not just first 200)
+    // Spread submissions across ALL tasks
     const taskIndex = i % generatedTasks.length
     const task = generatedTasks[taskIndex]
     const taskId = task.id
@@ -184,7 +226,8 @@ function generateMockSubmissions(generatedTasks: Task[]): Submission[] {
     const submittedAt = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000)
     const userName = names[i % names.length]
     
-    // PRD-compliant submission fields based on task type
+    // screenshotUrl stays as a placeholder URL for mock data
+    // Real uploads use the separate files store via saveEvidenceFile
     const submission: Submission = {
       id: `sub-${i + 1}`,
       taskId,
@@ -198,7 +241,6 @@ function generateMockSubmissions(generatedTasks: Task[]): Submission[] {
       adminNotes: status === "rejected" ? "Submission does not meet requirements" : undefined,
     }
     
-    // Add task-type-specific fields per PRD
     if (taskType === "social_media_posting" || taskType === "social_media_liking") {
       submission.postUrl = `https://linkedin.com/posts/user-${i}-post-${taskIndex}`
     } else if (taskType === "email_sending") {
@@ -217,7 +259,6 @@ let submissions: Submission[] = []
 let storeInitialized = false
 let initPromise: Promise<void> | null = null
 
-// Initialize store from IndexedDB (async)
 async function initializeStore(): Promise<void> {
   if (storeInitialized) return
   if (initPromise) return initPromise
@@ -230,12 +271,10 @@ async function initializeStore(): Promise<void> {
       tasks = storedTasks.map(withTaskDefaults)
       submissions = storedSubmissions ?? []
     } else {
-      // First time: generate mock data
       const generatedTasks = generateMockTasks()
       tasks = generatedTasks.map(withTaskDefaults)
       submissions = generateMockSubmissions(tasks)
       
-      // Persist initial data to IndexedDB
       await saveToIndexedDB(STORAGE_KEYS.tasks, tasks)
       await saveToIndexedDB(STORAGE_KEYS.submissions, submissions)
     }
@@ -246,12 +285,12 @@ async function initializeStore(): Promise<void> {
   return initPromise
 }
 
-// Persist data to IndexedDB (debounced to avoid excessive writes)
 let persistTimeout: ReturnType<typeof setTimeout> | null = null
 function schedulePersist(): void {
   if (persistTimeout) clearTimeout(persistTimeout)
   persistTimeout = setTimeout(async () => {
     await saveToIndexedDB(STORAGE_KEYS.tasks, tasks)
+    // Submissions are saved without base64 images — images live in filesStore
     await saveToIndexedDB(STORAGE_KEYS.submissions, submissions)
   }, 100)
 }
@@ -378,9 +417,18 @@ export async function createSubmission(submission: Omit<Submission, "id" | "subm
     }
   }
 
+  // If screenshotUrl is base64, store it separately in files store
+  let screenshotRef = submission.screenshotUrl
+  const newId = `sub-${Date.now()}`
+  if (screenshotRef.startsWith("data:")) {
+    await saveEvidenceFile(newId, screenshotRef)
+    screenshotRef = `evidence://${newId}` // Reference pointer, not the blob
+  }
+
   const newSubmission: Submission = {
     ...submission,
-    id: `sub-${Date.now()}`,
+    id: newId,
+    screenshotUrl: screenshotRef,
     submittedAt: new Date(),
     status: "pending",
   }
@@ -388,7 +436,6 @@ export async function createSubmission(submission: Omit<Submission, "id" | "subm
   await simulateMutationDelay(null)
   submissions = [newSubmission, ...submissions]
   
-  // Increment task submission count (immutable update)
   const newCount = task.currentSubmissions + 1
   const newStatus = newCount >= task.maxSubmissions ? "completed" : task.status
   tasks[taskIndex] = { ...task, currentSubmissions: newCount, status: newStatus }
@@ -433,10 +480,7 @@ export function getAdminUser(): User {
 }
 
 // ─── Unified API Object ─────────────────────────────────────
-// PRD: "Server Experience" — Client Components must never touch raw arrays
-// All data operations go through this unified API layer
 export const api = {
-  // Tasks
   tasks: {
     list: fetchTasks,
     get: async (id: string): Promise<Task | undefined> => {
@@ -448,7 +492,6 @@ export const api = {
     updateStatus: updateTaskStatus,
     delete: deleteTask,
   },
-  // Submissions
   submissions: {
     list: fetchSubmissions,
     get: async (id: string): Promise<Submission | undefined> => {
@@ -458,7 +501,10 @@ export const api = {
     create: createSubmission,
     updateStatus: updateSubmissionStatus,
   },
-  // Users
+  files: {
+    getEvidence: getEvidenceFile,
+    saveEvidence: saveEvidenceFile,
+  },
   users: {
     current: getCurrentUser,
     admin: getAdminUser,
