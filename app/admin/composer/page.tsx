@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useForm, FormProvider } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { AppShell } from "@/components/app-shell"
+import { ErrorBoundary } from "@/components/error-boundary"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -19,6 +20,7 @@ import { useToast } from "@/hooks/use-toast"
 // Field Components
 import { TitleField } from "@/components/composer/title-field"
 import { DescriptionField } from "@/components/composer/description-field"
+import { DetailsField } from "@/components/composer/details-field"
 import { RewardField } from "@/components/composer/reward-field"
 import { MaxSubmissionsField } from "@/components/composer/max-submissions-field"
 import { AllowMultipleSubmissionsField } from "@/components/composer/allow-multiple-submissions-field"
@@ -52,6 +54,7 @@ function TaskComposerContent() {
       type: "social_media_posting",
       title: "",
       description: "",
+      details: "",
       reward: 5,
       maxSubmissions: 100,
       allowMultipleSubmissions: false,
@@ -83,6 +86,7 @@ function TaskComposerContent() {
       type: task.type,
       title: task.title,
       description: task.description,
+      details: task.details,
       reward: task.reward,
       maxSubmissions: task.maxSubmissions,
       allowMultipleSubmissions: task.allowMultipleSubmissions,
@@ -93,19 +97,19 @@ function TaskComposerContent() {
     // Add type-specific fields
     if (task.type === "social_media_posting") {
       Object.assign(formData, {
-        platform: task.details.platform,
-        postContent: task.details.postContent,
-        accountHandle: task.details.accountHandle || "",
+        platform: task.taskDetails.platform,
+        postContent: task.taskDetails.postContent,
+        accountHandle: task.taskDetails.accountHandle || "",
       })
     } else if (task.type === "email_sending") {
       Object.assign(formData, {
-        targetEmail: task.details.targetEmail,
-        emailContent: task.details.emailContent,
+        targetEmail: task.taskDetails.targetEmail,
+        emailContent: task.taskDetails.emailContent,
       })
     } else if (task.type === "social_media_liking") {
       Object.assign(formData, {
-        postUrl: task.details.postUrl,
-        platform: task.details.platform,
+        postUrl: task.taskDetails.postUrl,
+        platform: task.taskDetails.platform,
       })
     }
     
@@ -122,18 +126,19 @@ function TaskComposerContent() {
     try {
       // Build task payload based on type
       let taskPayload: Parameters<typeof createTask>[0]
-      
+
       if (data.type === "social_media_posting") {
         taskPayload = {
           type: "social_media_posting",
           title: data.title,
           description: data.description,
+          details: data.details,
           reward: data.reward,
           maxSubmissions: data.maxSubmissions,
           allowMultipleSubmissions: data.allowMultipleSubmissions,
           deadline: data.deadline,
           campaignId: data.campaignId || undefined,
-          details: {
+          taskDetails: {
             platform: data.platform,
             postContent: data.postContent,
             accountHandle: data.accountHandle || undefined,
@@ -144,12 +149,13 @@ function TaskComposerContent() {
           type: "email_sending",
           title: data.title,
           description: data.description,
+          details: data.details,
           reward: data.reward,
           maxSubmissions: data.maxSubmissions,
           allowMultipleSubmissions: data.allowMultipleSubmissions,
           deadline: data.deadline,
           campaignId: data.campaignId || undefined,
-          details: {
+          taskDetails: {
             targetEmail: data.targetEmail,
             emailContent: data.emailContent,
           },
@@ -159,12 +165,13 @@ function TaskComposerContent() {
           type: "social_media_liking",
           title: data.title,
           description: data.description,
+          details: data.details,
           reward: data.reward,
           maxSubmissions: data.maxSubmissions,
           allowMultipleSubmissions: data.allowMultipleSubmissions,
           deadline: data.deadline,
           campaignId: data.campaignId || undefined,
-          details: {
+          taskDetails: {
             postUrl: data.postUrl,
             platform: data.platform,
           },
@@ -186,7 +193,7 @@ function TaskComposerContent() {
           description: `"${data.title}" is now live and accepting submissions.`,
         })
       }
-      
+
       router.push("/admin/tasks")
     } catch {
       toast({
@@ -283,6 +290,7 @@ function TaskComposerContent() {
               <CardContent className="space-y-4">
                 <TitleField />
                 <DescriptionField />
+                <DetailsField />
                 <div className="grid gap-4 sm:grid-cols-2">
                   <RewardField />
                   <MaxSubmissionsField />
@@ -344,7 +352,9 @@ export default function TaskComposerPage() {
         </div>
       </AppShell>
     }>
-      <TaskComposerContent />
+      <ErrorBoundary>
+        <TaskComposerContent />
+      </ErrorBoundary>
     </Suspense>
   )
 }

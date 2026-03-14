@@ -5,7 +5,8 @@ import { useVirtualizer } from "@tanstack/react-virtual"
 import { useQueryState, parseAsStringLiteral, parseAsBoolean, parseAsString } from "nuqs"
 import { useToast } from "@/hooks/use-toast"
 import { AppShell } from "@/components/app-shell"
-import { Card, CardContent } from "@/components/ui/card"
+import { ErrorBoundary, DataErrorState } from "@/components/error-boundary"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
@@ -33,10 +34,10 @@ import { cn } from "@/lib/utils"
 import { useTasks, useSubmissions, useUpdateSubmissionStatus } from "@/hooks/use-store"
 import type { Submission, SubmissionStatus } from "@/lib/types"
 
-const STATUS_STYLES: Record<SubmissionStatus, { label: string; className: string; icon: typeof Clock }> = {
-  pending: { label: "Pending", className: "bg-warning/10 text-warning border-warning/20", icon: Clock },
-  approved: { label: "Approved", className: "bg-success/10 text-success border-success/20", icon: Check },
-  rejected: { label: "Rejected", className: "bg-destructive/10 text-destructive border-destructive/20", icon: X },
+const STATUS_META: Record<SubmissionStatus, { label: string; icon: typeof Clock }> = {
+  pending: { label: "Pending", icon: Clock },
+  approved: { label: "Approved", icon: Check },
+  rejected: { label: "Rejected", icon: X },
 }
 
 type SubmissionListRow =
@@ -57,7 +58,7 @@ const statusFilterParser = parseAsStringLiteral(["all", "pending", "approved", "
 
 function SubmissionsContent() {
   const { toast } = useToast()
-  const { submissions, isLoading: isLoadingSubmissions } = useSubmissions()
+  const { submissions, isLoading: isLoadingSubmissions, error, refetch } = useSubmissions()
   const { tasks, isLoading: isLoadingTasks } = useTasks()
   const updateSubmissionStatusMutation = useUpdateSubmissionStatus()
   const isDataLoading = isLoadingSubmissions || isLoadingTasks
@@ -260,10 +261,10 @@ function SubmissionsContent() {
             All ({submissions.length})
           </Badge>
           <Badge 
-            variant="outline" 
+            variant="pending" 
             className={cn(
               "cursor-pointer px-3 py-1.5 text-xs sm:text-sm transition-all",
-              statusFilter === "pending" ? "bg-warning/20 text-warning border-warning/50" : STATUS_STYLES.pending.className + " hover:bg-warning/5"
+              statusFilter === "pending" ? "bg-warning/20 text-warning border-warning/50" : "hover:bg-warning/5"
             )}
             onClick={() => setStatusFilter("pending")}
           >
@@ -271,10 +272,10 @@ function SubmissionsContent() {
             Pending ({pendingCount})
           </Badge>
           <Badge 
-            variant="outline" 
+            variant="approved" 
             className={cn(
               "cursor-pointer px-3 py-1.5 text-xs sm:text-sm transition-all",
-              statusFilter === "approved" ? "bg-success/20 text-success border-success/50" : STATUS_STYLES.approved.className + " hover:bg-success/5"
+              statusFilter === "approved" ? "bg-success/20 text-success border-success/50" : "hover:bg-success/5"
             )}
             onClick={() => setStatusFilter("approved")}
           >
@@ -282,10 +283,10 @@ function SubmissionsContent() {
             Approved ({approvedCount})
           </Badge>
           <Badge 
-            variant="outline" 
+            variant="rejected" 
             className={cn(
               "cursor-pointer px-3 py-1.5 text-xs sm:text-sm transition-all",
-              statusFilter === "rejected" ? "bg-destructive/20 text-destructive border-destructive/50" : STATUS_STYLES.rejected.className + " hover:bg-destructive/5"
+              statusFilter === "rejected" ? "bg-destructive/20 text-destructive border-destructive/50" : "hover:bg-destructive/5"
             )}
             onClick={() => setStatusFilter("rejected")}
           >
@@ -329,9 +330,20 @@ function SubmissionsContent() {
               className="overflow-auto scrollbar-hide rounded-lg border border-border/30"
               style={{ height: "calc(100svh - 300px)" }}
             >
-              {isDataLoading ? (
-                <div className="flex h-32 items-center justify-center">
-                  <p className="text-muted-foreground animate-pulse">Loading submissions...</p>
+              {error ? (
+                <div className="p-3">
+                  <DataErrorState
+                    title="Failed to load submissions"
+                    description="We couldn't load submissions right now."
+                    error={error}
+                    onRetry={refetch}
+                  />
+                </div>
+              ) : isDataLoading ? (
+                <div className="space-y-2 p-3">
+                  <div className="h-4 w-1/3 rounded bg-muted animate-pulse" />
+                  <div className="h-16 rounded bg-muted animate-pulse" />
+                  <div className="h-16 rounded bg-muted animate-pulse" />
                 </div>
               ) : listRows.length === 0 ? (
                 <div className="flex h-32 items-center justify-center">
@@ -369,8 +381,8 @@ function SubmissionsContent() {
                             <Badge variant="outline" className="text-xs">{row.count}</Badge>
                           </div>
                         ) : (() => {
-                          const statusStyle = STATUS_STYLES[row.submission.status]
-                          const StatusIcon = statusStyle.icon
+                          const statusMeta = STATUS_META[row.submission.status]
+                          const StatusIcon = statusMeta.icon
                           const isSelected = selectedSubmission?.id === row.submission.id
 
                           return (
@@ -434,14 +446,126 @@ function SubmissionsContent() {
           <div className="hidden lg:block lg:w-80 xl:w-96">
             {selectedSubmission ? (
               <Card className="border-border/30 sticky top-20">
-                <CardContent className="space-y-4 pt-6">
-                  <SubmissionDetail
-                    submission={selectedSubmission}
-                    taskTitle={taskMap.get(selectedSubmission.taskId)?.title || "Unknown Task"}
-                    onApprove={() => handleReview("approved")}
-                    onReject={() => handleReview("rejected")}
-                    isReviewing={isReviewing}
-                  />
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <CardTitle className="text-base">Submission Details</CardTitle>
+                    <Badge variant={selectedSubmission.status}>
+                      {STATUS_META[selectedSubmission.status].label}
+                    </Badge>
+                  </div>
+                  <CardDescription className="truncate">
+                    {getTask(selectedSubmission.taskId)?.title}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Submitter Info */}
+                  <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary shrink-0">
+                      <User className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">{selectedSubmission.userName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {selectedSubmission.submittedAt.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Task-type-specific submission fields per PRD */}
+                  {selectedSubmission.postUrl && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <ExternalLink className="h-3 w-3" />
+                        Post URL
+                      </Label>
+                      <a
+                        href={selectedSubmission.postUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-primary hover:underline break-all rounded-lg border border-border/30 bg-background p-3"
+                      >
+                        {selectedSubmission.postUrl}
+                        <ExternalLink className="h-3 w-3 shrink-0" />
+                      </a>
+                    </div>
+                  )}
+                  
+                  {selectedSubmission.emailContent && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <FileText className="h-3 w-3" />
+                        Email Content
+                      </Label>
+                      <div className="rounded-lg border border-border/30 bg-background p-3 text-sm whitespace-pre-wrap">
+                        {selectedSubmission.emailContent}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Evidence Screenshot */}
+                  {selectedSubmission.screenshotUrl && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <ImageIcon className="h-3 w-3" />
+                        Evidence Screenshot
+                      </Label>
+                      <a
+                        href={selectedSubmission.screenshotUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-primary hover:underline break-all"
+                      >
+                        {selectedSubmission.screenshotUrl}
+                        <ExternalLink className="h-3 w-3 shrink-0" />
+                      </a>
+                    </div>
+                  )}
+
+
+
+                  {/* Admin Notes */}
+                  {selectedSubmission.adminNotes && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <MessageSquare className="h-3 w-3" />
+                        Admin Notes
+                      </Label>
+                      <div className="rounded-lg border border-border/30 bg-muted/30 p-3 text-sm">
+                        {selectedSubmission.adminNotes}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Review Date */}
+                  {selectedSubmission.reviewedAt && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Calendar className="h-3 w-3" />
+                      Reviewed {selectedSubmission.reviewedAt.toLocaleString()}
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  {selectedSubmission.status === "pending" && (
+                    <div className="flex gap-2 pt-2">
+                      <Button 
+                        size="sm"
+                        className="flex-1 bg-success hover:bg-success/90" 
+                        onClick={() => handleReview("approved")}
+                      >
+                        <Check className="mr-1.5 h-4 w-4" />
+                        Approve
+                      </Button>
+                      <Button 
+                        size="sm"
+                        variant="destructive"
+                        className="flex-1"
+                        onClick={() => handleReview("rejected")}
+                      >
+                        <X className="mr-1.5 h-4 w-4" />
+                        Reject
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ) : (
@@ -468,13 +592,104 @@ function SubmissionsContent() {
       }}>
         <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
           {selectedSubmission && (
-            <SubmissionDetail
-              submission={selectedSubmission}
-              taskTitle={taskMap.get(selectedSubmission.taskId)?.title || "Unknown Task"}
-              onApprove={() => handleReview("approved")}
-              onReject={() => handleReview("rejected")}
-              isReviewing={isReviewing}
-            />
+            <>
+              <DialogHeader className="pb-2">
+                <div className="flex items-center justify-between gap-2">
+                  <DialogTitle className="text-base">Submission Details</DialogTitle>
+                  <Badge variant={selectedSubmission.status}>
+                    {STATUS_META[selectedSubmission.status].label}
+                  </Badge>
+                </div>
+                <DialogDescription className="truncate">
+                  {getTask(selectedSubmission.taskId)?.title}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 pt-2">
+                {/* Submitter Info */}
+                <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary shrink-0">
+                    <User className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm truncate">{selectedSubmission.userName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedSubmission.submittedAt.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Task-type-specific submission fields per PRD */}
+                {selectedSubmission.postUrl && (
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <ExternalLink className="h-3 w-3" />
+                      Post URL
+                    </Label>
+                    <a
+                      href={selectedSubmission.postUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm text-primary hover:underline break-all rounded-lg border border-border/30 bg-background p-3"
+                    >
+                      {selectedSubmission.postUrl}
+                      <ExternalLink className="h-3 w-3 shrink-0" />
+                    </a>
+                  </div>
+                )}
+                
+                {selectedSubmission.emailContent && (
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <FileText className="h-3 w-3" />
+                      Email Content
+                    </Label>
+                    <div className="rounded-lg border border-border/30 bg-background p-3 text-sm whitespace-pre-wrap">
+                      {selectedSubmission.emailContent}
+                    </div>
+                  </div>
+                )}
+
+                {/* Evidence Screenshot */}
+                {selectedSubmission.screenshotUrl && (
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <ImageIcon className="h-3 w-3" />
+                      Evidence Screenshot
+                    </Label>
+                    <a
+                      href={selectedSubmission.screenshotUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm text-primary hover:underline break-all"
+                    >
+                      {selectedSubmission.screenshotUrl}
+                      <ExternalLink className="h-3 w-3 shrink-0" />
+                    </a>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                {selectedSubmission.status === "pending" && (
+                  <div className="flex gap-2 pt-2">
+                    <Button 
+                      className="flex-1 h-11 bg-success hover:bg-success/90" 
+                      onClick={() => handleReview("approved")}
+                    >
+                      <Check className="mr-1.5 h-4 w-4" />
+                      Approve
+                    </Button>
+                    <Button 
+                      variant="destructive"
+                      className="flex-1 h-11"
+                      onClick={() => handleReview("rejected")}
+                    >
+                      <X className="mr-1.5 h-4 w-4" />
+                      Reject
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </DialogContent>
       </Dialog>
@@ -543,12 +758,15 @@ export default function SubmissionsPage() {
   return (
     <Suspense fallback={
       <AppShell role="admin">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-muted-foreground">Loading submissions...</div>
+        <div className="flex-1 space-y-3">
+          <div className="h-10 w-64 rounded bg-muted animate-pulse" />
+          <div className="h-[420px] rounded-lg border border-border/30 bg-muted/30 animate-pulse" />
         </div>
       </AppShell>
     }>
-      <SubmissionsContent />
+      <ErrorBoundary>
+        <SubmissionsContent />
+      </ErrorBoundary>
     </Suspense>
   )
 }

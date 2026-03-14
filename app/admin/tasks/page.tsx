@@ -4,6 +4,7 @@ import { useState, useMemo, Suspense } from "react"
 import Link from "next/link"
 import { useQueryState, parseAsStringLiteral, parseAsString } from "nuqs"
 import { AppShell } from "@/components/app-shell"
+import { ErrorBoundary } from "@/components/error-boundary"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -59,10 +60,10 @@ const TASK_ICONS: Record<TaskType, typeof Share2> = {
   social_media_liking: Heart,
 }
 
-const STATUS_STYLES: Record<TaskStatus, { label: string; className: string }> = {
-  open: { label: "Open", className: "bg-success/10 text-success border-success/20" },
-  completed: { label: "Completed", className: "bg-muted text-muted-foreground border-border/30" },
-  cancelled: { label: "Cancelled", className: "bg-destructive/10 text-destructive border-destructive/20" },
+const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
+  open: "Open",
+  completed: "Completed",
+  cancelled: "Cancelled",
 }
 
 // URL state parsers for nuqs
@@ -70,7 +71,7 @@ const statusFilterParser = parseAsStringLiteral(["all", "open", "completed", "ca
 const sortByParser = parseAsStringLiteral(["newest", "oldest", "reward", "submissions"] as const).withDefault("newest")
 
 function TasksManagementContent() {
-  const { tasks, isLoading, error } = useTasks()
+  const { tasks, isLoading } = useTasks()
   const { submissions, isLoading: isLoadingSubmissions } = useSubmissions()
   const { toast } = useToast()
   
@@ -427,7 +428,7 @@ function TasksManagementContent() {
                 {/* PRD: Bulk edit amount and campaign ID */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" loading={isMutating}>
                       <Edit2 className="mr-1 h-3 w-3" />
                       Bulk Edit
                     </Button>
@@ -441,7 +442,7 @@ function TasksManagementContent() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button variant="destructive" size="sm" onClick={handleBulkDelete} disabled={isMutating}>
+                <Button variant="destructive" size="sm" onClick={handleBulkDelete} loading={isMutating}>
                   <Trash2 className="mr-1 h-3 w-3" />
                   Delete
                 </Button>
@@ -461,8 +462,10 @@ function TasksManagementContent() {
           </CardHeader>
           <CardContent>
             {isDataLoading ? (
-              <div className="flex h-32 items-center justify-center">
-                <p className="text-muted-foreground animate-pulse">Loading tasks...</p>
+              <div className="space-y-3 p-4">
+                <div className="h-4 w-2/5 rounded bg-muted animate-pulse" />
+                <div className="h-20 rounded bg-muted animate-pulse" />
+                <div className="h-20 rounded bg-muted animate-pulse" />
               </div>
             ) : (
               <Table>
@@ -488,7 +491,6 @@ function TasksManagementContent() {
                   {filteredTasks.map((task) => {
                     const Icon = TASK_ICONS[task.type]
                     const meta = TASK_TYPE_META[task.type]
-                    const statusStyle = STATUS_STYLES[task.status]
                     const progress = (task.currentSubmissions / task.maxSubmissions) * 100
                     const taskSubmissions = submissions.filter((s) => s.taskId === task.id)
                     const pendingCount = taskSubmissions.filter((s) => s.status === "pending").length
@@ -533,10 +535,10 @@ function TasksManagementContent() {
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Badge 
-                                variant="outline" 
-                                className={cn(statusStyle.className, "cursor-pointer hover:opacity-80 transition-opacity")}
+                                variant={task.status}
+                                className="cursor-pointer hover:opacity-80 transition-opacity"
                               >
-                                {statusStyle.label}
+                                {TASK_STATUS_LABELS[task.status]}
                               </Badge>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start">
@@ -625,14 +627,15 @@ function TasksManagementContent() {
           </div>
           {isDataLoading ? (
             <Card className="border-border/30 border-dashed">
-              <CardContent className="flex h-32 items-center justify-center">
-                <p className="text-muted-foreground animate-pulse">Loading tasks...</p>
+              <CardContent className="space-y-3 p-4">
+                <div className="h-4 w-2/5 rounded bg-muted animate-pulse" />
+                <div className="h-20 rounded bg-muted animate-pulse" />
+                <div className="h-20 rounded bg-muted animate-pulse" />
               </CardContent>
             </Card>
           ) : filteredTasks.map((task) => {
             const Icon = TASK_ICONS[task.type]
             const meta = TASK_TYPE_META[task.type]
-            const statusStyle = STATUS_STYLES[task.status]
             const progress = (task.currentSubmissions / task.maxSubmissions) * 100
             const taskSubmissions = submissions.filter((s) => s.taskId === task.id)
             const pendingCount = taskSubmissions.filter((s) => s.status === "pending").length
@@ -640,6 +643,7 @@ function TasksManagementContent() {
             return (
               <Card 
                 key={task.id} 
+                status={task.status}
                 className={cn(
                   "border-border/30 touch-feedback",
                   selectedTasks.has(task.id) && "border-primary/50 bg-primary/5"
@@ -665,8 +669,8 @@ function TasksManagementContent() {
                     <Badge variant="outline" className="border-border/30 text-xs">
                       {meta.label}
                     </Badge>
-                    <Badge variant="outline" className={cn(statusStyle.className, "text-xs")}>
-                      {statusStyle.label}
+                    <Badge variant={task.status} className="text-xs">
+                      {TASK_STATUS_LABELS[task.status]}
                     </Badge>
                     <span className="text-sm font-mono font-medium text-success">${task.reward.toFixed(2)}</span>
                     {pendingCount > 0 && (
@@ -803,7 +807,9 @@ export default function TasksManagementPage() {
         </div>
       </AppShell>
     }>
-      <TasksManagementContent />
+      <ErrorBoundary>
+        <TasksManagementContent />
+      </ErrorBoundary>
     </Suspense>
   )
 }

@@ -7,7 +7,8 @@ import { useVirtualizer } from "@tanstack/react-virtual"
 import { useQueryState, parseAsStringLiteral } from "nuqs"
 import { useToast } from "@/hooks/use-toast"
 import { AppShell } from "@/components/app-shell"
-import { Card, CardContent } from "@/components/ui/card"
+import { ErrorBoundary, DataErrorState } from "@/components/error-boundary"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -44,13 +45,83 @@ const TASK_ICONS: Record<TaskType, typeof Share2> = {
   social_media_liking: Heart,
 }
 
+function TaskInstructionDetails({ task }: { task: Task }) {
+  return (
+    <div className="space-y-3 rounded-lg bg-muted/50 p-3 text-sm">
+      <Badge variant="outline" className="border-border/30">
+        {task.allowMultipleSubmissions ? "Repeat submissions allowed" : "One submission per worker"}
+      </Badge>
+
+      {task.type === "social_media_posting" && (
+        <>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-muted-foreground">Platform</span>
+            <Badge variant="outline" className="capitalize text-xs">
+              {task.taskDetails.platform}
+            </Badge>
+          </div>
+          {task.taskDetails.accountHandle && (
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Tag</span>
+              <span className="font-mono text-xs">{task.taskDetails.accountHandle}</span>
+            </div>
+          )}
+          <div>
+            <span className="text-muted-foreground text-xs">Post Content:</span>
+            <p className="mt-1 rounded border border-border/30 bg-background p-2 text-xs leading-relaxed">
+              {task.taskDetails.postContent}
+            </p>
+          </div>
+        </>
+      )}
+
+      {task.type === "email_sending" && (
+        <>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-muted-foreground">Send to</span>
+            <span className="font-mono text-xs">{task.taskDetails.targetEmail}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground text-xs">Email Content:</span>
+            <p className="mt-1 rounded border border-border/30 bg-background p-2 text-xs">
+              {task.taskDetails.emailContent}
+            </p>
+          </div>
+        </>
+      )}
+
+      {task.type === "social_media_liking" && (
+        <>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-muted-foreground">Platform</span>
+            <Badge variant="outline" className="capitalize text-xs">
+              {task.taskDetails.platform}
+            </Badge>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-muted-foreground">Post</span>
+            <a
+              href={task.taskDetails.postUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-primary hover:underline text-xs"
+            >
+              View Post <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 // URL state parsers for nuqs
 const typeFilterParser = parseAsStringLiteral(["all", "social_media_posting", "email_sending", "social_media_liking"] as const).withDefault("all")
 const sortByParser = parseAsStringLiteral(["newest", "reward"] as const).withDefault("newest")
 
 function TasksFeedContent() {
   const { toast } = useToast()
-  const { tasks, isLoading } = useTasks()
+  const { tasks, isLoading, error, refetch } = useTasks()
   const { submissions } = useSubmissions()
   const createSubmissionMutation = useCreateSubmission()
   const currentUser = getCurrentUser()
@@ -189,10 +260,19 @@ function TasksFeedContent() {
           </div>
 
           {/* Task Feed */}
-          {isLoading ? (
+          {error ? (
+            <DataErrorState
+              title="Failed to load tasks"
+              description="We couldn't load available tasks right now."
+              error={error}
+              onRetry={refetch}
+            />
+          ) : isLoading ? (
             <Card className="border-border/30 border-dashed">
-              <CardContent className="flex h-32 items-center justify-center">
-                <p className="text-muted-foreground animate-pulse">Loading tasks...</p>
+              <CardContent className="space-y-3 p-4">
+                <div className="h-4 w-2/5 rounded bg-muted animate-pulse" />
+                <div className="h-20 rounded bg-muted animate-pulse" />
+                <div className="h-20 rounded bg-muted animate-pulse" />
               </CardContent>
             </Card>
           ) : filteredTasks.length === 0 ? (
@@ -323,12 +403,69 @@ function TasksFeedContent() {
         <div className="hidden lg:block lg:w-80 xl:w-96">
           {selectedTask ? (
             <Card className="border-border/30 sticky top-20">
-              <CardContent className="space-y-4 pt-6">
-                <TaskDetail
-                  task={selectedTask}
-                  isSubmitLocked={isSubmitLocked}
-                  onSubmit={() => setShowSubmitDialog(true)}
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
+                    {(() => {
+                      const Icon = TASK_ICONS[selectedTask.type]
+                      return <Icon className="h-5 w-5" />
+                    })()}
+                  </div>
+                  <div className="min-w-0">
+                    <CardTitle className="text-base truncate">{selectedTask.title}</CardTitle>
+                    <CardDescription className="text-xs">{TASK_TYPE_META[selectedTask.type].label}</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">{selectedTask.description}</p>
+
+                <div
+                  className="prose prose-sm max-w-none rounded-lg border border-border/30 bg-muted/30 p-3"
+                  dangerouslySetInnerHTML={{ __html: selectedTask.details }}
                 />
+
+                {/* Task Details */}
+                <TaskInstructionDetails task={selectedTask} />
+
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-lg border border-border/30 p-2.5 text-center">
+                    <DollarSign className="mx-auto h-4 w-4 text-success" />
+                    <p className="mt-0.5 text-base font-semibold">${selectedTask.reward.toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground">Reward</p>
+                  </div>
+                  <div className="rounded-lg border border-border/30 p-2.5 text-center">
+                    <Users className="mx-auto h-4 w-4 text-primary" />
+                    <p className="mt-0.5 text-base font-semibold">
+                      {selectedTask.maxSubmissions - selectedTask.currentSubmissions}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Spots Left</p>
+                  </div>
+                </div>
+
+                {selectedTask.deadline && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Calendar className="h-3 w-3" />
+                    Deadline: {selectedTask.deadline.toLocaleDateString()}
+                  </div>
+                )}
+
+                {isSubmitLocked && (
+                  <p className="rounded-lg border border-warning/20 bg-warning/10 p-3 text-xs text-warning">
+                    You have already submitted this task. Additional submissions are disabled.
+                  </p>
+                )}
+
+                <Button
+                  className="w-full"
+                  size="sm"
+                  onClick={() => setShowSubmitDialog(true)}
+                  disabled={isSubmitLocked}
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  Submit Work
+                </Button>
               </CardContent>
             </Card>
           ) : (
@@ -354,14 +491,73 @@ function TasksFeedContent() {
       }}>
         <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
           {selectedTask && (
-            <TaskDetail
-              task={selectedTask}
-              isSubmitLocked={isSubmitLocked}
-              onSubmit={() => {
-                setShowMobileDetail(false)
-                setShowSubmitDialog(true)
-              }}
-            />
+            <>
+              <DialogHeader className="pb-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
+                    {(() => {
+                      const Icon = TASK_ICONS[selectedTask.type]
+                      return <Icon className="h-5 w-5" />
+                    })()}
+                  </div>
+                  <div className="min-w-0">
+                    <DialogTitle className="text-base">{selectedTask.title}</DialogTitle>
+                    <DialogDescription className="text-xs">{TASK_TYPE_META[selectedTask.type].label}</DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+              <div className="space-y-4 pt-2">
+                <p className="text-sm text-muted-foreground">{selectedTask.description}</p>
+
+                <div
+                  className="prose prose-sm max-w-none rounded-lg border border-border/30 bg-muted/30 p-3"
+                  dangerouslySetInnerHTML={{ __html: selectedTask.details }}
+                />
+
+                <TaskInstructionDetails task={selectedTask} />
+                
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-lg border border-border/30 p-3 text-center">
+                    <DollarSign className="mx-auto h-5 w-5 text-success" />
+                    <p className="mt-1 text-lg font-semibold">${selectedTask.reward.toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground">Reward</p>
+                  </div>
+                  <div className="rounded-lg border border-border/30 p-3 text-center">
+                    <Users className="mx-auto h-5 w-5 text-primary" />
+                    <p className="mt-1 text-lg font-semibold">
+                      {selectedTask.maxSubmissions - selectedTask.currentSubmissions}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Spots Left</p>
+                  </div>
+                </div>
+
+                {selectedTask.deadline && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Calendar className="h-4 w-4" />
+                    Deadline: {selectedTask.deadline.toLocaleDateString()}
+                  </div>
+                )}
+
+                {isSubmitLocked && (
+                  <p className="rounded-lg border border-warning/20 bg-warning/10 p-3 text-sm text-warning">
+                    You have already submitted this task. Additional submissions are disabled.
+                  </p>
+                )}
+
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    setShowMobileDetail(false)
+                    setShowSubmitDialog(true)
+                  }}
+                  disabled={isSubmitLocked}
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  Submit Work
+                </Button>
+              </div>
+            </>
           )}
         </DialogContent>
       </Dialog>
@@ -442,8 +638,8 @@ function TasksFeedContent() {
               <Button type="button" variant="outline" onClick={() => setShowSubmitDialog(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={!isValid || createSubmissionMutation.isPending}>
-                {createSubmissionMutation.isPending ? "Submitting..." : "Submit"}
+              <Button type="submit" disabled={!isValid} loading={createSubmissionMutation.isPending}>
+                Submit
               </Button>
             </DialogFooter>
           </form>
@@ -463,7 +659,9 @@ export default function TasksFeedPage() {
         </div>
       </AppShell>
     }>
-      <TasksFeedContent />
+      <ErrorBoundary>
+        <TasksFeedContent />
+      </ErrorBoundary>
     </Suspense>
   )
 }

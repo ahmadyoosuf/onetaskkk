@@ -22,10 +22,11 @@ describe("store — task operations", () => {
       type: "social_media_posting",
       title: "My Test Task",
       description: "A description",
+      details: "<p>This is a detailed instruction block for this task.</p>",
       reward: 5,
       maxSubmissions: 100,
       allowMultipleSubmissions: false,
-      details: { platform: "linkedin", postContent: "Check out our product launch!" },
+      taskDetails: { platform: "linkedin", postContent: "Check out our product launch!" },
     })
     await vi.runAllTimersAsync()
     const task = await promise
@@ -81,7 +82,33 @@ describe("store — task operations", () => {
     const supportedPlatforms = new Set(["linkedin", "twitter", "instagram"])
     const socialTasks = store.getTasks().filter((task) => task.type === "social_media_liking")
 
-    expect(socialTasks.every((task) => supportedPlatforms.has(task.details.platform))).toBe(true)
+    expect(socialTasks.every((task) => supportedPlatforms.has(task.taskDetails.platform))).toBe(true)
+  })
+
+  it("updateTask updates only provided fields and preserves the rest", async () => {
+    vi.useFakeTimers()
+    const store = await freshStore()
+    const originalTask = store.getTasks()[0]!
+
+    const updatePromise = store.updateTask(originalTask.id, {
+      title: "Updated Task Title",
+      reward: originalTask.reward + 1,
+    })
+    await vi.runAllTimersAsync()
+    const updatedTask = await updatePromise
+
+    expect(updatedTask).toEqual({
+      ...originalTask,
+      title: "Updated Task Title",
+      reward: originalTask.reward + 1,
+    })
+    expect(updatedTask?.description).toBe(originalTask.description)
+    expect(updatedTask?.details).toEqual(originalTask.details)
+    expect(updatedTask?.status).toBe(originalTask.status)
+    expect(updatedTask?.maxSubmissions).toBe(originalTask.maxSubmissions)
+    expect(updatedTask?.allowMultipleSubmissions).toBe(originalTask.allowMultipleSubmissions)
+    expect(updatedTask?.currentSubmissions).toBe(originalTask.currentSubmissions)
+    expect(updatedTask?.createdAt).toEqual(originalTask.createdAt)
   })
 })
 
@@ -98,10 +125,11 @@ describe("store — submission operations", () => {
       type: "social_media_posting",
       title: "Submission Test Task",
       description: "A dedicated task for submission behavior tests.",
+      details: "<p>Submit with valid evidence links and include all requested information.</p>",
       reward: 4,
       maxSubmissions: 25,
       allowMultipleSubmissions: true,
-      details: { platform: "twitter", postContent: "Test post content for submission" },
+      taskDetails: { platform: "twitter", postContent: "Test post content for submission" },
     })
     await vi.runAllTimersAsync()
     const task = await taskPromise
@@ -109,9 +137,11 @@ describe("store — submission operations", () => {
 
     const promise = store.createSubmission({
       taskId: task.id,
+      taskType: "social_media_posting",
       userId: "user-1",
       userName: "Test User",
-      proof: "I completed the form",
+      postUrl: "https://twitter.com/test-user/status/123",
+      screenshotUrl: "https://cdn.example.com/proofs/submission-test.png",
     })
     await vi.runAllTimersAsync()
     const submission = await promise
@@ -130,29 +160,90 @@ describe("store — submission operations", () => {
       type: "email_sending",
       title: "Single Attempt Task",
       description: "Only one submission per worker is allowed.",
+      details: "<p>Only one valid submission is accepted for each worker account.</p>",
       reward: 2,
       maxSubmissions: 10,
       allowMultipleSubmissions: false,
-      details: { targetEmail: "owner@example.com", emailContent: "Send this exact message." },
+      taskDetails: { targetEmail: "owner@example.com", emailContent: "Send this exact message." },
     })
     await vi.runAllTimersAsync()
     const task = await taskPromise
 
     const firstSubmission = store.createSubmission({
       taskId: task.id,
+      taskType: "email_sending",
       userId: "user-1",
       userName: "Test User",
-      proof: "Initial completion proof",
+      emailContent: "Initial completion details",
+      screenshotUrl: "https://cdn.example.com/proofs/first-email.png",
     })
     await vi.runAllTimersAsync()
     await firstSubmission
 
     await expect(store.createSubmission({
       taskId: task.id,
+      taskType: "email_sending",
       userId: "user-1",
       userName: "Test User",
-      proof: "Trying to submit again",
+      emailContent: "Trying to submit again",
+      screenshotUrl: "https://cdn.example.com/proofs/second-email.png",
     })).rejects.toThrow("already submitted")
+  })
+
+  it("rejects submissions when currentSubmissions reached maxSubmissions", async () => {
+    vi.useFakeTimers()
+    const store = await freshStore()
+
+    const taskPromise = store.createTask({
+      type: "email_sending",
+      title: "Already Full Task",
+      description: "No more submissions should be accepted.",
+      reward: 2,
+      maxSubmissions: 1,
+      allowMultipleSubmissions: true,
+      details: { targetEmail: "owner@example.com", emailContent: "Done" },
+    })
+    await vi.runAllTimersAsync()
+    const task = await taskPromise
+
+    const updatePromise = store.updateTask(task.id, { currentSubmissions: task.maxSubmissions })
+    await vi.runAllTimersAsync()
+    await updatePromise
+
+    await expect(store.createSubmission({
+      taskId: task.id,
+      userId: "user-2",
+      userName: "Second User",
+      proof: "I completed it",
+    })).rejects.toThrow("Task is no longer accepting submissions")
+  })
+
+  it("rejects submissions when task status is cancelled", async () => {
+    vi.useFakeTimers()
+    const store = await freshStore()
+
+    const taskPromise = store.createTask({
+      type: "social_media_posting",
+      title: "Cancelled Task",
+      description: "Task has been cancelled.",
+      reward: 3,
+      maxSubmissions: 5,
+      allowMultipleSubmissions: true,
+      details: { platform: "linkedin", postContent: "Cancelled content" },
+    })
+    await vi.runAllTimersAsync()
+    const task = await taskPromise
+
+    const cancelPromise = store.updateTaskStatus(task.id, "cancelled")
+    await vi.runAllTimersAsync()
+    await cancelPromise
+
+    await expect(store.createSubmission({
+      taskId: task.id,
+      userId: "user-2",
+      userName: "Second User",
+      proof: "Attempting cancelled task",
+    })).rejects.toThrow("Task is no longer accepting submissions")
   })
 
   it("updateSubmissionStatus approves with notes and sets reviewedAt", async () => {
@@ -196,10 +287,11 @@ describe("store — localStorage persistence", () => {
       type: "email_sending",
       title: "Persisted Task",
       description: "Survives reload",
+      details: "<p>This task verifies details persistence across reloads.</p>",
       reward: 3,
       maxSubmissions: 50,
       allowMultipleSubmissions: true,
-      details: { targetEmail: "test@example.com", emailContent: "Hello!" },
+      taskDetails: { targetEmail: "test@example.com", emailContent: "Hello!" },
     })
     await vi.runAllTimersAsync()
     await promise
