@@ -132,7 +132,7 @@ export default function TaskComposerPage() {
                         key={value}
                         htmlFor={value}
                         className={cn(
-                          "relative flex cursor-pointer flex-col gap-2 rounded-lg border p-4 transition-all",
+                          "relative flex cursor-pointer flex-col gap-2 rounded-lg border p-4 transition-all touch-feedback",
                           isSelected
                             ? "border-primary bg-primary/5 ring-1 ring-primary/20"
                             : "border-border/30 hover:border-border/60 hover:bg-muted/30"
@@ -206,11 +206,11 @@ export default function TaskComposerPage() {
                 type="button" 
                 variant="outline" 
                 onClick={() => router.back()}
-                className="sm:w-auto"
+                className="w-full sm:w-auto h-11"
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting} className="sm:w-auto">
+              <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto h-11">
                 <Plus className="mr-2 h-4 w-4" />
                 Create Task
               </Button>

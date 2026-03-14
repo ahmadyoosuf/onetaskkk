@@ -55,6 +55,15 @@ function SubmissionsContent() {
   const [reviewAction, setReviewAction] = useState<"approved" | "rejected">("approved")
   const [adminNotes, setAdminNotes] = useState("")
   const [groupByTask, setGroupByTask] = useState(false)
+  const [showMobileDetail, setShowMobileDetail] = useState(false)
+
+  // Handle submission selection - show mobile sheet on small screens
+  const handleSubmissionSelect = (submission: Submission) => {
+    setSelectedSubmission(submission)
+    if (window.innerWidth < 1024) {
+      setShowMobileDetail(true)
+    }
+  }
 
   const filteredSubmissions = useMemo(() => {
     let result = submissions
@@ -200,7 +209,7 @@ function SubmissionsContent() {
 
             {/* Virtualized List or Grouped View */}
             {groupByTask && groupedSubmissions ? (
-              <div className="h-[50vh] sm:h-[calc(100vh-340px)] overflow-auto rounded-lg border border-border/30 p-2 space-y-4">
+              <div className="h-[calc(100vh-280px)] sm:h-[calc(100vh-300px)] overflow-auto scrollbar-hide rounded-lg border border-border/30 p-2 space-y-4">
                 {groupedSubmissions.map((group) => (
                   <div key={group.task?.id || "unknown"} className="space-y-2">
                     <div className="flex items-center justify-between px-2 py-1 bg-muted/50 rounded-md">
@@ -214,7 +223,7 @@ function SubmissionsContent() {
                       return (
                         <div
                           key={submission.id}
-                          onClick={() => setSelectedSubmission(submission)}
+                          onClick={() => handleSubmissionSelect(submission)}
                           className={cn(
                             "flex cursor-pointer items-center justify-between gap-3 rounded-lg border p-3 transition-all ml-2",
                             isSelected
@@ -241,7 +250,7 @@ function SubmissionsContent() {
             ) : (
             <div
               ref={parentRef}
-              className="h-[50vh] sm:h-[calc(100vh-340px)] overflow-auto rounded-lg border border-border/30"
+              className="h-[calc(100vh-280px)] sm:h-[calc(100vh-300px)] overflow-auto scrollbar-hide rounded-lg border border-border/30"
             >
               {filteredSubmissions.length === 0 ? (
                 <div className="flex h-32 items-center justify-center">
@@ -276,9 +285,9 @@ function SubmissionsContent() {
                         className="p-1"
                       >
                         <div
-                          onClick={() => setSelectedSubmission(submission)}
+                          onClick={() => handleSubmissionSelect(submission)}
                           className={cn(
-                            "flex h-full cursor-pointer items-center justify-between gap-3 rounded-lg border p-3 transition-all",
+                            "flex h-full cursor-pointer items-center justify-between gap-3 rounded-lg border p-3 transition-all touch-feedback",
                             isSelected
                               ? "border-primary/50 bg-primary/5"
                               : "border-border/20 hover:border-border/40 hover:bg-muted/30"
@@ -320,10 +329,10 @@ function SubmissionsContent() {
             </p>
           </div>
 
-          {/* Detail Panel */}
-          <div className="w-full lg:w-80 xl:w-96">
+          {/* Detail Panel - Hidden on mobile, visible on desktop */}
+          <div className="hidden lg:block lg:w-80 xl:w-96">
             {selectedSubmission ? (
-              <Card className="border-border/30 lg:sticky lg:top-24">
+              <Card className="border-border/30 sticky top-20">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between gap-2">
                     <CardTitle className="text-base">Submission Details</CardTitle>
@@ -437,6 +446,92 @@ function SubmissionsContent() {
           </div>
         </div>
       </div>
+
+      {/* Mobile Detail Sheet */}
+      <Dialog open={showMobileDetail && !!selectedSubmission} onOpenChange={(open) => {
+        setShowMobileDetail(open)
+        if (!open) setSelectedSubmission(null)
+      }}>
+        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
+          {selectedSubmission && (
+            <>
+              <DialogHeader className="pb-2">
+                <div className="flex items-center justify-between gap-2">
+                  <DialogTitle className="text-base">Submission Details</DialogTitle>
+                  <Badge variant="outline" className={STATUS_STYLES[selectedSubmission.status].className}>
+                    {STATUS_STYLES[selectedSubmission.status].label}
+                  </Badge>
+                </div>
+                <DialogDescription className="truncate">
+                  {getTask(selectedSubmission.taskId)?.title}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 pt-2">
+                {/* Submitter Info */}
+                <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary shrink-0">
+                    <User className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm truncate">{selectedSubmission.userName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedSubmission.submittedAt.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Proof */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <FileText className="h-3 w-3" />
+                    Proof of Completion
+                  </Label>
+                  <div className="rounded-lg border border-border/30 bg-background p-3 text-sm">
+                    {selectedSubmission.proof}
+                  </div>
+                </div>
+
+                {/* Live URL */}
+                {selectedSubmission.liveAppUrl && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Live URL</Label>
+                    <a
+                      href={selectedSubmission.liveAppUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm text-primary hover:underline break-all"
+                    >
+                      {selectedSubmission.liveAppUrl}
+                      <ExternalLink className="h-3 w-3 shrink-0" />
+                    </a>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                {selectedSubmission.status === "pending" && (
+                  <div className="flex gap-2 pt-2">
+                    <Button 
+                      className="flex-1 h-11 bg-success hover:bg-success/90" 
+                      onClick={() => handleReview("approved")}
+                    >
+                      <Check className="mr-1.5 h-4 w-4" />
+                      Approve
+                    </Button>
+                    <Button 
+                      variant="destructive"
+                      className="flex-1 h-11"
+                      onClick={() => handleReview("rejected")}
+                    >
+                      <X className="mr-1.5 h-4 w-4" />
+                      Reject
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Review Dialog */}
       <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>

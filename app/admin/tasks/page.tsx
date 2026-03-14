@@ -203,8 +203,8 @@ export default function TasksManagementPage() {
           </Card>
         )}
 
-        {/* Tasks Table */}
-        <Card className="border-border/30">
+        {/* Tasks Table - Desktop */}
+        <Card className="border-border/30 hidden md:block">
           <CardHeader>
             <CardTitle className="text-lg">All Tasks</CardTitle>
             <CardDescription>View and manage all created tasks.</CardDescription>
@@ -343,6 +343,109 @@ export default function TasksManagementPage() {
             </Table>
           </CardContent>
         </Card>
+
+        {/* Tasks List - Mobile */}
+        <div className="space-y-3 md:hidden">
+          <div className="flex items-center justify-between">
+            <h2 className="font-medium">All Tasks ({tasks.length})</h2>
+          </div>
+          {tasks.map((task) => {
+            const Icon = TASK_ICONS[task.type]
+            const meta = TASK_TYPE_META[task.type]
+            const statusStyle = STATUS_STYLES[task.status]
+            const progress = (task.currentSubmissions / task.maxSubmissions) * 100
+            const taskSubmissions = allSubmissions.filter((s) => s.taskId === task.id)
+            const pendingCount = taskSubmissions.filter((s) => s.status === "pending").length
+
+            return (
+              <Card 
+                key={task.id} 
+                className={cn(
+                  "border-border/30 touch-feedback",
+                  selectedTasks.has(task.id) && "border-primary/50 bg-primary/5"
+                )}
+              >
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      checked={selectedTasks.has(task.id)}
+                      onCheckedChange={() => toggleTaskSelection(task.id)}
+                      className="mt-1"
+                    />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium truncate">{task.title}</h3>
+                      <p className="text-xs text-muted-foreground line-clamp-1">{task.description}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline" className="border-border/30 text-xs">
+                      {meta.label}
+                    </Badge>
+                    <Badge variant="outline" className={cn(statusStyle.className, "text-xs")}>
+                      {statusStyle.label}
+                    </Badge>
+                    <span className="text-sm font-mono font-medium text-success">${task.reward.toFixed(2)}</span>
+                    {pendingCount > 0 && (
+                      <Badge variant="secondary" className="text-xs bg-warning/10 text-warning border-warning/20">
+                        {pendingCount} pending
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Progress value={progress} className="flex-1 h-2" />
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {task.currentSubmissions}/{task.maxSubmissions}
+                    </span>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" asChild className="flex-1 h-9">
+                      <Link href={`/admin/submissions?task=${task.id}`}>
+                        <Eye className="mr-1.5 h-3.5 w-3.5" />
+                        Submissions
+                      </Link>
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-9 px-2">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>Change Status</DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            <DropdownMenuItem onClick={() => handleStatusChange(task.id, "open")}>
+                              Open
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(task.id, "completed")}>
+                              Completed
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(task.id, "cancelled")}>
+                              Cancelled
+                            </DropdownMenuItem>
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                        <DropdownMenuItem 
+                          className="text-destructive"
+                          onClick={() => handleDelete(task.id)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
       </div>
     </AppShell>
   )
