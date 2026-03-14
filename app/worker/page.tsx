@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
+import { TaskDetail } from "@/components/tasks/task-detail"
 
 import {
   Dialog,
@@ -30,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Share2, Mail, Heart, DollarSign, Users, ExternalLink, Send, Filter, Calendar, Flame, Clock } from "lucide-react"
+import { Share2, Mail, Heart, Users, Filter, Flame, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getCurrentUser } from "@/lib/store"
 import { useSubmissions, useTasks, useCreateSubmission } from "@/hooks/use-store"

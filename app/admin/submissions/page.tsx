@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { SubmissionDetail } from "@/components/submissions/submission-detail"
 import {
   Select,
   SelectContent,
@@ -27,11 +28,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
-  Clock, Check, X, FileText, ExternalLink, Eye, ChevronDown,
-  MessageSquare, ImageIcon, Filter, Layers, ChevronRight, User, Calendar
+  Clock, Check, X, FileText, Filter, Layers, ChevronRight
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getTask } from "@/lib/store"
 import { useTasks, useSubmissions, useUpdateSubmissionStatus } from "@/hooks/use-store"
 import type { Submission, SubmissionStatus } from "@/lib/types"
 
