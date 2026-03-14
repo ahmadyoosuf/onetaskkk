@@ -5,7 +5,6 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { useQueryState, parseAsStringLiteral } from "nuqs"
-import ReactMarkdown from "react-markdown"
 import { useToast } from "@/hooks/use-toast"
 import { AppShell } from "@/components/app-shell"
 import { ErrorBoundary, DataErrorState } from "@/components/error-boundary"
@@ -16,7 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { ImageUpload } from "@/components/ui/image-upload"
-import { TaskDetail, TaskInstructionDetails } from "@/components/tasks/task-detail"
+import { TaskDetail } from "@/components/tasks/task-detail"
 
 import {
   Dialog,
@@ -40,7 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Share2, Mail, Heart, Users, Filter, Flame, Clock, DollarSign, Calendar, Send } from "lucide-react"
+import { Share2, Mail, Heart, Users, Filter, Flame, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getCurrentUser } from "@/lib/store"
 import { useSubmissions, useTasks, useCreateSubmission } from "@/hooks/use-store"
@@ -182,7 +181,7 @@ function TasksFeedContent() {
                   <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="social_media_posting">Social Media Posting</SelectItem>
                   <SelectItem value="email_sending">Email Sending</SelectItem>
-                  <SelectItem value="social_media_liking">Social Media</SelectItem>
+                <SelectItem value="social_media_liking">Social Media Liking</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
@@ -368,7 +367,9 @@ function TasksFeedContent() {
       {/* Mobile Task Detail Drawer */}
       <Drawer open={showMobileDrawer && !!selectedTask} onOpenChange={(open) => {
         setShowMobileDrawer(open)
-        if (!open) setSelectedTask(null)
+        // Only clear selectedTask if the submit dialog is not open — otherwise
+        // the dialog loses its task reference before it can render
+        if (!open && !showSubmitDialog) setSelectedTask(null)
       }}>
         <DrawerContent className="max-h-[85vh]">
           {selectedTask && (
@@ -387,57 +388,14 @@ function TasksFeedContent() {
                   </div>
                 </div>
               </DrawerHeader>
-              
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">{selectedTask.description}</p>
-
-                <div className="prose prose-sm max-w-none rounded-lg border border-border/30 bg-muted/30 p-3">
-                  <ReactMarkdown>{selectedTask.details}</ReactMarkdown>
-                </div>
-
-                <TaskInstructionDetails task={selectedTask} />
-                
-                {/* Stats */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-lg border border-border/30 p-3 text-center">
-                    <DollarSign className="mx-auto h-5 w-5 text-success" />
-                    <p className="mt-1 text-lg font-semibold">${selectedTask.reward.toFixed(2)}</p>
-                    <p className="text-xs text-muted-foreground">Reward</p>
-                  </div>
-                  <div className="rounded-lg border border-border/30 p-3 text-center">
-                    <Users className="mx-auto h-5 w-5 text-primary" />
-                    <p className="mt-1 text-lg font-semibold">
-                      {selectedTask.maxSubmissions - selectedTask.currentSubmissions}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Spots Left</p>
-                  </div>
-                </div>
-
-                {selectedTask.deadline && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    Deadline: {selectedTask.deadline.toLocaleDateString()}
-                  </div>
-                )}
-
-                {isSubmitLocked && (
-                  <p className="rounded-lg border border-warning/20 bg-warning/10 p-3 text-sm text-warning">
-                    You have already submitted this task. Additional submissions are disabled.
-                  </p>
-                )}
-
-                <Button
-                  className="w-full h-11"
-                  onClick={() => {
-                    setShowMobileDrawer(false)
-                    setShowSubmitDialog(true)
-                  }}
-                  disabled={isSubmitLocked}
-                >
-                  <Send className="mr-2 h-4 w-4" />
-                  Submit Work
-                </Button>
-              </div>
+              <TaskDetail
+                task={selectedTask}
+                isSubmitLocked={isSubmitLocked}
+                onSubmit={() => {
+                  setShowMobileDrawer(false)
+                  setShowSubmitDialog(true)
+                }}
+              />
             </div>
           )}
         </DrawerContent>
@@ -446,7 +404,10 @@ function TasksFeedContent() {
       {/* Submit Work Dialog */}
       <Dialog open={showSubmitDialog} onOpenChange={(open) => {
         setShowSubmitDialog(open)
-        if (!open) reset()
+        if (!open) {
+          reset()
+          setSelectedTask(null)
+        }
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
