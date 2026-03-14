@@ -229,6 +229,54 @@ ThemeToggle component placed in the app-shell header and also inside the user dr
 
 ---
 
+---
+
+## Prompt 11: IndexedDB Migration & State Management Overhaul
+
+Major architectural corrections to address production-readiness concerns:
+
+**1. localStorage to IndexedDB.** The 5MB localStorage ceiling was a ticking time bomb with 500 tasks + base64 images. Migrated to `idb-keyval` which wraps IndexedDB in a simple async key-value API. All store operations are now async. The `initializeStore()` function handles first-run seeding and subsequent hydration from IndexedDB.
+
+**2. Image persistence via base64.** The image upload component was using `URL.createObjectURL()` which creates ephemeral `blob:` URLs that vanish on page reload. Rewrote to use FileReader to convert images to base64 data URIs. Images now persist in IndexedDB alongside the submission data.
+
+**3. Gutted useSyncExternalStore.** The pub/sub pattern was conflicting with TanStack Query's own reactivity. Removed the custom `subscribe()`/`notify()` machinery entirely. TanStack Query now manages all state and loading flags, including the PRD-mandated 1-3s simulated fetch delays via `queryFn`.
+
+**4. Description field made optional.** The zod schema had a 20-character minimum on description which blocked creating tasks with short or empty descriptions. Changed to `.optional().or(z.literal(""))`.
+
+**5. SubmissionDetail now shows full task context.** PRD's ADHD UX requirement: users shouldn't have to remember what task they're reviewing. Added collapsible task details (title, description, type-specific fields, instructions) directly in the submission detail panel.
+
+**6. Submissions page sortBy.** Implemented the missing sort dropdown with three options: Newest First, Oldest First, By Status. Uses nuqs for URL state persistence.
+
+**7. TasksTable pagination.** Added TanStack Table pagination (10 items per page) with full navigation controls to prevent DOM explosion on large task sets.
+
+**8. Mobile card virtualization.** The admin tasks page mobile view was rendering all 500 cards. Wrapped in TanStack Virtual with `estimateSize: 200` and `overscan: 5`.
+
+**9. Bulk edit validation.** Added guard to prevent setting maxSubmissions below any selected task's currentSubmissions. Shows toast with the minimum allowed value.
+
+---
+
+## Prompt 12: Unified API Layer & ADHD UX Fixes
+
+Continued architectural hardening:
+
+**1. Unified `api` object.** PRD mandates "Server Experience" - Client Components should never touch raw data arrays. Created `api` object in store.ts that encapsulates all CRUD operations:
+```typescript
+export const api = {
+  tasks: { list, get, create, update, updateStatus, delete },
+  submissions: { list, get, create, updateStatus },
+  users: { current, admin },
+}
+```
+Updated `use-store.ts` and worker page to exclusively use this API layer. Makes future migration to real API routes trivial.
+
+**2. Mock data distribution fix.** Submissions were only being assigned to the first 200 tasks due to `taskIndex = i % 200`. Changed to `i % generatedTasks.length` so all 500 tasks get submissions.
+
+**3. Widened instructions panel.** Worker feed detail panel was `lg:w-80 xl:w-96` which cramped the task instructions. Widened to `lg:w-96 xl:w-[28rem]` for ADHD-friendly readability.
+
+**4. Bulk delete confirmation dialog.** Added mandatory confirmation for bulk delete with explicit warning about permanent deletion and orphaned submissions. Prevents accidental data loss per ADHD UX requirement.
+
+---
+
 ## AI Tools Used
 
 - **Claude (via v0.dev)** - All code generation, refactoring, and debugging across all prompts
