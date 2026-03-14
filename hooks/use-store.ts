@@ -1,11 +1,7 @@
 "use client"
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { useSyncExternalStore } from "react"
 import { 
-  subscribe, 
-  getTasksSnapshot, 
-  getSubmissionsSnapshot,
   fetchTasks,
   fetchSubmissions,
   createTask,
@@ -15,37 +11,34 @@ import {
   createSubmission,
   updateSubmissionStatus,
 } from "@/lib/store"
-import type { Task, Submission, TaskStatus, SubmissionStatus } from "@/lib/types"
+import type { Task, Submission, TaskStatus } from "@/lib/types"
 
 /**
- * TanStack Query-powered tasks hook with proper data flow:
- * - TanStack Query handles async fetching, caching, revalidation, and loading/error states
- * - useSyncExternalStore provides instant reactivity for local mutations
- * - Mutations automatically invalidate queries on success
+ * TanStack Query-powered hooks with PRD-mandated 1-3s simulated fetch delays.
+ * 
+ * Architecture:
+ * - TanStack Query is the single source of truth for async state
+ * - No useSyncExternalStore or pub/sub - Query handles caching & revalidation
+ * - isLoading reflects actual async fetch state (respects simulated delays)
+ * - Mutations invalidate queries, triggering re-fetch with delays
  */
+
 export function useTasks(): { 
   tasks: Task[]
   isLoading: boolean
   error: Error | null
   refetch: () => void
 } {
-  // Live snapshot for instant UI updates after local mutations
-  const snapshot = useSyncExternalStore(subscribe, getTasksSnapshot, getTasksSnapshot)
-  
-  // TanStack Query for async fetching, caching, and loading states
   const { data, error, isLoading, refetch } = useQuery({
     queryKey: ["tasks"],
     queryFn: fetchTasks,
-    initialData: snapshot.length > 0 ? snapshot : undefined,
+    staleTime: 30_000, // Consider data fresh for 30s
+    gcTime: 5 * 60_000, // Keep in cache for 5 min
   })
 
-  // Prefer live snapshot over query cache for immediate reactivity
-  // Query data is used during initial load before snapshot is populated
-  const tasks = snapshot.length > 0 ? snapshot : (data ?? [])
-
   return { 
-    tasks,
-    isLoading: isLoading && snapshot.length === 0,
+    tasks: data ?? [],
+    isLoading,
     error: error ?? null,
     refetch,
   }
@@ -57,26 +50,24 @@ export function useSubmissions(): {
   error: Error | null
   refetch: () => void
 } {
-  const snapshot = useSyncExternalStore(subscribe, getSubmissionsSnapshot, getSubmissionsSnapshot)
-  
   const { data, error, isLoading, refetch } = useQuery({
     queryKey: ["submissions"],
     queryFn: fetchSubmissions,
-    initialData: snapshot.length > 0 ? snapshot : undefined,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
   })
 
-  const submissions = snapshot.length > 0 ? snapshot : (data ?? [])
-
   return { 
-    submissions,
-    isLoading: isLoading && snapshot.length === 0,
+    submissions: data ?? [],
+    isLoading,
     error: error ?? null,
     refetch,
   }
 }
 
 /**
- * Mutation hooks for task operations with automatic cache invalidation
+ * Mutation hooks for task operations with automatic cache invalidation.
+ * Mutations use optimistic updates where appropriate.
  */
 export function useCreateTask() {
   const queryClient = useQueryClient()

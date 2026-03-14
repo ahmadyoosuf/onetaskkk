@@ -1,9 +1,11 @@
+import { get, set } from "idb-keyval"
 import type { Task, Submission, User, TaskType, Platform } from "./types"
 
-// ─── LocalStorage Persistence ────────────────────────────────
+// ─── IndexedDB Persistence ────────────────────────────────────
 const STORAGE_KEYS = {
   tasks: "taskmarket_tasks_v2",
   submissions: "taskmarket_submissions_v2",
+  initialized: "taskmarket_initialized_v2",
 } as const
 
 function reviveDates(_key: string, value: unknown): unknown {
@@ -13,23 +15,29 @@ function reviveDates(_key: string, value: unknown): unknown {
   return value
 }
 
-function loadFromStorage<T>(key: string): T[] | null {
+async function loadFromIndexedDB<T>(key: string): Promise<T[] | null> {
   if (typeof window === "undefined") return null
   try {
-    const raw = localStorage.getItem(key)
+    const raw = await get(key)
     if (!raw) return null
-    return JSON.parse(raw, reviveDates) as T[]
+    // idb-keyval stores objects directly, but we stored JSON strings for date revival
+    if (typeof raw === "string") {
+      return JSON.parse(raw, reviveDates) as T[]
+    }
+    // Handle direct object storage with manual date revival
+    return JSON.parse(JSON.stringify(raw), reviveDates) as T[]
   } catch {
     return null
   }
 }
 
-function saveToStorage<T>(key: string, data: T[]): void {
+async function saveToIndexedDB<T>(key: string, data: T[]): Promise<void> {
   if (typeof window === "undefined") return
   try {
-    localStorage.setItem(key, JSON.stringify(data))
+    // Store as JSON string to preserve date serialization
+    await set(key, JSON.stringify(data))
   } catch {
-    // Ignore storage errors (e.g. private browsing, quota exceeded)
+    // Ignore storage errors
   }
 }
 
@@ -78,53 +86,13 @@ async function simulateMutationDelay<T>(data: T): Promise<T> {
   return data
 }
 
-// ─── Simple Pub/Sub for Reactivity ──────────────────────────
-type Listener = () => void
-const listeners = new Set<Listener>()
-
-export function subscribe(listener: Listener): () => void {
-  listeners.add(listener)
-  return () => listeners.delete(listener)
-}
-
-function notify() {
-  tasksSnapshot = [...tasks]
-  submissionsSnapshot = [...submissions]
-  saveToStorage(STORAGE_KEYS.tasks, tasks)
-  saveToStorage(STORAGE_KEYS.submissions, submissions)
-  listeners.forEach((listener) => listener())
-}
-
-// Cached snapshots for useSyncExternalStore (must be referentially stable)
-let tasksSnapshot: Task[] = []
-let submissionsSnapshot: Submission[] = []
-
-export function getTasksSnapshot(): Task[] {
-  return tasksSnapshot
-}
-
-export function getSubmissionsSnapshot(): Submission[] {
-  return submissionsSnapshot
-}
-
-// ─── Async Fetchers for Query Hooks ──────────────────────────
-export async function fetchTasks(): Promise<Task[]> {
-  const data = [...tasks].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-  return simulateFetchDelay(data)
-}
-
-export async function fetchSubmissions(): Promise<Submission[]> {
-  const data = [...submissions].sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime())
-  return simulateFetchDelay(data)
-}
-
 // ─── Mock Data Generation ───────────────────────────────────
 const TASK_TEMPLATES = {
   social_media_posting: [
     { title: "Announce Our Product Launch", description: "Post our product launch announcement on your LinkedIn profile to reach your professional network.", platform: "linkedin" as Platform, postContent: "Excited to announce the launch of onetaskkk — the fastest way to get micro-tasks done! Check it out at taskmarket.io #ProductLaunch #SaaS", accountHandle: "" },
-    { title: "Tweet About Our New Feature", description: "Share our new feature release tweet on your Twitter/X account.", platform: "twitter" as Platform, postContent: "Just discovered @onetaskkk's new AI-powered task matching. This is a game-changer for freelancers! 🚀 #freelance #productivity", accountHandle: "" },
+    { title: "Tweet About Our New Feature", description: "Share our new feature release tweet on your Twitter/X account.", platform: "twitter" as Platform, postContent: "Just discovered @onetaskkk's new AI-powered task matching. This is a game-changer for freelancers! #freelance #productivity", accountHandle: "" },
     { title: "LinkedIn Thought Leadership Post", description: "Post a thought leadership piece on LinkedIn tagging our brand.", platform: "linkedin" as Platform, postContent: "The future of work is micro-tasks. Here's why platforms like onetaskkk are reshaping the gig economy... [thread]", accountHandle: "" },
-    { title: "Instagram Story Mention", description: "Post an Instagram story mentioning our brand and linking to our profile.", platform: "instagram" as Platform, postContent: "Using @taskmarket_app to earn money completing quick tasks from my phone! So easy 💸", accountHandle: "" },
+    { title: "Instagram Story Mention", description: "Post an Instagram story mentioning our brand and linking to our profile.", platform: "instagram" as Platform, postContent: "Using @taskmarket_app to earn money completing quick tasks from my phone! So easy", accountHandle: "" },
     { title: "Share Our Case Study on LinkedIn", description: "Share our latest customer case study post on your LinkedIn feed.", platform: "linkedin" as Platform, postContent: "How a small team used onetaskkk to complete 10,000 micro-tasks in under a week. Full case study linked below. #CaseStudy #GrowthHacking", accountHandle: "" },
   ],
   email_sending: [
@@ -244,24 +212,62 @@ function generateMockSubmissions(generatedTasks: Task[]): Submission[] {
 }
 
 // ─── In-Memory Store ────────────────────────────────────────
-const storedTasks = loadFromStorage<Task>(STORAGE_KEYS.tasks)
-const generatedTasks = storedTasks ?? generateMockTasks()
-let tasks: Task[] = generatedTasks.map(withTaskDefaults)
-let submissions: Submission[] = loadFromStorage<Submission>(STORAGE_KEYS.submissions) ?? generateMockSubmissions(tasks)
+let tasks: Task[] = []
+let submissions: Submission[] = []
+let storeInitialized = false
+let initPromise: Promise<void> | null = null
 
-// Initialize snapshots
-tasksSnapshot = [...tasks]
-submissionsSnapshot = [...submissions]
+// Initialize store from IndexedDB (async)
+async function initializeStore(): Promise<void> {
+  if (storeInitialized) return
+  if (initPromise) return initPromise
+  
+  initPromise = (async () => {
+    const storedTasks = await loadFromIndexedDB<Task>(STORAGE_KEYS.tasks)
+    const storedSubmissions = await loadFromIndexedDB<Submission>(STORAGE_KEYS.submissions)
+    
+    if (storedTasks && storedTasks.length > 0) {
+      tasks = storedTasks.map(withTaskDefaults)
+      submissions = storedSubmissions ?? []
+    } else {
+      // First time: generate mock data
+      const generatedTasks = generateMockTasks()
+      tasks = generatedTasks.map(withTaskDefaults)
+      submissions = generateMockSubmissions(tasks)
+      
+      // Persist initial data to IndexedDB
+      await saveToIndexedDB(STORAGE_KEYS.tasks, tasks)
+      await saveToIndexedDB(STORAGE_KEYS.submissions, submissions)
+    }
+    
+    storeInitialized = true
+  })()
+  
+  return initPromise
+}
 
-// Persist initial data to localStorage (seeds first-time visitors)
-saveToStorage(STORAGE_KEYS.tasks, tasks)
-saveToStorage(STORAGE_KEYS.submissions, submissions)
+// Persist data to IndexedDB (debounced to avoid excessive writes)
+let persistTimeout: ReturnType<typeof setTimeout> | null = null
+function schedulePersist(): void {
+  if (persistTimeout) clearTimeout(persistTimeout)
+  persistTimeout = setTimeout(async () => {
+    await saveToIndexedDB(STORAGE_KEYS.tasks, tasks)
+    await saveToIndexedDB(STORAGE_KEYS.submissions, submissions)
+  }, 100)
+}
 
-const users: User[] = [
-  { id: "admin-1", name: "Admin User", email: "admin@yoke.app", role: "admin" },
-  { id: "user-1", name: "Alice Johnson", email: "alice@example.com", role: "worker" },
-  { id: "user-2", name: "Bob Smith", email: "bob@example.com", role: "worker" },
-]
+// ─── Async Fetchers for Query Hooks ──────────────────────────
+export async function fetchTasks(): Promise<Task[]> {
+  await initializeStore()
+  const data = [...tasks].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+  return simulateFetchDelay(data)
+}
+
+export async function fetchSubmissions(): Promise<Submission[]> {
+  await initializeStore()
+  const data = [...submissions].sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime())
+  return simulateFetchDelay(data)
+}
 
 // ─── Task Operations ────────────────────────────────────────
 export function getTasks(): Task[] {
@@ -289,6 +295,8 @@ type CreateTaskInput =
   | (CreateTaskInputBase & { type: "social_media_liking"; taskDetails: { postUrl: string; platform: Platform } })
 
 export async function createTask(input: CreateTaskInput): Promise<Task> {
+  await initializeStore()
+  
   const newTask: Task = {
     id: `task-${Date.now()}`,
     title: input.title,
@@ -308,16 +316,18 @@ export async function createTask(input: CreateTaskInput): Promise<Task> {
   
   await simulateMutationDelay(null)
   tasks = [newTask, ...tasks]
-  notify()
+  schedulePersist()
   return newTask
 }
 
 export async function updateTask(id: string, updates: Partial<Task>): Promise<Task | undefined> {
+  await initializeStore()
+  
   const index = tasks.findIndex((t) => t.id === id)
   if (index === -1) return undefined
   await simulateMutationDelay(null)
   tasks[index] = { ...tasks[index], ...updates } as Task
-  notify()
+  schedulePersist()
   return tasks[index]
 }
 
@@ -326,11 +336,13 @@ export async function updateTaskStatus(id: string, status: "open" | "completed" 
 }
 
 export async function deleteTask(id: string): Promise<boolean> {
+  await initializeStore()
+  
   const initialLength = tasks.length
   await simulateMutationDelay(null)
   tasks = tasks.filter((t) => t.id !== id)
   const deleted = tasks.length < initialLength
-  if (deleted) notify()
+  if (deleted) schedulePersist()
   return deleted
 }
 
@@ -345,6 +357,8 @@ export function getSubmission(id: string): Submission | undefined {
 }
 
 export async function createSubmission(submission: Omit<Submission, "id" | "submittedAt" | "status">): Promise<Submission> {
+  await initializeStore()
+  
   const taskIndex = tasks.findIndex((t) => t.id === submission.taskId)
   if (taskIndex === -1) {
     throw new Error("Task not found")
@@ -379,7 +393,7 @@ export async function createSubmission(submission: Omit<Submission, "id" | "subm
   const newStatus = newCount >= task.maxSubmissions ? "completed" : task.status
   tasks[taskIndex] = { ...task, currentSubmissions: newCount, status: newStatus }
   
-  notify()
+  schedulePersist()
   return newSubmission
 }
 
@@ -388,6 +402,8 @@ export async function updateSubmissionStatus(
   status: "approved" | "rejected",
   adminNotes?: string
 ): Promise<Submission | undefined> {
+  await initializeStore()
+  
   const index = submissions.findIndex((s) => s.id === id)
   if (index === -1) return undefined
   await simulateMutationDelay(null)
@@ -397,11 +413,17 @@ export async function updateSubmissionStatus(
     reviewedAt: new Date(),
     adminNotes,
   }
-  notify()
+  schedulePersist()
   return submissions[index]
 }
 
 // ─── User Operations ────────────────────────────────────────
+const users: User[] = [
+  { id: "admin-1", name: "Admin User", email: "admin@yoke.app", role: "admin" },
+  { id: "user-1", name: "Alice Johnson", email: "alice@example.com", role: "worker" },
+  { id: "user-2", name: "Bob Smith", email: "bob@example.com", role: "worker" },
+]
+
 export function getCurrentUser(): User {
   return users[1]
 }

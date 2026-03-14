@@ -1,18 +1,28 @@
 "use client"
 
-import { useRef, useState } from "react"
-import { ImageIcon, Upload, X } from "lucide-react"
+import { useRef, useState, useCallback } from "react"
+import { ImageIcon, Upload, X, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface ImageUploadProps {
   value?: string
-  onChange: (objectUrl: string | undefined) => void
+  onChange: (dataUri: string | undefined) => void
   error?: string
   label?: string
   required?: boolean
   className?: string
 }
 
+/**
+ * Image upload component that converts files to base64 data URIs.
+ * 
+ * Benefits over blob: URLs:
+ * - Persists across sessions (no ephemeral object URLs)
+ * - Can be stored directly in IndexedDB
+ * - Serializable for form state
+ * 
+ * Note: For large images, consider compression before conversion.
+ */
 export function ImageUpload({
   value,
   onChange,
@@ -23,15 +33,43 @@ export function ImageUpload({
 }: ImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [isConverting, setIsConverting] = useState(false)
 
-  const handleFile = (file: File) => {
+  const fileToBase64 = useCallback((file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        if (typeof reader.result === "string") {
+          resolve(reader.result)
+        } else {
+          reject(new Error("Failed to convert file to base64"))
+        }
+      }
+      reader.onerror = () => reject(reader.error)
+      reader.readAsDataURL(file)
+    })
+  }, [])
+
+  const handleFile = useCallback(async (file: File) => {
     if (!file.type.startsWith("image/")) return
-    // Revoke previous object URL to avoid memory leaks
-    if (value?.startsWith("blob:")) {
-      URL.revokeObjectURL(value)
+    
+    // Validate file size (max 5MB to avoid IndexedDB bloat)
+    const MAX_SIZE = 5 * 1024 * 1024
+    if (file.size > MAX_SIZE) {
+      console.warn("[v0] Image too large, skipping (max 5MB)")
+      return
     }
-    onChange(URL.createObjectURL(file))
-  }
+    
+    setIsConverting(true)
+    try {
+      const dataUri = await fileToBase64(file)
+      onChange(dataUri)
+    } catch (err) {
+      console.error("[v0] Failed to convert image:", err)
+    } finally {
+      setIsConverting(false)
+    }
+  }, [fileToBase64, onChange])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -49,9 +87,11 @@ export function ImageUpload({
 
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (value?.startsWith("blob:")) URL.revokeObjectURL(value)
     onChange(undefined)
   }
+
+  // Check if value is a valid data URI or URL
+  const hasImage = value && (value.startsWith("data:image/") || value.startsWith("http"))
 
   return (
     <div className={cn("space-y-2", className)}>
@@ -70,7 +110,13 @@ export function ImageUpload({
         aria-label={`Upload ${label}`}
       />
 
-      {value ? (
+      {isConverting ? (
+        // Converting state
+        <div className="flex h-36 w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-primary/40 bg-primary/5">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Processing image...</p>
+        </div>
+      ) : hasImage ? (
         // Preview state
         <div className="relative overflow-hidden rounded-lg border border-border/40 bg-muted/30">
           <img
@@ -122,7 +168,7 @@ export function ImageUpload({
             <p className="text-sm font-medium">
               {isDragging ? "Drop to upload" : "Click or drag & drop"}
             </p>
-            <p className="text-xs text-muted-foreground">PNG, JPG, WEBP supported</p>
+            <p className="text-xs text-muted-foreground">PNG, JPG, WEBP (max 5MB)</p>
           </div>
         </button>
       )}
