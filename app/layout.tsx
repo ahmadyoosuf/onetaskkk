@@ -1,3 +1,5 @@
+'use client'
+
 import type { Metadata, Viewport } from 'next'
 import { Space_Grotesk, IBM_Plex_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
@@ -43,7 +45,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  if (typeof window !== 'undefined') throw new Error('DEV_TEST_ERROR: This is a temporary test error for development preview.');
+  throw new Error('DEV_TEST_ERROR: Temporary test error');
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
