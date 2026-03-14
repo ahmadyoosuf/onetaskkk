@@ -1,5 +1,5 @@
 // ─── Task Types ─────────────────────────────────────────────
-export type TaskType = "form_submission" | "email_sending" | "social_media_liking"
+export type TaskType = "social_media_posting" | "email_sending" | "social_media_liking"
 export type TaskStatus = "open" | "completed" | "cancelled"
 export type SubmissionStatus = "pending" | "approved" | "rejected"
 export type Platform = "linkedin" | "twitter" | "instagram"
@@ -19,11 +19,12 @@ export interface BaseTask {
   deadline?: Date
 }
 
-export interface FormSubmissionTask extends BaseTask {
-  type: "form_submission"
+export interface SocialMediaPostingTask extends BaseTask {
+  type: "social_media_posting"
   details: {
-    targetUrl: string
-    formFields: string[]
+    platform: Platform
+    postContent: string
+    accountHandle?: string
   }
 }
 
@@ -43,7 +44,7 @@ export interface SocialMediaLikingTask extends BaseTask {
   }
 }
 
-export type Task = FormSubmissionTask | EmailSendingTask | SocialMediaLikingTask
+export type Task = SocialMediaPostingTask | EmailSendingTask | SocialMediaLikingTask
 
 // ─── Submission ─────────────────────────────────────────────
 export interface Submission {
@@ -69,9 +70,9 @@ export interface User {
 
 // ─── Task Type Metadata ─────────────────────────────────────
 export const TASK_TYPE_META: Record<TaskType, { label: string; description: string }> = {
-  form_submission: {
-    label: "Form Submission",
-    description: "Workers fill out a target form with specified fields",
+  social_media_posting: {
+    label: "Social Media Posting",
+    description: "Workers post your content on their social media accounts",
   },
   email_sending: {
     label: "Email Sending", 

@@ -30,10 +30,16 @@ const baseTaskSchema = z.object({
 })
 
 // ─── Type-Specific Schemas ──────────────────────────────────
-export const formSubmissionSchema = baseTaskSchema.extend({
-  type: z.literal("form_submission"),
-  targetUrl: z.string().url("Must be a valid URL"),
-  formFields: z.string().min(1, "At least one form field is required"),
+export const socialMediaPostingSchema = baseTaskSchema.extend({
+  type: z.literal("social_media_posting"),
+  platform: z.enum(["linkedin", "twitter", "instagram"], {
+    errorMap: () => ({ message: "Please select a platform" }),
+  }),
+  postContent: z
+    .string()
+    .min(10, "Post content must be at least 10 characters")
+    .max(1000, "Post content must be less than 1000 characters"),
+  accountHandle: z.string().optional(),
 })
 
 export const emailSendingSchema = baseTaskSchema.extend({
@@ -55,13 +61,13 @@ export const socialMediaLikingSchema = baseTaskSchema.extend({
 
 // ─── Union Schema ───────────────────────────────────────────
 export const taskFormSchema = z.discriminatedUnion("type", [
-  formSubmissionSchema,
+  socialMediaPostingSchema,
   emailSendingSchema,
   socialMediaLikingSchema,
 ])
 
 export type TaskFormData = z.infer<typeof taskFormSchema>
-export type FormSubmissionData = z.infer<typeof formSubmissionSchema>
+export type SocialMediaPostingData = z.infer<typeof socialMediaPostingSchema>
 export type EmailSendingData = z.infer<typeof emailSendingSchema>
 export type SocialMediaLikingData = z.infer<typeof socialMediaLikingSchema>
 

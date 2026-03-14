@@ -26,7 +26,7 @@ import {
   DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
-  FileText, Mail, Heart, Plus, MoreHorizontal, Eye, Trash2,
+  Share2, Mail, Heart, Plus, MoreHorizontal, Eye, Trash2,
   DollarSign, ListTodo, Clock, Users
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -36,8 +36,8 @@ import { useToast } from "@/hooks/use-toast"
 import type { Task, TaskType, TaskStatus } from "@/lib/types"
 import { TASK_TYPE_META } from "@/lib/types"
 
-const TASK_ICONS: Record<TaskType, typeof FileText> = {
-  form_submission: FileText,
+const TASK_ICONS: Record<TaskType, typeof Share2> = {
+  social_media_posting: Share2,
   email_sending: Mail,
   social_media_liking: Heart,
 }
@@ -138,7 +138,7 @@ export default function TasksManagementPage() {
   const totalSubmissions = submissions.length
 
   return (
-    <AppShell>
+      <AppShell role="admin">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

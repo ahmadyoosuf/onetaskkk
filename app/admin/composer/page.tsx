@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-import { FileText, Mail, Heart, Plus } from "lucide-react"
+import { Share2, Mail, Heart, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createTask } from "@/lib/store"
 import { taskFormSchema, type TaskFormData } from "@/lib/schemas"
@@ -23,12 +23,12 @@ import { RewardField } from "@/components/composer/reward-field"
 import { MaxSubmissionsField } from "@/components/composer/max-submissions-field"
 import { AllowMultipleSubmissionsField } from "@/components/composer/allow-multiple-submissions-field"
 import { DeadlineField } from "@/components/composer/deadline-field"
-import { FormSubmissionFields } from "@/components/composer/form-submission-fields"
+import { SocialMediaPostingFields } from "@/components/composer/social-media-posting-fields"
 import { EmailSendingFields } from "@/components/composer/email-sending-fields"
 import { SocialMediaFields } from "@/components/composer/social-media-fields"
 
-const TASK_TYPES: { value: TaskType; icon: typeof FileText }[] = [
-  { value: "form_submission", icon: FileText },
+const TASK_TYPES: { value: TaskType; icon: typeof Share2 }[] = [
+  { value: "social_media_posting", icon: Share2 },
   { value: "email_sending", icon: Mail },
   { value: "social_media_liking", icon: Heart },
 ]
@@ -36,19 +36,20 @@ const TASK_TYPES: { value: TaskType; icon: typeof FileText }[] = [
 export default function TaskComposerPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const [taskType, setTaskType] = useState<TaskType>("form_submission")
+  const [taskType, setTaskType] = useState<TaskType>("social_media_posting")
 
   const methods = useForm<TaskFormData>({
     resolver: zodResolver(taskFormSchema),
     defaultValues: {
-      type: "form_submission",
+      type: "social_media_posting",
       title: "",
       description: "",
       reward: 5,
       maxSubmissions: 100,
       allowMultipleSubmissions: false,
-      targetUrl: "",
-      formFields: "",
+      platform: undefined,
+      postContent: "",
+      accountHandle: "",
     },
     mode: "onBlur",
   })
@@ -62,9 +63,9 @@ export default function TaskComposerPage() {
 
   const onSubmit = async (data: TaskFormData) => {
     try {
-      if (data.type === "form_submission") {
+      if (data.type === "social_media_posting") {
         await createTask({
-          type: "form_submission",
+          type: "social_media_posting",
           title: data.title,
           description: data.description,
           reward: data.reward,
@@ -72,8 +73,9 @@ export default function TaskComposerPage() {
           allowMultipleSubmissions: data.allowMultipleSubmissions,
           deadline: data.deadline,
           details: {
-            targetUrl: data.targetUrl,
-            formFields: data.formFields.split(",").map((f) => f.trim()).filter(Boolean),
+            platform: data.platform,
+            postContent: data.postContent,
+            accountHandle: data.accountHandle || undefined,
           },
         })
       } else if (data.type === "email_sending") {
@@ -120,7 +122,7 @@ export default function TaskComposerPage() {
   }
 
   return (
-    <AppShell>
+    <AppShell role="admin">
       <div className="mx-auto max-w-2xl space-y-6">
         {/* Page Header */}
         <div>
@@ -213,7 +215,7 @@ export default function TaskComposerPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {taskType === "form_submission" && <FormSubmissionFields />}
+                {taskType === "social_media_posting" && <SocialMediaPostingFields />}
                 {taskType === "email_sending" && <EmailSendingFields />}
                 {taskType === "social_media_liking" && <SocialMediaFields />}
               </CardContent>
