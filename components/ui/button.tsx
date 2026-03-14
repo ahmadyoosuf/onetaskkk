@@ -60,11 +60,15 @@ function Button({
   ...props
 }: ButtonProps) {
   if (asChild) {
+    const isDisabled = disabled || loading
     return (
       <Slot
         data-slot="button"
-        className={cn(buttonVariants({ variant, size, className }))}
-        disabled={disabled || loading}
+        className={cn(
+          buttonVariants({ variant, size, className }),
+          isDisabled && 'pointer-events-none opacity-50',
+        )}
+        aria-disabled={isDisabled || undefined}
         {...props}
       >
         {children}
