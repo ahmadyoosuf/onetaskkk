@@ -88,13 +88,15 @@ export function AppShell({ children, role }: AppShellProps) {
 
           {/* User Menu */}
           <div className="flex items-center gap-2">
-            <Link
-              href="/"
+            <button
+              onClick={() => {
+                logout()
+              }}
               className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground shrink-0 touch-feedback"
             >
               <ArrowLeftRight className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Switch</span>
-            </Link>
+              <span className="hidden sm:inline">Switch Role</span>
+            </button>
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

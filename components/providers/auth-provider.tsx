@@ -1,9 +1,9 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, useSyncExternalStore } from "react"
-import { usePathname, useRouter } from "next/navigation"
+import { createContext, useContext, useEffect, useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
+import { getUserInitials } from "@/lib/mock-users"
 import type { User } from "@/lib/types"
-import { getLoggedInUser, logout as authLogout, getUserInitials } from "@/lib/auth"
 
 interface AuthContextValue {
   user: User | null
@@ -14,79 +14,28 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-// Simple store for auth state changes
-let authListeners = new Set<() => void>()
-let currentUser: User | null = null
-
-function subscribeAuth(listener: () => void) {
-  authListeners.add(listener)
-  return () => authListeners.delete(listener)
-}
-
-function getAuthSnapshot() {
-  return currentUser
-}
-
-function notifyAuthChange() {
-  currentUser = getLoggedInUser()
-  authListeners.forEach((listener) => listener())
-}
-
-// Public routes that don't require authentication
-const PUBLIC_ROUTES = ["/login", "/"]
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
   const router = useRouter()
+  const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  
-  // Use useSyncExternalStore for auth state
-  const user = useSyncExternalStore(subscribeAuth, getAuthSnapshot, () => null)
 
-  // Initialize auth state on mount
+  // Fetch session on mount
   useEffect(() => {
-    notifyAuthChange()
-    setIsLoading(false)
+    fetch("/api/auth/session")
+      .then((res) => res.json())
+      .then((data) => setUser(data.user ?? null))
+      .catch(() => setUser(null))
+      .finally(() => setIsLoading(false))
   }, [])
 
-  // Handle redirects
-  useEffect(() => {
-    if (isLoading) return
-
-    const isPublicRoute = PUBLIC_ROUTES.includes(pathname)
-    const isAuthenticated = user !== null
-
-    // Redirect to login if not authenticated and on protected route
-    if (!isAuthenticated && !isPublicRoute) {
-      router.push("/login")
-    }
-    
-    // Redirect away from login if already authenticated
-    if (isAuthenticated && pathname === "/login") {
-      if (user?.role === "admin") {
-        router.push("/admin/tasks")
-      } else {
-        router.push("/worker")
-      }
-    }
-  }, [isLoading, user, pathname, router])
-
-  const handleLogout = () => {
-    authLogout()
-    notifyAuthChange()
-    router.push("/login")
-  }
+  const handleLogout = useCallback(async () => {
+    await fetch("/api/auth/logout", { method: "POST" })
+    setUser(null)
+    router.push("/")
+    router.refresh()
+  }, [router])
 
   const initials = user ? getUserInitials(user.name) : ""
-
-  // Show nothing while checking auth on protected routes
-  if (isLoading && !PUBLIC_ROUTES.includes(pathname)) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-      </div>
-    )
-  }
 
   return (
     <AuthContext.Provider value={{ user, isLoading, logout: handleLogout, initials }}>

@@ -1,45 +1,90 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useMemo, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
 import Image from "next/image"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { LogIn, ShieldCheck, ListTodo } from "lucide-react"
+import { LogIn, ShieldCheck, ListTodo, ArrowLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { loginAs, MOCK_USERS } from "@/lib/auth"
+import { MOCK_USERS } from "@/lib/mock-users"
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <main className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      </main>
+    }>
+      <LoginContent />
+    </Suspense>
+  )
+}
+
+function LoginContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const roleParam = searchParams.get("role") as "worker" | "admin" | null
+
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Filter users based on the selected role from URL parameter
+  const filteredUsers = useMemo(() => {
+    if (!roleParam) return MOCK_USERS
+    return MOCK_USERS.filter((user) => user.role === roleParam)
+  }, [roleParam])
+
+  const roleLabel = roleParam === "admin" ? "Admin" : roleParam === "worker" ? "Worker" : null
+  const selectedUser = filteredUsers.find((u) => u.id === selectedUserId)
 
   const handleLogin = async () => {
     if (!selectedUserId) return
     setIsLoading(true)
-    
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    
-    const user = loginAs(selectedUserId)
-    if (user) {
-      // Redirect based on role
-      if (user.role === "admin") {
-        router.push("/admin/tasks")
-      } else {
-        router.push("/worker")
-      }
-    }
-    setIsLoading(false)
-  }
+    setError(null)
 
-  const selectedUser = MOCK_USERS.find((u) => u.id === selectedUserId)
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: selectedUserId }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error || "Sign in failed")
+        setIsLoading(false)
+        return
+      }
+
+      // Redirect to the appropriate dashboard
+      router.push(data.redirectTo)
+      router.refresh()
+    } catch {
+      setError("An unexpected error occurred.")
+      setIsLoading(false)
+    }
+  }
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
+      {/* Back to role selection */}
+      {roleParam && (
+        <Link
+          href="/"
+          className="absolute top-6 left-6 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Link>
+      )}
+
       {/* Logo */}
       <div className="mb-8 flex flex-col items-center gap-3">
         <Image
@@ -57,18 +102,24 @@ export default function LoginPage() {
 
       <Card className="w-full max-w-md border-border/30">
         <CardHeader className="text-center pb-4">
-          <CardTitle className="text-lg">Welcome back</CardTitle>
-          <CardDescription>Select a demo account to continue</CardDescription>
+          <CardTitle className="text-lg">
+            {roleLabel ? `Sign in as ${roleLabel}` : "Welcome back"}
+          </CardTitle>
+          <CardDescription>
+            {roleLabel
+              ? `Select a ${roleLabel.toLowerCase()} account to continue`
+              : "Select a demo account to continue"}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* User Selection */}
           <div className="space-y-2">
             <Label className="text-sm text-muted-foreground">Choose an account</Label>
             <div className="grid gap-2">
-              {MOCK_USERS.map((user) => {
+              {filteredUsers.map((user) => {
                 const isSelected = selectedUserId === user.id
                 const Icon = user.role === "admin" ? ShieldCheck : ListTodo
-                
+
                 return (
                   <button
                     key={user.id}
@@ -81,24 +132,26 @@ export default function LoginPage() {
                         : "border-border/40 hover:border-border hover:bg-muted/30"
                     )}
                   >
-                    <div className={cn(
-                      "flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium",
-                      user.role === "admin" 
-                        ? "bg-primary/10 text-primary" 
-                        : "bg-muted text-muted-foreground"
-                    )}>
+                    <div
+                      className={cn(
+                        "flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium",
+                        user.role === "admin"
+                          ? "bg-primary/10 text-primary"
+                          : "bg-muted text-muted-foreground"
+                      )}
+                    >
                       <Icon className="h-5 w-5" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm">{user.name}</p>
                       <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                     </div>
-                    <Badge 
-                      variant="outline" 
+                    <Badge
+                      variant="outline"
                       className={cn(
                         "shrink-0 text-xs capitalize",
-                        user.role === "admin" 
-                          ? "border-primary/30 text-primary" 
+                        user.role === "admin"
+                          ? "border-primary/30 text-primary"
                           : "border-border/30"
                       )}
                     >
@@ -118,7 +171,9 @@ export default function LoginPage() {
               </p>
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="email" className="text-xs">Email</Label>
+                  <Label htmlFor="email" className="text-xs">
+                    Email
+                  </Label>
                   <Input
                     id="email"
                     type="email"
@@ -128,7 +183,9 @@ export default function LoginPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="password" className="text-xs">Password</Label>
+                  <Label htmlFor="password" className="text-xs">
+                    Password
+                  </Label>
                   <Input
                     id="password"
                     type="password"
@@ -141,7 +198,12 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Submit */}
+          {/* Error */}
+          {error && (
+            <p className="text-sm text-destructive text-center">{error}</p>
+          )}
+
+          {/* Sign In Button */}
           <Button
             onClick={handleLogin}
             disabled={!selectedUserId || isLoading}
@@ -158,7 +220,7 @@ export default function LoginPage() {
           </Button>
 
           <p className="text-xs text-muted-foreground text-center">
-            This is a demo app. No real authentication is performed.
+            This is a demo app with session-based authentication.
           </p>
         </CardContent>
       </Card>

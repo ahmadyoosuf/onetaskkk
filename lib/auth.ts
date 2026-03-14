@@ -1,66 +1,60 @@
+import { SignJWT, jwtVerify } from "jose"
+import { cookies } from "next/headers"
+import { MOCK_USERS } from "./mock-users"
 import type { User } from "./types"
 
-const AUTH_STORAGE_KEY = "taskmarket_auth_user"
-
-// Mock users for demonstration
-export const MOCK_USERS: User[] = [
-  { id: "admin-1", name: "Admin User", email: "admin@onetaskkk.app", role: "admin" },
-  { id: "user-1", name: "Alice Johnson", email: "alice@example.com", role: "worker" },
-  { id: "user-2", name: "Bob Smith", email: "bob@example.com", role: "worker" },
-  { id: "user-3", name: "Carol Davis", email: "carol@example.com", role: "worker" },
-]
+const SESSION_COOKIE = "onetaskkk-session"
+const SECRET = new TextEncoder().encode("onetaskkk-demo-secret-key-min-32chars!")
 
 /**
- * Get the currently logged-in user from localStorage
+ * Create a signed JWT for the given user
  */
-export function getLoggedInUser(): User | null {
-  if (typeof window === "undefined") return null
+export async function createSessionToken(user: User): Promise<string> {
+  return new SignJWT({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("7d")
+    .sign(SECRET)
+}
+
+/**
+ * Verify a JWT and return the user payload, or null if invalid
+ */
+export async function verifySessionToken(token: string): Promise<User | null> {
   try {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY)
-    if (!raw) return null
-    return JSON.parse(raw) as User
+    const { payload } = await jwtVerify(token, SECRET)
+    return {
+      id: payload.id as string,
+      name: payload.name as string,
+      email: payload.email as string,
+      role: payload.role as "admin" | "worker",
+    }
   } catch {
     return null
   }
 }
 
 /**
- * Log in as a specific user (mock auth)
+ * Get the current session user from cookies (server components / route handlers)
  */
-export function loginAs(userId: string): User | null {
-  const user = MOCK_USERS.find((u) => u.id === userId)
-  if (!user) return null
-  
-  if (typeof window !== "undefined") {
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user))
-  }
-  return user
+export async function getSession(): Promise<User | null> {
+  const cookieStore = await cookies()
+  const token = cookieStore.get(SESSION_COOKIE)?.value
+  if (!token) return null
+  return verifySessionToken(token)
 }
 
 /**
- * Log out the current user
+ * Look up a mock user by ID
  */
-export function logout(): void {
-  if (typeof window !== "undefined") {
-    localStorage.removeItem(AUTH_STORAGE_KEY)
-  }
+export function findMockUser(userId: string): User | undefined {
+  return MOCK_USERS.find((u) => u.id === userId)
 }
 
-/**
- * Check if user is authenticated
- */
-export function isAuthenticated(): boolean {
-  return getLoggedInUser() !== null
-}
-
-/**
- * Get initials from a user name
- */
-export function getUserInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2)
-}
+export { SESSION_COOKIE, SECRET, MOCK_USERS }
+export { getUserInitials } from "./mock-users"

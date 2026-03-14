@@ -23,7 +23,7 @@ export default function RolePickerPage() {
       {/* Role Cards */}
       <div className="flex w-full max-w-sm flex-col gap-3">
         <Link
-          href="/worker"
+          href="/login?role=worker"
           className="group flex items-center justify-between rounded-xl border border-border/40 bg-card px-5 py-4 transition-all hover:border-primary/40 hover:bg-primary/5 hover:shadow-sm"
         >
           <div className="flex items-center gap-4">
@@ -39,7 +39,7 @@ export default function RolePickerPage() {
         </Link>
 
         <Link
-          href="/admin/tasks"
+          href="/login?role=admin"
           className="group flex items-center justify-between rounded-xl border border-border/40 bg-card px-5 py-4 transition-all hover:border-primary/40 hover:bg-primary/5 hover:shadow-sm"
         >
           <div className="flex items-center gap-4">
