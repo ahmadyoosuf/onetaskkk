@@ -28,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Share2, Mail, Heart, DollarSign, Users, ExternalLink, Send, Filter, Calendar } from "lucide-react"
+import { Share2, Mail, Heart, DollarSign, Users, ExternalLink, Send, Filter, Calendar, Flame, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createSubmission, getCurrentUser } from "@/lib/store"
 import { useSubmissions, useTasks } from "@/hooks/use-store"
@@ -270,6 +270,9 @@ export default function TasksFeedPage() {
                   const meta = TASK_TYPE_META[task.type]
                   const isSelected = selectedTask?.id === task.id
                   const spotsLeft = task.maxSubmissions - task.currentSubmissions
+                  const isHot = spotsLeft <= 5 && spotsLeft > 0
+                  const isAlmostFull = spotsLeft <= 2 && spotsLeft > 0
+                  const progressPercent = (task.currentSubmissions / task.maxSubmissions) * 100
 
                   return (
                     <div
@@ -288,10 +291,21 @@ export default function TasksFeedPage() {
                       <Card
                         onClick={() => handleTaskSelect(task)}
                         className={cn(
-                          "cursor-pointer border-border/30 transition-all hover:border-primary/30 touch-feedback",
-                          isSelected && "border-primary/50 bg-primary/5 ring-1 ring-primary/20"
+                          "cursor-pointer border-border/30 transition-all hover:border-primary/30 touch-feedback overflow-hidden",
+                          isSelected && "border-primary/50 bg-primary/5 ring-1 ring-primary/20",
+                          isAlmostFull && !isSelected && "border-warning/30"
                         )}
                       >
+                        {/* Progress bar at top of card */}
+                        <div className="h-1 w-full bg-muted">
+                          <div 
+                            className={cn(
+                              "h-full transition-all duration-500",
+                              progressPercent >= 80 ? "bg-warning" : "bg-primary/40"
+                            )}
+                            style={{ width: `${progressPercent}%` }}
+                          />
+                        </div>
                         <CardContent className="p-3 sm:p-4">
                           <div className="flex items-start gap-3">
                             <div className={cn(
@@ -303,23 +317,45 @@ export default function TasksFeedPage() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-2">
                                 <div className="min-w-0">
-                                  <h3 className="font-medium text-sm sm:text-base leading-tight truncate">{task.title}</h3>
+                                  <div className="flex items-center gap-2">
+                                    <h3 className="font-medium text-sm sm:text-base leading-tight truncate">{task.title}</h3>
+                                    {isHot && (
+                                      <span className={cn(
+                                        "flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium shrink-0",
+                                        isAlmostFull ? "bg-destructive/10 text-destructive" : "bg-warning/10 text-warning"
+                                      )}>
+                                        <Flame className="h-2.5 w-2.5" />
+                                        {isAlmostFull ? "Almost full" : "Hot"}
+                                      </span>
+                                    )}
+                                  </div>
                                   <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground line-clamp-2">
                                     {task.description}
                                   </p>
                                 </div>
-                                <Badge variant="secondary" className="shrink-0 bg-success/10 text-success border-success/20 text-xs">
-                                  ${task.reward.toFixed(2)}
-                                </Badge>
+                                <div className="shrink-0 text-right">
+                                  <p className="text-base sm:text-lg font-semibold text-success">${task.reward.toFixed(2)}</p>
+                                  <p className="text-[10px] text-muted-foreground">per task</p>
+                                </div>
                               </div>
                               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                <span className="flex items-center gap-1">
+                                <span className={cn(
+                                  "flex items-center gap-1 rounded-full px-2 py-0.5",
+                                  isAlmostFull ? "bg-destructive/10 text-destructive" : 
+                                  isHot ? "bg-warning/10 text-warning" : "bg-muted"
+                                )}>
                                   <Users className="h-3 w-3" />
-                                  {spotsLeft} left
+                                  {spotsLeft} spot{spotsLeft !== 1 ? 's' : ''} left
                                 </span>
                                 <Badge variant="outline" className="border-border/30 text-xs px-1.5 py-0">
                                   {meta.label}
                                 </Badge>
+                                {task.deadline && (
+                                  <span className="flex items-center gap-1 text-muted-foreground">
+                                    <Clock className="h-3 w-3" />
+                                    {task.deadline.toLocaleDateString()}
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
