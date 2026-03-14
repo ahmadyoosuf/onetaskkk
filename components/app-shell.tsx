@@ -5,15 +5,19 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { LayoutDashboard, ListTodo, ClipboardCheck, PlusCircle } from "lucide-react"
 
+type AppRole = "admin" | "worker"
+
 const NAV_ITEMS = [
   { href: "/", label: "Feed", icon: ListTodo, role: "worker" },
   { href: "/admin/composer", label: "Compose", icon: PlusCircle, role: "admin" },
   { href: "/admin/tasks", label: "Tasks", icon: LayoutDashboard, role: "admin" },
   { href: "/admin/submissions", label: "Submissions", icon: ClipboardCheck, role: "admin" },
-]
+] as const
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const activeRole: AppRole = pathname.startsWith("/admin") ? "admin" : "worker"
+  const visibleNavItems = NAV_ITEMS.filter((item) => item.role === activeRole || (activeRole === "admin" && item.href === "/"))
 
   return (
     <div className="min-h-screen bg-background">
@@ -33,7 +37,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           {/* Navigation */}
           <nav className="flex items-center gap-0.5 overflow-x-auto scrollbar-hide">
-            {NAV_ITEMS.map((item) => {
+            {visibleNavItems.map((item) => {
               const isActive = pathname === item.href || 
                 (item.href !== "/" && pathname.startsWith(item.href))
               const Icon = item.icon
@@ -59,7 +63,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {/* User indicator */}
           <div className="flex items-center gap-1.5 shrink-0">
             <div className="h-2 w-2 rounded-full bg-success animate-breathe" />
-            <span className="hidden sm:inline text-xs text-muted-foreground">Demo</span>
+            <span className="hidden sm:inline text-xs text-muted-foreground">
+              {activeRole === "admin" ? "Admin Demo" : "Worker Demo"}
+            </span>
           </div>
         </div>
       </header>

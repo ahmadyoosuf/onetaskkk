@@ -1,21 +1,29 @@
 # TaskMarket
 
-Micro-task marketplace — workers complete tasks, admins review submissions.
+Micro-task marketplace - workers complete tasks, admins review submissions.
 
 ## Quick Start
 
 ```bash
-pnpm install
-pnpm dev
+npm install
+npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000)
+
+## Validation
+
+```bash
+npm run lint
+npm test
+npm run build
+```
 
 ## Screens
 
 | Route | Description |
 |-------|-------------|
-| `/` | Tasks Feed — workers browse and submit |
+| `/` | Tasks Feed - workers browse and submit |
 | `/admin/composer` | Create tasks (3 types) |
 | `/admin/tasks` | Task overview with stats |
 | `/admin/submissions` | Review and approve/reject |
@@ -23,6 +31,12 @@ Open [http://localhost:3000](http://localhost:3000)
 ## Stack
 
 Next.js 16, React 19, Tailwind v4, Shadcn UI, react-hook-form + zod, TanStack Virtual
+
+## Notes
+
+- SWR drives async loading/error states and mocked network delay behavior.
+- The in-memory external store remains the live source for optimistic UI updates.
+- Navigation reflects route role context: worker feed vs admin workspace.
 
 ## Architecture
 

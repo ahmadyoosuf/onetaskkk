@@ -59,6 +59,7 @@ function SubmissionsContent() {
   const taskIdFromUrl = searchParams.get("task")
   const { submissions, isLoading: isLoadingSubmissions } = useSubmissions()
   const { tasks, isLoading: isLoadingTasks } = useTasks()
+  const isDataLoading = isLoadingSubmissions || isLoadingTasks
   const [isReviewing, setIsReviewing] = useState(false)
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null)
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("all")
@@ -264,7 +265,11 @@ function SubmissionsContent() {
               className="overflow-auto scrollbar-hide rounded-lg border border-border/30"
               style={{ height: "calc(100svh - 300px)" }}
             >
-              {listRows.length === 0 ? (
+              {isDataLoading ? (
+                <div className="flex h-32 items-center justify-center">
+                  <p className="text-muted-foreground animate-pulse">Loading submissions...</p>
+                </div>
+              ) : listRows.length === 0 ? (
                 <div className="flex h-32 items-center justify-center">
                   <p className="text-muted-foreground">No submissions found.</p>
                 </div>

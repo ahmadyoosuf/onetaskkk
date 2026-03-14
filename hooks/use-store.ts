@@ -21,7 +21,7 @@ export function useTasks(): { tasks: Task[]; isLoading: boolean; error: Error | 
 
   return { 
     tasks: snapshot,
-    isLoading: isLoading && snapshot.length === 0,
+    isLoading,
     error 
   }
 }
@@ -34,7 +34,7 @@ export function useSubmissions(): { submissions: Submission[]; isLoading: boolea
 
   return { 
     submissions: snapshot,
-    isLoading: isLoading && snapshot.length === 0,
+    isLoading,
     error 
   }
 }
