@@ -60,7 +60,7 @@ describe("TasksFeedPage", () => {
       createdAt: new Date("2026-03-10T10:00:00Z"),
       details: {
         platform: "linkedin",
-        postContent: "Excited to announce the launch of TaskMarket!",
+        postContent: "Excited to announce the launch of onetaskkk!",
       },
     }
 

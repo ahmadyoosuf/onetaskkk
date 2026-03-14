@@ -45,7 +45,7 @@ describe("TaskComposerPage", () => {
     fireEvent.click(screen.getByRole("option", { name: /linkedin/i }))
     // Fill post content
     fireEvent.change(screen.getByLabelText(/post content/i), {
-      target: { value: "Excited to announce the launch of TaskMarket!" },
+      target: { value: "Excited to announce the launch of onetaskkk!" },
     })
     fireEvent.click(screen.getByRole("switch", { name: /multiple submissions are not allowed/i }))
     fireEvent.click(screen.getByRole("button", { name: /create task/i }))
