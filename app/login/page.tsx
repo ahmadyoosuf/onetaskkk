@@ -1,21 +1,33 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useMemo } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
 import Image from "next/image"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { LogIn, ShieldCheck, ListTodo } from "lucide-react"
+import { LogIn, ShieldCheck, ListTodo, ArrowLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { loginAs, MOCK_USERS } from "@/lib/auth"
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const roleParam = searchParams.get("role") as "worker" | "admin" | null
+  
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+
+  // Filter users based on the selected role from URL parameter
+  const filteredUsers = useMemo(() => {
+    if (!roleParam) return MOCK_USERS
+    return MOCK_USERS.filter((user) => user.role === roleParam)
+  }, [roleParam])
+
+  const roleLabel = roleParam === "admin" ? "Admin" : roleParam === "worker" ? "Worker" : null
 
   const handleLogin = async () => {
     if (!selectedUserId) return
@@ -36,10 +48,21 @@ export default function LoginPage() {
     setIsLoading(false)
   }
 
-  const selectedUser = MOCK_USERS.find((u) => u.id === selectedUserId)
+  const selectedUser = filteredUsers.find((u) => u.id === selectedUserId)
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
+      {/* Back to role selection */}
+      {roleParam && (
+        <Link 
+          href="/" 
+          className="absolute top-6 left-6 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Link>
+      )}
+      
       {/* Logo */}
       <div className="mb-8 flex flex-col items-center gap-3">
         <Image
@@ -57,15 +80,22 @@ export default function LoginPage() {
 
       <Card className="w-full max-w-md border-border/30">
         <CardHeader className="text-center pb-4">
-          <CardTitle className="text-lg">Welcome back</CardTitle>
-          <CardDescription>Select a demo account to continue</CardDescription>
+          <CardTitle className="text-lg">
+            {roleLabel ? `Sign in as ${roleLabel}` : "Welcome back"}
+          </CardTitle>
+          <CardDescription>
+            {roleLabel 
+              ? `Select a ${roleLabel.toLowerCase()} account to continue`
+              : "Select a demo account to continue"
+            }
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* User Selection */}
           <div className="space-y-2">
             <Label className="text-sm text-muted-foreground">Choose an account</Label>
             <div className="grid gap-2">
-              {MOCK_USERS.map((user) => {
+              {filteredUsers.map((user) => {
                 const isSelected = selectedUserId === user.id
                 const Icon = user.role === "admin" ? ShieldCheck : ListTodo
                 
