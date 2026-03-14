@@ -401,7 +401,7 @@ export default function TasksFeedPage() {
             <Card className="border-border/30 border-dashed">
               <CardContent className="flex h-48 lg:h-64 flex-col items-center justify-center text-center p-6">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                  <FileText className="h-6 w-6 text-muted-foreground" />
+                  <Share2 className="h-6 w-6 text-muted-foreground" />
                 </div>
                 <p className="mt-3 font-medium text-sm">No task selected</p>
                 <p className="text-xs text-muted-foreground">

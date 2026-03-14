@@ -35,16 +35,17 @@ describe("TaskComposerPage", () => {
     render(<TaskComposerPage />)
 
     fireEvent.change(screen.getByLabelText(/task title/i), {
-      target: { value: "Launch feedback form" },
+      target: { value: "Launch announcement post" },
     })
     fireEvent.change(screen.getByLabelText(/description/i), {
-      target: { value: "Collect thoughtful launch feedback from new users in a single form." },
+      target: { value: "Post our product launch announcement on your LinkedIn profile." },
     })
-    fireEvent.change(screen.getByLabelText(/target url/i), {
-      target: { value: "https://example.com/launch-feedback" },
-    })
-    fireEvent.change(screen.getByLabelText(/form fields/i), {
-      target: { value: "Name, Email, Feedback" },
+    // Select platform
+    fireEvent.click(screen.getByRole("combobox", { name: /platform/i }))
+    fireEvent.click(screen.getByRole("option", { name: /linkedin/i }))
+    // Fill post content
+    fireEvent.change(screen.getByLabelText(/post content/i), {
+      target: { value: "Excited to announce the launch of TaskMarket!" },
     })
     fireEvent.click(screen.getByRole("switch", { name: /multiple submissions are not allowed/i }))
     fireEvent.click(screen.getByRole("button", { name: /create task/i }))
@@ -53,9 +54,9 @@ describe("TaskComposerPage", () => {
 
     expect(mockCreateTask).toHaveBeenCalledWith(
       expect.objectContaining({
-        type: "form_submission",
+        type: "social_media_posting",
         allowMultipleSubmissions: true,
-        title: "Launch feedback form",
+        title: "Launch announcement post",
       })
     )
     expect(mockPush).toHaveBeenCalledWith("/admin/tasks")

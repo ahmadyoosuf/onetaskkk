@@ -49,9 +49,9 @@ describe("TasksFeedPage", () => {
   it("locks submitting when a worker already submitted a single-submit task", async () => {
     const task: Task = {
       id: "task-1",
-      type: "form_submission",
-      title: "Complete onboarding form",
-      description: "Fill in the onboarding form with all requested fields.",
+      type: "social_media_posting",
+      title: "Post product launch announcement",
+      description: "Share our product launch on your LinkedIn profile.",
       reward: 5,
       maxSubmissions: 10,
       allowMultipleSubmissions: false,
@@ -59,8 +59,8 @@ describe("TasksFeedPage", () => {
       status: "open",
       createdAt: new Date("2026-03-10T10:00:00Z"),
       details: {
-        targetUrl: "https://example.com/form",
-        formFields: ["Name", "Email"],
+        platform: "linkedin",
+        postContent: "Excited to announce the launch of TaskMarket!",
       },
     }
 
@@ -80,7 +80,7 @@ describe("TasksFeedPage", () => {
     const user = userEvent.setup()
     render(<TasksFeedPage />)
 
-    await user.click(screen.getByText("Complete onboarding form"))
+    await user.click(screen.getByText("Post product launch announcement"))
 
     expect(screen.getByText("One submission per worker")).toBeInTheDocument()
     expect(screen.getByText("You have already submitted this task. Additional submissions are disabled.")).toBeInTheDocument()

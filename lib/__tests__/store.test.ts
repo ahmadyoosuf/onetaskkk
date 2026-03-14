@@ -19,19 +19,19 @@ describe("store — task operations", () => {
     const initial = store.getTasks().length
 
     const promise = store.createTask({
-      type: "form_submission",
+      type: "social_media_posting",
       title: "My Test Task",
       description: "A description",
       reward: 5,
       maxSubmissions: 100,
       allowMultipleSubmissions: false,
-      details: { targetUrl: "https://example.com", formFields: ["Name", "Email"] },
+      details: { platform: "linkedin", postContent: "Check out our product launch!" },
     })
     await vi.runAllTimersAsync()
     const task = await promise
 
     expect(task.title).toBe("My Test Task")
-    expect(task.type).toBe("form_submission")
+    expect(task.type).toBe("social_media_posting")
     expect(task.status).toBe("open")
     expect(task.allowMultipleSubmissions).toBe(false)
     expect(store.getTasks().length).toBe(initial + 1)
@@ -95,13 +95,13 @@ describe("store — submission operations", () => {
     const store = await freshStore()
 
     const taskPromise = store.createTask({
-      type: "form_submission",
+      type: "social_media_posting",
       title: "Submission Test Task",
       description: "A dedicated task for submission behavior tests.",
       reward: 4,
       maxSubmissions: 25,
       allowMultipleSubmissions: true,
-      details: { targetUrl: "https://example.com/form", formFields: ["Name"] },
+      details: { platform: "twitter", postContent: "Test post content for submission" },
     })
     await vi.runAllTimersAsync()
     const task = await taskPromise
