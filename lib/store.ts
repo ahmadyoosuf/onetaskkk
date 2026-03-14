@@ -171,6 +171,10 @@ export function updateTask(id: string, updates: Partial<Task>): Task | undefined
   return tasks[index]
 }
 
+export function updateTaskStatus(id: string, status: "open" | "completed" | "cancelled"): Task | undefined {
+  return updateTask(id, { status })
+}
+
 export function deleteTask(id: string): boolean {
   const initialLength = tasks.length
   tasks = tasks.filter((t) => t.id !== id)

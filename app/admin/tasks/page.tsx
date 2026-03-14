@@ -20,13 +20,16 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu"
 import { 
   FileText, Mail, Heart, Plus, MoreHorizontal, Eye, Trash2,
   DollarSign, ListTodo, Clock, Users
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getTasks, getSubmissions, deleteTask } from "@/lib/store"
+import { getTasks, getSubmissions, deleteTask, updateTaskStatus } from "@/lib/store"
 import type { Task, TaskType, TaskStatus } from "@/lib/types"
 import { TASK_TYPE_META } from "@/lib/types"
 
@@ -48,6 +51,11 @@ export default function TasksManagementPage() {
 
   const handleDelete = (taskId: string) => {
     deleteTask(taskId)
+    setTasks(getTasks())
+  }
+
+  const handleStatusChange = (taskId: string, newStatus: TaskStatus) => {
+    updateTaskStatus(taskId, newStatus)
     setTasks(getTasks())
   }
 
@@ -170,9 +178,36 @@ export default function TasksManagementPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={statusStyle.className}>
-                          {statusStyle.label}
-                        </Badge>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Badge 
+                              variant="outline" 
+                              className={cn(statusStyle.className, "cursor-pointer hover:opacity-80 transition-opacity")}
+                            >
+                              {statusStyle.label}
+                            </Badge>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            <DropdownMenuItem 
+                              onClick={() => handleStatusChange(task.id, "open")}
+                              className={task.status === "open" ? "bg-muted" : ""}
+                            >
+                              Open
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleStatusChange(task.id, "completed")}
+                              className={task.status === "completed" ? "bg-muted" : ""}
+                            >
+                              Completed
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleStatusChange(task.id, "cancelled")}
+                              className={task.status === "cancelled" ? "bg-muted" : ""}
+                            >
+                              Cancelled
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         ${task.reward.toFixed(2)}

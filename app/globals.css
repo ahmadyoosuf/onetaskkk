@@ -176,3 +176,12 @@
     box-shadow: 0 0 40px 20px hsl(240 60% 55% / 0.1);
   }
 }
+
+/* Respect user's motion preferences (ADHD-friendly) */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
