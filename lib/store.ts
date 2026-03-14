@@ -42,16 +42,21 @@ function withTaskDefaults(task: Task): Task {
 }
 
 // ─── Simulated Network Delays (per PRD) ─────────────────────
-const FETCH_DELAY = 2000 // 2 seconds for data fetching
+const FETCH_DELAY_MIN = 1000 // 1-3 seconds for data fetching (PRD requirement)
+const FETCH_DELAY_MAX = 3000
 const MUTATION_DELAY_MIN = 3000 // 3-5 seconds for mutations (PRD requirement)
 const MUTATION_DELAY_MAX = 5000
+
+function randomFetchDelay(): number {
+  return FETCH_DELAY_MIN + Math.random() * (FETCH_DELAY_MAX - FETCH_DELAY_MIN)
+}
 
 function randomMutationDelay(): number {
   return MUTATION_DELAY_MIN + Math.random() * (MUTATION_DELAY_MAX - MUTATION_DELAY_MIN)
 }
 
 async function simulateFetchDelay<T>(data: T): Promise<T> {
-  await new Promise((resolve) => setTimeout(resolve, FETCH_DELAY))
+  await new Promise((resolve) => setTimeout(resolve, randomFetchDelay()))
   return data
 }
 
