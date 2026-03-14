@@ -101,12 +101,12 @@ export async function fetchSubmissions(): Promise<Submission[]> {
 
 // ─── Mock Data Generation ───────────────────────────────────
 const TASK_TEMPLATES = {
-  form_submission: [
-    { title: "Complete Beta Signup Form", description: "Sign up for our new product beta program by filling out the registration form.", targetUrl: "https://acme.com/beta-signup", formFields: ["Full Name", "Email", "Company"] },
-    { title: "Survey Completion", description: "Complete our customer satisfaction survey to help us improve.", targetUrl: "https://survey.acme.com", formFields: ["Rating", "Comments", "Would Recommend"] },
-    { title: "Newsletter Subscription", description: "Subscribe to our newsletter with your email address.", targetUrl: "https://acme.com/newsletter", formFields: ["Email", "Name", "Interests"] },
-    { title: "Event Registration", description: "Register for our upcoming virtual event.", targetUrl: "https://events.acme.com/register", formFields: ["Name", "Email", "Timezone"] },
-    { title: "Product Demo Request", description: "Fill out the form to request a personalized product demo.", targetUrl: "https://acme.com/demo", formFields: ["Company", "Email", "Use Case"] },
+  social_media_posting: [
+    { title: "Announce Our Product Launch", description: "Post our product launch announcement on your LinkedIn profile to reach your professional network.", platform: "linkedin" as Platform, postContent: "Excited to announce the launch of TaskMarket — the fastest way to get micro-tasks done! Check it out at taskmarket.io #ProductLaunch #SaaS", accountHandle: "" },
+    { title: "Tweet About Our New Feature", description: "Share our new feature release tweet on your Twitter/X account.", platform: "twitter" as Platform, postContent: "Just discovered @TaskMarket's new AI-powered task matching. This is a game-changer for freelancers! 🚀 #freelance #productivity", accountHandle: "" },
+    { title: "LinkedIn Thought Leadership Post", description: "Post a thought leadership piece on LinkedIn tagging our brand.", platform: "linkedin" as Platform, postContent: "The future of work is micro-tasks. Here's why platforms like TaskMarket are reshaping the gig economy... [thread]", accountHandle: "" },
+    { title: "Instagram Story Mention", description: "Post an Instagram story mentioning our brand and linking to our profile.", platform: "instagram" as Platform, postContent: "Using @taskmarket_app to earn money completing quick tasks from my phone! So easy 💸", accountHandle: "" },
+    { title: "Share Our Case Study on LinkedIn", description: "Share our latest customer case study post on your LinkedIn feed.", platform: "linkedin" as Platform, postContent: "How a small team used TaskMarket to complete 10,000 micro-tasks in under a week. Full case study linked below. #CaseStudy #GrowthHacking", accountHandle: "" },
   ],
   email_sending: [
     { title: "Send Product Feedback Email", description: "Send a detailed feedback email about your experience using our product.", emailContent: "Share your honest feedback...", targetEmail: "feedback@acme.com" },
@@ -125,7 +125,7 @@ const TASK_TEMPLATES = {
 function generateMockTasks(): Task[] {
   const now = new Date()
   const tasks: Task[] = []
-  const types: TaskType[] = ["form_submission", "email_sending", "social_media_liking"]
+  const types: TaskType[] = ["social_media_posting", "email_sending", "social_media_liking"]
   
   // Generate 100+ tasks for virtualizer stress testing
   for (let i = 0; i < 120; i++) {
@@ -152,9 +152,9 @@ function generateMockTasks(): Task[] {
       deadline: Math.random() > 0.6 ? new Date(now.getTime() + (Math.random() * 30) * 24 * 60 * 60 * 1000) : undefined,
     }
     
-    if (type === "form_submission") {
-      const t = template as typeof TASK_TEMPLATES.form_submission[0]
-      tasks.push({ ...baseTask, details: { targetUrl: t.targetUrl, formFields: t.formFields } } as Task)
+    if (type === "social_media_posting") {
+      const t = template as typeof TASK_TEMPLATES.social_media_posting[0]
+      tasks.push({ ...baseTask, details: { platform: t.platform, postContent: t.postContent, accountHandle: t.accountHandle } } as Task)
     } else if (type === "email_sending") {
       const t = template as typeof TASK_TEMPLATES.email_sending[0]
       tasks.push({ ...baseTask, details: { emailContent: t.emailContent, targetEmail: t.targetEmail } } as Task)
@@ -244,7 +244,7 @@ type CreateTaskInputBase = {
 }
 
 type CreateTaskInput = 
-  | (CreateTaskInputBase & { type: "form_submission"; details: { targetUrl: string; formFields: string[] } })
+  | (CreateTaskInputBase & { type: "social_media_posting"; details: { platform: Platform; postContent: string; accountHandle?: string } })
   | (CreateTaskInputBase & { type: "email_sending"; details: { emailContent: string; targetEmail: string } })
   | (CreateTaskInputBase & { type: "social_media_liking"; details: { postUrl: string; platform: Platform } })
 

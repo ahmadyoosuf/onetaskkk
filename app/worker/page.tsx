@@ -28,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { FileText, Mail, Heart, DollarSign, Users, ExternalLink, Send, Filter, Calendar } from "lucide-react"
+import { Share2, Mail, Heart, DollarSign, Users, ExternalLink, Send, Filter, Calendar } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createSubmission, getCurrentUser } from "@/lib/store"
 import { useSubmissions, useTasks } from "@/hooks/use-store"
@@ -36,8 +36,8 @@ import { submissionSchema, type SubmissionFormData } from "@/lib/schemas"
 import type { Task, TaskType } from "@/lib/types"
 import { TASK_TYPE_META } from "@/lib/types"
 
-const TASK_ICONS: Record<TaskType, typeof FileText> = {
-  form_submission: FileText,
+const TASK_ICONS: Record<TaskType, typeof Share2> = {
+  social_media_posting: Share2,
   email_sending: Mail,
   social_media_liking: Heart,
 }
@@ -49,31 +49,26 @@ function TaskInstructionDetails({ task }: { task: Task }) {
         {task.allowMultipleSubmissions ? "Repeat submissions allowed" : "One submission per worker"}
       </Badge>
 
-      {task.type === "form_submission" && (
+      {task.type === "social_media_posting" && (
         <>
           <div className="flex items-center justify-between gap-3">
-            <span className="text-muted-foreground">Target URL</span>
-            <a
-              href={task.details.targetUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-primary hover:underline text-xs"
-            >
-              Visit <ExternalLink className="h-3 w-3" />
-            </a>
+            <span className="text-muted-foreground">Platform</span>
+            <Badge variant="outline" className="capitalize text-xs">
+              {task.details.platform}
+            </Badge>
           </div>
-          {task.details.formFields.length > 0 && (
-            <div>
-              <span className="text-muted-foreground text-xs">Required Fields:</span>
-              <div className="mt-1 flex flex-wrap gap-1">
-                {task.details.formFields.map((field) => (
-                  <Badge key={field} variant="outline" className="text-xs px-1.5 py-0">
-                    {field}
-                  </Badge>
-                ))}
-              </div>
+          {task.details.accountHandle && (
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Tag</span>
+              <span className="font-mono text-xs">{task.details.accountHandle}</span>
             </div>
           )}
+          <div>
+            <span className="text-muted-foreground text-xs">Post Content:</span>
+            <p className="mt-1 rounded border border-border/30 bg-background p-2 text-xs leading-relaxed">
+              {task.details.postContent}
+            </p>
+          </div>
         </>
       )}
 
@@ -226,7 +221,7 @@ export default function TasksFeedPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="form_submission">Form Submission</SelectItem>
+                  <SelectItem value="social_media_posting">Social Media Posting</SelectItem>
                   <SelectItem value="email_sending">Email Sending</SelectItem>
                   <SelectItem value="social_media_liking">Social Media</SelectItem>
                 </SelectContent>
