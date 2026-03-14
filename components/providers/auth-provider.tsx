@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize auth state on mount
   useEffect(() => {
-    currentUser = getLoggedInUser()
+    notifyAuthChange()
     setIsLoading(false)
   }, [])
 
