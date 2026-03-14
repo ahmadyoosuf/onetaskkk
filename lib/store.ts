@@ -88,7 +88,7 @@ export function getSubmissionsSnapshot(): Submission[] {
   return submissionsSnapshot
 }
 
-// ─── SWR-compatible Async Fetchers ──────────────────────────
+// ─── Async Fetchers for Query Hooks ──────────────────────────
 export async function fetchTasks(): Promise<Task[]> {
   const data = [...tasks].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
   return simulateFetchDelay(data)
