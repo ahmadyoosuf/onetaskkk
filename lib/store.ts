@@ -172,39 +172,33 @@ export function getTask(id: string): Task | undefined {
   return tasks.find((t) => t.id === id)
 }
 
-type CreateTaskInput = {
-  type: TaskType
+type CreateTaskInputBase = {
   title: string
   description: string
   reward: number
   maxSubmissions: number
   deadline?: Date
-  details: Task["details"]
 }
 
+type CreateTaskInput = 
+  | (CreateTaskInputBase & { type: "form_submission"; details: { targetUrl: string; formFields: string[] } })
+  | (CreateTaskInputBase & { type: "email_sending"; details: { emailContent: string; targetEmail: string } })
+  | (CreateTaskInputBase & { type: "social_media_liking"; details: { postUrl: string; platform: Platform } })
+
 export function createTask(input: CreateTaskInput): Task {
-  const base = {
+  const newTask: Task = {
     id: `task-${Date.now()}`,
-    type: input.type,
     title: input.title,
     description: input.description,
     reward: input.reward,
     maxSubmissions: input.maxSubmissions,
     currentSubmissions: 0,
-    status: "open" as const,
+    status: "open",
     createdAt: new Date(),
     deadline: input.deadline,
-  }
-  
-  let newTask: Task
-  
-  if (input.type === "form_submission") {
-    newTask = { ...base, type: "form_submission", details: input.details as Task & { type: "form_submission" }["details"] }
-  } else if (input.type === "email_sending") {
-    newTask = { ...base, type: "email_sending", details: input.details as Task & { type: "email_sending" }["details"] }
-  } else {
-    newTask = { ...base, type: "social_media_liking", details: input.details as Task & { type: "social_media_liking" }["details"] }
-  }
+    type: input.type,
+    details: input.details,
+  } as Task
   
   tasks = [newTask, ...tasks]
   notify()
