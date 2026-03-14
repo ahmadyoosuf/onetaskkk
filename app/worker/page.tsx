@@ -1,9 +1,10 @@
 "use client"
 
-import { useMemo, useState, useRef, useEffect } from "react"
+import { useMemo, useState, useRef, useEffect, Suspense } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useVirtualizer } from "@tanstack/react-virtual"
+import { useQueryState, parseAsStringLiteral } from "nuqs"
 import { useToast } from "@/hooks/use-toast"
 import { AppShell } from "@/components/app-shell"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -30,8 +31,8 @@ import {
 } from "@/components/ui/select"
 import { Share2, Mail, Heart, DollarSign, Users, ExternalLink, Send, Filter, Calendar, Flame, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { createSubmission, getCurrentUser } from "@/lib/store"
-import { useSubmissions, useTasks } from "@/hooks/use-store"
+import { getCurrentUser } from "@/lib/store"
+import { useSubmissions, useTasks, useCreateSubmission } from "@/hooks/use-store"
 import { socialMediaSubmissionSchema, emailSubmissionSchema } from "@/lib/schemas"
 import type { Task, TaskType } from "@/lib/types"
 import { TASK_TYPE_META } from "@/lib/types"
@@ -112,16 +113,24 @@ function TaskInstructionDetails({ task }: { task: Task }) {
   )
 }
 
-export default function TasksFeedPage() {
+// URL state parsers for nuqs
+const typeFilterParser = parseAsStringLiteral(["all", "social_media_posting", "email_sending", "social_media_liking"] as const).withDefault("all")
+const sortByParser = parseAsStringLiteral(["newest", "reward"] as const).withDefault("newest")
+
+function TasksFeedContent() {
   const { toast } = useToast()
-  const { tasks, isLoading } = useTasks()
+  const { tasks, isLoading, error } = useTasks()
   const { submissions } = useSubmissions()
+  const createSubmissionMutation = useCreateSubmission()
   const currentUser = getCurrentUser()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showSubmitDialog, setShowSubmitDialog] = useState(false)
   const [showMobileDetail, setShowMobileDetail] = useState(false)
-  const [typeFilter, setTypeFilter] = useState<TaskType | "all">("all")
-  const [sortBy, setSortBy] = useState<"newest" | "reward">("newest")
+  
+  // URL state management with nuqs
+  const [typeFilter, setTypeFilter] = useQueryState("type", typeFilterParser)
+  const [sortBy, setSortBy] = useQueryState("sort", sortByParser)
+  
   const parentRef = useRef<HTMLDivElement>(null)
   const [hasMounted, setHasMounted] = useState(false)
 
@@ -175,34 +184,25 @@ export default function TasksFeedPage() {
     getScrollElement: () => parentRef.current,
     estimateSize: () => 96,
     measureElement: (el) => el.getBoundingClientRect().height,
-    overscan: 5,
+    overscan: 10,
   })
-
-  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onSubmit = async (data: Record<string, any>) => {
     if (!selectedTask) return
-    setIsSubmitting(true)
     try {
       // Build PRD-compliant submission based on task type
-      const submissionData: Parameters<typeof createSubmission>[0] = {
+      const submissionData = {
         taskId: selectedTask.id,
         taskType: selectedTask.type,
         userId: currentUser.id,
         userName: currentUser.name,
         screenshotUrl: data.screenshotUrl,
+        postUrl: "postUrl" in data ? data.postUrl : undefined,
+        emailContent: "emailContent" in data ? data.emailContent : undefined,
       }
       
-      // Add task-type-specific fields per PRD
-      if ("postUrl" in data) {
-        submissionData.postUrl = data.postUrl
-      }
-      if ("emailContent" in data) {
-        submissionData.emailContent = data.emailContent
-      }
-      
-      await createSubmission(submissionData)
+      await createSubmissionMutation.mutateAsync(submissionData)
       toast({
         title: "Submission received",
         description: `Your work on "${selectedTask.title}" has been submitted for review.`,
@@ -210,14 +210,12 @@ export default function TasksFeedPage() {
       setShowSubmitDialog(false)
       reset()
       setSelectedTask(null)
-    } catch (error) {
+    } catch (err) {
       toast({
         title: "Submission failed",
-        description: error instanceof Error ? error.message : "Something went wrong. Please try again.",
+        description: err instanceof Error ? err.message : "Something went wrong. Please try again.",
         variant: "destructive",
       })
-    } finally {
-      setIsSubmitting(false)
     }
   }
 
@@ -235,7 +233,7 @@ export default function TasksFeedPage() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as TaskType | "all")}>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
                 <SelectTrigger className="w-full sm:w-40">
                   <Filter className="mr-2 h-4 w-4 shrink-0" />
                   <SelectValue placeholder="Filter" />
@@ -247,7 +245,7 @@ export default function TasksFeedPage() {
                   <SelectItem value="social_media_liking">Social Media</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={sortBy} onValueChange={(v) => setSortBy(v as "newest" | "reward")}>
+              <Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger className="w-28 sm:w-32">
                   <SelectValue />
                 </SelectTrigger>
@@ -619,13 +617,28 @@ export default function TasksFeedPage() {
               <Button type="button" variant="outline" onClick={() => setShowSubmitDialog(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={!isValid || isSubmitting}>
-                {isSubmitting ? "Submitting..." : "Submit"}
+              <Button type="submit" disabled={!isValid || createSubmissionMutation.isPending}>
+                {createSubmissionMutation.isPending ? "Submitting..." : "Submit"}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
     </AppShell>
+  )
+}
+
+export default function TasksFeedPage() {
+  return (
+    <Suspense fallback={
+      <AppShell role="worker">
+        <div className="space-y-4">
+          <div className="h-8 w-48 bg-muted animate-pulse rounded" />
+          <div className="h-64 bg-muted animate-pulse rounded" />
+        </div>
+      </AppShell>
+    }>
+      <TasksFeedContent />
+    </Suspense>
   )
 }

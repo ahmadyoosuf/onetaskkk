@@ -1,0 +1,167 @@
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import Image from "next/image"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
+import { LogIn, ShieldCheck, ListTodo } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { loginAs, MOCK_USERS } from "@/lib/auth"
+
+export default function LoginPage() {
+  const router = useRouter()
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+
+  const handleLogin = async () => {
+    if (!selectedUserId) return
+    setIsLoading(true)
+    
+    // Simulate network delay
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    
+    const user = loginAs(selectedUserId)
+    if (user) {
+      // Redirect based on role
+      if (user.role === "admin") {
+        router.push("/admin/tasks")
+      } else {
+        router.push("/worker")
+      }
+    }
+    setIsLoading(false)
+  }
+
+  const selectedUser = MOCK_USERS.find((u) => u.id === selectedUserId)
+
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
+      {/* Logo */}
+      <div className="mb-8 flex flex-col items-center gap-3">
+        <Image
+          src="/favicon.jpg"
+          alt="onetaskkk logo"
+          width={48}
+          height={48}
+          className="rounded-2xl shadow-md"
+        />
+        <div className="text-center">
+          <h1 className="text-2xl font-semibold tracking-tight">onetaskkk</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Sign in to your account</p>
+        </div>
+      </div>
+
+      <Card className="w-full max-w-md border-border/30">
+        <CardHeader className="text-center pb-4">
+          <CardTitle className="text-lg">Welcome back</CardTitle>
+          <CardDescription>Select a demo account to continue</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* User Selection */}
+          <div className="space-y-2">
+            <Label className="text-sm text-muted-foreground">Choose an account</Label>
+            <div className="grid gap-2">
+              {MOCK_USERS.map((user) => {
+                const isSelected = selectedUserId === user.id
+                const Icon = user.role === "admin" ? ShieldCheck : ListTodo
+                
+                return (
+                  <button
+                    key={user.id}
+                    type="button"
+                    onClick={() => setSelectedUserId(user.id)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg border p-3 text-left transition-all",
+                      isSelected
+                        ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                        : "border-border/40 hover:border-border hover:bg-muted/30"
+                    )}
+                  >
+                    <div className={cn(
+                      "flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium",
+                      user.role === "admin" 
+                        ? "bg-primary/10 text-primary" 
+                        : "bg-muted text-muted-foreground"
+                    )}>
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">{user.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                    </div>
+                    <Badge 
+                      variant="outline" 
+                      className={cn(
+                        "shrink-0 text-xs capitalize",
+                        user.role === "admin" 
+                          ? "border-primary/30 text-primary" 
+                          : "border-border/30"
+                      )}
+                    >
+                      {user.role}
+                    </Badge>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Mock Login Form (pre-filled, read-only for demo) */}
+          {selectedUser && (
+            <div className="space-y-4 rounded-lg border border-border/30 bg-muted/30 p-4">
+              <p className="text-xs text-muted-foreground text-center">
+                Demo credentials (pre-filled)
+              </p>
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-xs">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={selectedUser.email}
+                    readOnly
+                    className="bg-background h-9"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="password" className="text-xs">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value="demo-password-123"
+                    readOnly
+                    className="bg-background h-9"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Submit */}
+          <Button
+            onClick={handleLogin}
+            disabled={!selectedUserId || isLoading}
+            className="w-full h-11"
+          >
+            {isLoading ? (
+              "Signing in..."
+            ) : (
+              <>
+                <LogIn className="mr-2 h-4 w-4" />
+                Sign In
+              </>
+            )}
+          </Button>
+
+          <p className="text-xs text-muted-foreground text-center">
+            This is a demo app. No real authentication is performed.
+          </p>
+        </CardContent>
+      </Card>
+    </main>
+  )
+}

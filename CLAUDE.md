@@ -7,16 +7,18 @@ Frontend evaluation — micro-task platform with admin and worker roles.
 - Next.js 16 + React 19 + TypeScript
 - Tailwind CSS v4
 - Shadcn UI (customized design system)
+- TanStack Query (data fetching & mutations)
 - react-hook-form + zod (form validation)
 - TanStack Virtual (virtualized lists)
-
-No external state management — React state + module-level store.
+- nuqs (URL state management)
 
 ## Routes
 
 | Path | Role | Screen |
 |------|------|--------|
-| `/` | Worker | Tasks Feed — browse, filter, submit work |
+| `/login` | Public | Mock Login — select demo account |
+| `/` | Public | Role Picker — choose Worker or Admin |
+| `/worker` | Worker | Tasks Feed — browse, filter, submit work |
 | `/admin/composer` | Admin | Task Composer — create new tasks |
 | `/admin/tasks` | Admin | Tasks Management — overview, stats, delete |
 | `/admin/submissions` | Admin | Submissions — review, approve/reject |
@@ -25,7 +27,7 @@ No external state management — React state + module-level store.
 
 | Type | Fields |
 |------|--------|
-| Form Submission | targetUrl, formFields[] |
+| Social Media Posting | platform, postContent, accountHandle |
 | Email Sending | targetEmail, emailContent |
 | Social Media Liking | postUrl, platform |
 
@@ -35,20 +37,40 @@ No external state management — React state + module-level store.
 lib/
   types.ts      — discriminated union types (Task, Submission)
   schemas.ts    — zod schemas for form validation
-  store.ts      — in-memory CRUD with 120+ mock submissions
+  store.ts      — in-memory CRUD with 500 tasks, 1000 submissions
+  auth.ts       — mock authentication helpers
 
 components/
-  app-shell.tsx — shared layout with glass header
-  composer/     — isolated form field components
+  app-shell.tsx           — shared layout with glass header + user menu
+  error-boundary.tsx      — error handling components
+  providers/
+    query-provider.tsx    — TanStack Query provider
+    auth-provider.tsx     — Authentication context + redirects
+  composer/               — isolated form field components
+  ui/                     — customized shadcn components
+
+hooks/
+  use-store.ts            — TanStack Query hooks for tasks/submissions
 
 app/
-  page.tsx              — Tasks Feed
-  admin/composer/       — Task Composer
-  admin/tasks/          — Tasks Management
-  admin/submissions/    — Submissions
+  login/page.tsx          — Mock login page
+  page.tsx                — Role Picker
+  worker/page.tsx         — Tasks Feed (nuqs for URL state)
+  admin/composer/         — Task Composer
+  admin/tasks/            — Tasks Management (nuqs for URL state)
+  admin/submissions/      — Submissions (nuqs for URL state)
 ```
 
 ## Key Decisions
+
+**Why TanStack Query?**  
+PRD explicitly recommends it. Provides automatic caching, loading states, and mutation invalidation. Replaced SWR.
+
+**Why nuqs for URL state?**  
+PRD recommends it. Filter states (type, sort, status) persist in URL for shareability and browser navigation.
+
+**Why mock auth?**  
+PRD says "lay out basic mock authentication." Demonstrates auth flow without real backend.
 
 **Why discriminated unions for Task?**  
 Each task type has different `details` shape. Union types let TypeScript enforce correct field access per type.
@@ -57,26 +79,35 @@ Each task type has different `details` shape. Union types let TypeScript enforce
 PRD says "should handle 1000s of tasks." Virtualization renders only visible rows — no DOM bloat.
 
 **Why isolated field components?**  
-Composer has `TitleField`, `RewardField`, `FormSubmissionFields`, etc. Each component owns its validation state via `useFormContext`. Easier to test, reuse, modify.
+Composer has `TitleField`, `RewardField`, etc. Each owns validation state via `useFormContext`. Easier to test and modify.
 
-**Why module-level store vs Context?**  
-For a demo with no persistence, a simple `getTasks()`/`createTask()` module is cleaner than Context boilerplate. Would swap for real DB + React Query in production.
+## Customized shadcn Components
+
+- **Button** — Added `loading` prop with spinner, `success` and `warning` variants
+- **Card** — Added `interactive` (hover states) and `status` (left border color) props
+- **Badge** — Added `dot` prop, status variants (pending/approved/rejected), `pulse` variant
+- **Input** — Added `error` prop, `leftIcon` and `rightIcon` props
+
+## Network Delays (PRD Compliance)
+
+- Fetch delay: 2 seconds
+- Mutation delay: 3-5 seconds (random)
 
 ## Testing Notes
 
-- Submissions page has 120 pre-seeded entries to test virtualization
-- Create a task via Composer, verify it appears in Tasks Management
-- Status updates in Tasks Management are interactive — click the status badge to change
-- Filter submissions by status and task, verify counts update reactively
+- 500 tasks and 1000 submissions for virtualizer stress testing
+- Login at `/login`, select demo user, test role-specific navigation
+- Status updates are interactive — click badges to change
+- URL state persists across navigation (try `/worker?type=email_sending&sort=reward`)
 - Mobile: all screens work at 375px viewport
 
 ## ADHD-Friendly UX
 
-- **Reduced motion support** — respects `prefers-reduced-motion` to disable animations for users sensitive to motion
-- **Clear visual hierarchy** — consistent use of color tokens (primary, success, destructive) to signal action vs state
-- **Minimal cognitive load** — status badges are clickable (not buried in menus), task count shows progress at a glance
-- **Consistent spacing** — all sections use the same spacing scale (gap-4, p-4) to make layout predictable
-- **Glass header** — sticky, always visible — easy reference point when scrolling
+- **Reduced motion support** — respects `prefers-reduced-motion`
+- **Clear visual hierarchy** — consistent color tokens
+- **Minimal cognitive load** — status badges are clickable
+- **Consistent spacing** — all sections use same spacing scale
+- **Glass header** — sticky, always visible reference point
 
 ## AI Disclosure
 

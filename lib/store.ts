@@ -42,8 +42,8 @@ function withTaskDefaults(task: Task): Task {
 
 // ─── Simulated Network Delays (per PRD) ─────────────────────
 const FETCH_DELAY = 2000 // 2 seconds for data fetching
-const MUTATION_DELAY_MIN = 1000 // 1-3 seconds for mutations
-const MUTATION_DELAY_MAX = 3000
+const MUTATION_DELAY_MIN = 3000 // 3-5 seconds for mutations (PRD requirement)
+const MUTATION_DELAY_MAX = 5000
 
 function randomMutationDelay(): number {
   return MUTATION_DELAY_MIN + Math.random() * (MUTATION_DELAY_MAX - MUTATION_DELAY_MIN)
@@ -128,7 +128,7 @@ function generateMockTasks(): Task[] {
   const types: TaskType[] = ["social_media_posting", "email_sending", "social_media_liking"]
   
   // Generate 100+ tasks for virtualizer stress testing
-  for (let i = 0; i < 120; i++) {
+  for (let i = 0; i < 500; i++) {
     const type = types[i % 3]
     const templates = TASK_TEMPLATES[type]
     const template = templates[i % templates.length]
@@ -185,9 +185,9 @@ function generateMockSubmissions(generatedTasks: Task[]): Submission[] {
   // Generate submissions spread across the tasks
   const statuses: Array<"pending" | "approved" | "rejected"> = ["pending", "approved", "rejected"]
   
-  for (let i = 0; i < 300; i++) {
-    // Spread submissions across first 60 tasks for realistic distribution
-    const taskIndex = i % Math.min(60, generatedTasks.length)
+  for (let i = 0; i < 1000; i++) {
+    // Spread submissions across first 200 tasks for realistic distribution
+    const taskIndex = i % Math.min(200, generatedTasks.length)
     const task = generatedTasks[taskIndex]
     const taskId = task.id
     const taskType = task.type

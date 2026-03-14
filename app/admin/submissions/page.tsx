@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, Suspense } from "react"
 import { useVirtualizer } from "@tanstack/react-virtual"
-import { useSearchParams } from "next/navigation"
+import { useQueryState, parseAsStringLiteral, parseAsBoolean } from "nuqs"
 import { useToast } from "@/hooks/use-toast"
 import { AppShell } from "@/components/app-shell"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -30,8 +30,8 @@ import {
   MessageSquare, ImageIcon, Filter, Layers, ChevronRight, User, Calendar
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getTask, updateSubmissionStatus } from "@/lib/store"
-import { useTasks, useSubmissions } from "@/hooks/use-store"
+import { getTask } from "@/lib/store"
+import { useTasks, useSubmissions, useUpdateSubmissionStatus } from "@/hooks/use-store"
 import type { Submission, SubmissionStatus } from "@/lib/types"
 
 const STATUS_STYLES: Record<SubmissionStatus, { label: string; className: string; icon: typeof Clock }> = {
@@ -53,21 +53,25 @@ type SubmissionListRow =
       taskTitle: string
     }
 
+// URL state parsers for nuqs
+const statusFilterParser = parseAsStringLiteral(["all", "pending", "approved", "rejected"] as const).withDefault("all")
+
 function SubmissionsContent() {
   const { toast } = useToast()
-  const searchParams = useSearchParams()
-  const taskIdFromUrl = searchParams.get("task")
-  const { submissions, isLoading: isLoadingSubmissions } = useSubmissions()
+  const { submissions, isLoading: isLoadingSubmissions, error } = useSubmissions()
   const { tasks, isLoading: isLoadingTasks } = useTasks()
+  const updateSubmissionStatusMutation = useUpdateSubmissionStatus()
   const isDataLoading = isLoadingSubmissions || isLoadingTasks
-  const [isReviewing, setIsReviewing] = useState(false)
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null)
-  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("all")
-  const [taskFilter, setTaskFilter] = useState<string>(taskIdFromUrl || "all")
+  
+  // URL state management with nuqs
+  const [statusFilter, setStatusFilter] = useQueryState("status", statusFilterParser)
+  const [taskFilter, setTaskFilter] = useQueryState("task", parseAsStringLiteral(["all"] as const).withDefault("all"))
+  const [groupByTask, setGroupByTask] = useQueryState("group", parseAsBoolean.withDefault(false))
+  
   const [showReviewDialog, setShowReviewDialog] = useState(false)
   const [reviewAction, setReviewAction] = useState<"approved" | "rejected">("approved")
   const [adminNotes, setAdminNotes] = useState("")
-  const [groupByTask, setGroupByTask] = useState(false)
   const [showMobileDetail, setShowMobileDetail] = useState(false)
   const parentRef = useRef<HTMLDivElement>(null)
   const taskMap = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks])
@@ -137,7 +141,7 @@ function SubmissionsContent() {
     getScrollElement: () => parentRef.current,
     estimateSize: (index) => listRows[index]?.kind === "group" ? 44 : 72,
     measureElement: (el) => el.getBoundingClientRect().height,
-    overscan: 8,
+    overscan: 12,
   })
 
   const handleReview = (action: "approved" | "rejected") => {
@@ -147,9 +151,12 @@ function SubmissionsContent() {
 
   const confirmReview = async () => {
     if (!selectedSubmission) return
-    setIsReviewing(true)
     try {
-      await updateSubmissionStatus(selectedSubmission.id, reviewAction, adminNotes || undefined)
+      await updateSubmissionStatusMutation.mutateAsync({
+        id: selectedSubmission.id,
+        status: reviewAction,
+        adminNotes: adminNotes || undefined,
+      })
       toast({
         title: `Submission ${reviewAction}`,
         description: `${selectedSubmission.userName}'s submission has been ${reviewAction}.`,
@@ -164,10 +171,10 @@ function SubmissionsContent() {
         description: "Something went wrong. Please try again.",
         variant: "destructive",
       })
-    } finally {
-      setIsReviewing(false)
     }
   }
+  
+  const isReviewing = updateSubmissionStatusMutation.isPending
 
   // Running totals
   const pendingCount = submissions.filter((s) => s.status === "pending").length
