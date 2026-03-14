@@ -178,7 +178,10 @@ function TasksManagementContent() {
 
   // PRD requirement: Bulk edit amount and campaign ID
   const handleBulkEdit = async () => {
-    if (!bulkEditValue.trim()) return
+    if (bulkEditField === "amount") {
+      const parsed = parseInt(bulkEditValue, 10)
+      if (!bulkEditValue.trim() || isNaN(parsed) || parsed < 1 || parsed > 10000) return
+    }
     try {
       const updates = bulkEditField === "amount"
         ? { maxSubmissions: parseInt(bulkEditValue, 10) }
@@ -552,7 +555,7 @@ function TasksManagementContent() {
                   onChange={(e) => setBulkEditValue(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  This will update the maximum number of submissions for all selected tasks.
+                  Sets the maximum number of submissions for all selected tasks.
                 </p>
               </div>
             ) : (
@@ -560,12 +563,12 @@ function TasksManagementContent() {
                 <Label htmlFor="bulkCampaignId">Campaign ID</Label>
                 <Input
                   id="bulkCampaignId"
-                  placeholder="e.g. spring-launch"
+                  placeholder="e.g. spring-launch (leave empty to clear)"
                   value={bulkEditValue}
                   onChange={(e) => setBulkEditValue(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Group tasks together by assigning them to the same campaign.
+                  Assign tasks to a campaign. Leave empty to remove the campaign from all selected tasks.
                 </p>
               </div>
             )}
@@ -576,9 +579,17 @@ function TasksManagementContent() {
             </Button>
             <Button 
               onClick={handleBulkEdit} 
-              disabled={!bulkEditValue.trim() || isMutating}
+              disabled={
+                isMutating || 
+                (bulkEditField === "amount" && (
+                  !bulkEditValue.trim() || 
+                  isNaN(parseInt(bulkEditValue, 10)) || 
+                  parseInt(bulkEditValue, 10) < 1
+                ))
+              }
+              loading={isMutating}
             >
-              {isMutating ? "Updating..." : `Update ${selectedTasks.size} Task${selectedTasks.size > 1 ? "s" : ""}`}
+              {`Update ${selectedTasks.size} Task${selectedTasks.size > 1 ? "s" : ""}`}
             </Button>
           </DialogFooter>
         </DialogContent>
