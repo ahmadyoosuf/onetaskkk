@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useForm, FormProvider } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { AppShell } from "@/components/app-shell"
@@ -9,9 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-import { Share2, Mail, Heart, Plus } from "lucide-react"
+import { Share2, Mail, Heart, Plus, Save } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { createTask } from "@/lib/store"
+import { createTask, updateTask, getTask } from "@/lib/store"
 import { taskFormSchema, type TaskFormData } from "@/lib/schemas"
 import { TASK_TYPE_META, type TaskType } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
@@ -34,10 +34,17 @@ const TASK_TYPES: { value: TaskType; icon: typeof Share2 }[] = [
   { value: "social_media_liking", icon: Heart },
 ]
 
-export default function TaskComposerPage() {
+function TaskComposerContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
+  
+  // Edit mode: Check for taskId in query params (PRD requirement)
+  const editTaskId = searchParams.get("edit")
+  const isEditMode = !!editTaskId
+  
   const [taskType, setTaskType] = useState<TaskType>("social_media_posting")
+  const [isLoadingTask, setIsLoadingTask] = useState(isEditMode)
 
   const methods = useForm<TaskFormData>({
     resolver: zodResolver(taskFormSchema),
@@ -56,7 +63,55 @@ export default function TaskComposerPage() {
     mode: "onBlur",
   })
 
-  const { handleSubmit, setValue, formState: { isSubmitting } } = methods
+  const { handleSubmit, setValue, reset, formState: { isSubmitting } } = methods
+
+  // Load existing task data for edit mode
+  useEffect(() => {
+    if (!editTaskId) return
+    
+    const task = getTask(editTaskId)
+    if (!task) {
+      toast({ title: "Task not found", description: "The task you're trying to edit doesn't exist.", variant: "destructive" })
+      router.push("/admin/tasks")
+      return
+    }
+    
+    setTaskType(task.type)
+    
+    // Reset form with task data
+    const formData: Partial<TaskFormData> = {
+      type: task.type,
+      title: task.title,
+      description: task.description,
+      reward: task.reward,
+      maxSubmissions: task.maxSubmissions,
+      allowMultipleSubmissions: task.allowMultipleSubmissions,
+      deadline: task.deadline,
+      campaignId: task.campaignId || "",
+    }
+    
+    // Add type-specific fields
+    if (task.type === "social_media_posting") {
+      Object.assign(formData, {
+        platform: task.details.platform,
+        postContent: task.details.postContent,
+        accountHandle: task.details.accountHandle || "",
+      })
+    } else if (task.type === "email_sending") {
+      Object.assign(formData, {
+        targetEmail: task.details.targetEmail,
+        emailContent: task.details.emailContent,
+      })
+    } else if (task.type === "social_media_liking") {
+      Object.assign(formData, {
+        postUrl: task.details.postUrl,
+        platform: task.details.platform,
+      })
+    }
+    
+    reset(formData as TaskFormData)
+    setIsLoadingTask(false)
+  }, [editTaskId, reset, router, toast])
 
   const handleTypeChange = (newType: TaskType) => {
     setTaskType(newType)
@@ -65,8 +120,11 @@ export default function TaskComposerPage() {
 
   const onSubmit = async (data: TaskFormData) => {
     try {
+      // Build task payload based on type
+      let taskPayload: Parameters<typeof createTask>[0]
+      
       if (data.type === "social_media_posting") {
-        await createTask({
+        taskPayload = {
           type: "social_media_posting",
           title: data.title,
           description: data.description,
@@ -80,9 +138,9 @@ export default function TaskComposerPage() {
             postContent: data.postContent,
             accountHandle: data.accountHandle || undefined,
           },
-        })
+        }
       } else if (data.type === "email_sending") {
-        await createTask({
+        taskPayload = {
           type: "email_sending",
           title: data.title,
           description: data.description,
@@ -95,9 +153,9 @@ export default function TaskComposerPage() {
             targetEmail: data.targetEmail,
             emailContent: data.emailContent,
           },
-        })
-      } else if (data.type === "social_media_liking") {
-        await createTask({
+        }
+      } else {
+        taskPayload = {
           type: "social_media_liking",
           title: data.title,
           description: data.description,
@@ -110,16 +168,29 @@ export default function TaskComposerPage() {
             postUrl: data.postUrl,
             platform: data.platform,
           },
+        }
+      }
+
+      // Edit mode: update existing task
+      if (isEditMode && editTaskId) {
+        await updateTask(editTaskId, taskPayload)
+        toast({
+          title: "Task updated",
+          description: `"${data.title}" has been updated successfully.`,
+        })
+      } else {
+        // Create mode: create new task
+        await createTask(taskPayload)
+        toast({
+          title: "Task created",
+          description: `"${data.title}" is now live and accepting submissions.`,
         })
       }
-      toast({
-        title: "Task created",
-        description: `"${data.title}" is now live and accepting submissions.`,
-      })
+      
       router.push("/admin/tasks")
     } catch {
       toast({
-        title: "Failed to create task",
+        title: isEditMode ? "Failed to update task" : "Failed to create task",
         description: "Something went wrong. Please try again.",
         variant: "destructive",
       })
@@ -131,9 +202,21 @@ export default function TaskComposerPage() {
       <div className="mx-auto max-w-2xl space-y-6">
         {/* Page Header */}
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Task Composer</h1>
-          <p className="text-muted-foreground">Create a new task for workers to complete.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {isEditMode ? "Edit Task" : "Task Composer"}
+          </h1>
+          <p className="text-muted-foreground">
+            {isEditMode ? "Update the task details below." : "Create a new task for workers to complete."}
+          </p>
         </div>
+        
+        {isLoadingTask && (
+          <Card className="border-border/30 border-dashed">
+            <CardContent className="flex h-32 items-center justify-center">
+              <p className="text-muted-foreground animate-pulse">Loading task...</p>
+            </CardContent>
+          </Card>
+        )}
 
         <FormProvider {...methods}>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -239,14 +322,29 @@ export default function TaskComposerPage() {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto h-11">
-                <Plus className="mr-2 h-4 w-4" />
-                Create Task
+              <Button type="submit" disabled={isSubmitting || isLoadingTask} className="w-full sm:w-auto h-11">
+                {isEditMode ? <Save className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
+                {isSubmitting ? (isEditMode ? "Saving..." : "Creating...") : (isEditMode ? "Save Changes" : "Create Task")}
               </Button>
             </div>
           </form>
         </FormProvider>
       </div>
     </AppShell>
+  )
+}
+
+export default function TaskComposerPage() {
+  return (
+    <Suspense fallback={
+      <AppShell role="admin">
+        <div className="mx-auto max-w-2xl space-y-6">
+          <div className="h-8 w-48 bg-muted animate-pulse rounded" />
+          <div className="h-64 bg-muted animate-pulse rounded" />
+        </div>
+      </AppShell>
+    }>
+      <TaskComposerContent />
+    </Suspense>
   )
 }

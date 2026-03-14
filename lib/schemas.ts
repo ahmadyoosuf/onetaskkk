@@ -75,21 +75,31 @@ export type SocialMediaPostingData = z.infer<typeof socialMediaPostingSchema>
 export type EmailSendingData = z.infer<typeof emailSendingSchema>
 export type SocialMediaLikingData = z.infer<typeof socialMediaLikingSchema>
 
-// ─── Submission Schema ──────────────────────────────────────
-export const submissionSchema = z.object({
-  proof: z
+// ─── Submission Schemas (task-type-specific per PRD) ────────
+// Social Media Posting/Liking: Post URL + Screenshot
+export const socialMediaSubmissionSchema = z.object({
+  postUrl: z
     .string()
-    .min(10, "Please provide details about your work")
-    .max(500, "Proof must be less than 500 characters"),
+    .url("Must be a valid URL")
+    .min(1, "Post URL is required"),
   screenshotUrl: z
     .string()
     .url("Must be a valid URL")
     .min(1, "Screenshot URL is required"),
-  liveAppUrl: z
-    .string()
-    .url("Must be a valid URL")
-    .optional()
-    .or(z.literal("")),
 })
 
-export type SubmissionFormData = z.infer<typeof submissionSchema>
+// Email Sending: Email Content + Screenshot
+export const emailSubmissionSchema = z.object({
+  emailContent: z
+    .string()
+    .min(20, "Email content must be at least 20 characters")
+    .max(2000, "Email content must be less than 2000 characters"),
+  screenshotUrl: z
+    .string()
+    .url("Must be a valid URL")
+    .min(1, "Screenshot URL is required"),
+})
+
+export type SocialMediaSubmissionData = z.infer<typeof socialMediaSubmissionSchema>
+export type EmailSubmissionData = z.infer<typeof emailSubmissionSchema>
+export type SubmissionFormData = SocialMediaSubmissionData | EmailSubmissionData

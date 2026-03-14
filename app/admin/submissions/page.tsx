@@ -453,16 +453,36 @@ function SubmissionsContent() {
                     </div>
                   </div>
 
-                  {/* Proof */}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <FileText className="h-3 w-3" />
-                      Proof of Completion
-                    </Label>
-                    <div className="rounded-lg border border-border/30 bg-background p-3 text-sm">
-                      {selectedSubmission.proof}
+                  {/* Task-type-specific submission fields per PRD */}
+                  {selectedSubmission.postUrl && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <ExternalLink className="h-3 w-3" />
+                        Post URL
+                      </Label>
+                      <a
+                        href={selectedSubmission.postUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-primary hover:underline break-all rounded-lg border border-border/30 bg-background p-3"
+                      >
+                        {selectedSubmission.postUrl}
+                        <ExternalLink className="h-3 w-3 shrink-0" />
+                      </a>
                     </div>
-                  </div>
+                  )}
+                  
+                  {selectedSubmission.emailContent && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <FileText className="h-3 w-3" />
+                        Email Content
+                      </Label>
+                      <div className="rounded-lg border border-border/30 bg-background p-3 text-sm whitespace-pre-wrap">
+                        {selectedSubmission.emailContent}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Evidence Screenshot */}
                   {selectedSubmission.screenshotUrl && (
@@ -483,21 +503,7 @@ function SubmissionsContent() {
                     </div>
                   )}
 
-                  {/* Live App URL */}
-                  {selectedSubmission.liveAppUrl && (
-                    <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground">Live URL</Label>
-                      <a
-                        href={selectedSubmission.liveAppUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-sm text-primary hover:underline break-all"
-                      >
-                        {selectedSubmission.liveAppUrl}
-                        <ExternalLink className="h-3 w-3 shrink-0" />
-                      </a>
-                    </div>
-                  )}
+
 
                   {/* Admin Notes */}
                   {selectedSubmission.adminNotes && (
@@ -594,16 +600,36 @@ function SubmissionsContent() {
                   </div>
                 </div>
 
-                {/* Proof */}
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <FileText className="h-3 w-3" />
-                    Proof of Completion
-                  </Label>
-                  <div className="rounded-lg border border-border/30 bg-background p-3 text-sm">
-                    {selectedSubmission.proof}
+                {/* Task-type-specific submission fields per PRD */}
+                {selectedSubmission.postUrl && (
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <ExternalLink className="h-3 w-3" />
+                      Post URL
+                    </Label>
+                    <a
+                      href={selectedSubmission.postUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm text-primary hover:underline break-all rounded-lg border border-border/30 bg-background p-3"
+                    >
+                      {selectedSubmission.postUrl}
+                      <ExternalLink className="h-3 w-3 shrink-0" />
+                    </a>
                   </div>
-                </div>
+                )}
+                
+                {selectedSubmission.emailContent && (
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <FileText className="h-3 w-3" />
+                      Email Content
+                    </Label>
+                    <div className="rounded-lg border border-border/30 bg-background p-3 text-sm whitespace-pre-wrap">
+                      {selectedSubmission.emailContent}
+                    </div>
+                  </div>
+                )}
 
                 {/* Evidence Screenshot */}
                 {selectedSubmission.screenshotUrl && (
@@ -619,22 +645,6 @@ function SubmissionsContent() {
                       className="flex items-center gap-2 text-sm text-primary hover:underline break-all"
                     >
                       {selectedSubmission.screenshotUrl}
-                      <ExternalLink className="h-3 w-3 shrink-0" />
-                    </a>
-                  </div>
-                )}
-
-                {/* Live URL */}
-                {selectedSubmission.liveAppUrl && (
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Live URL</Label>
-                    <a
-                      href={selectedSubmission.liveAppUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-sm text-primary hover:underline break-all"
-                    >
-                      {selectedSubmission.liveAppUrl}
                       <ExternalLink className="h-3 w-3 shrink-0" />
                     </a>
                   </div>

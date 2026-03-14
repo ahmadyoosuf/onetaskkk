@@ -32,7 +32,7 @@ import { Share2, Mail, Heart, DollarSign, Users, ExternalLink, Send, Filter, Cal
 import { cn } from "@/lib/utils"
 import { createSubmission, getCurrentUser } from "@/lib/store"
 import { useSubmissions, useTasks } from "@/hooks/use-store"
-import { submissionSchema, type SubmissionFormData } from "@/lib/schemas"
+import { socialMediaSubmissionSchema, emailSubmissionSchema, type SocialMediaSubmissionData, type EmailSubmissionData } from "@/lib/schemas"
 import type { Task, TaskType } from "@/lib/types"
 import { TASK_TYPE_META } from "@/lib/types"
 
@@ -136,8 +136,13 @@ export default function TasksFeedPage() {
     }
   }
 
-  const { register, handleSubmit, reset, formState: { errors, isValid } } = useForm<SubmissionFormData>({
-    resolver: zodResolver(submissionSchema),
+  // Dynamic schema based on selected task type (PRD requirement)
+  const currentSchema = selectedTask?.type === "email_sending" 
+    ? emailSubmissionSchema 
+    : socialMediaSubmissionSchema
+
+  const { register, handleSubmit, reset, formState: { errors, isValid } } = useForm<SocialMediaSubmissionData | EmailSubmissionData>({
+    resolver: zodResolver(currentSchema),
     mode: "onChange",
   })
 
@@ -171,18 +176,28 @@ export default function TasksFeedPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const onSubmit = async (data: SubmissionFormData) => {
+  const onSubmit = async (data: SocialMediaSubmissionData | EmailSubmissionData) => {
     if (!selectedTask) return
     setIsSubmitting(true)
     try {
-      await createSubmission({
+      // Build PRD-compliant submission based on task type
+      const submissionData: Parameters<typeof createSubmission>[0] = {
         taskId: selectedTask.id,
+        taskType: selectedTask.type,
         userId: currentUser.id,
         userName: currentUser.name,
-        proof: data.proof,
         screenshotUrl: data.screenshotUrl,
-        liveAppUrl: data.liveAppUrl || undefined,
-      })
+      }
+      
+      // Add task-type-specific fields per PRD
+      if ("postUrl" in data) {
+        submissionData.postUrl = data.postUrl
+      }
+      if ("emailContent" in data) {
+        submissionData.emailContent = data.emailContent
+      }
+      
+      await createSubmission(submissionData)
       toast({
         title: "Submission received",
         description: `Your work on "${selectedTask.title}" has been submitted for review.`,
@@ -536,21 +551,47 @@ export default function TasksFeedPage() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-2">
-            <div className="space-y-2">
-              <Label htmlFor="proof">
-                Proof of Completion <span className="text-destructive">*</span>
-              </Label>
-              <Textarea
-                id="proof"
-                placeholder="Describe what you did, paste a screenshot URL, or provide any evidence of completion..."
-                className="min-h-24 resize-none"
-                {...register("proof")}
-              />
-              {errors.proof && (
-                <p className="text-xs text-destructive">{errors.proof.message}</p>
-              )}
-            </div>
+            {/* Task-type-specific fields per PRD */}
+            {selectedTask?.type === "email_sending" ? (
+              // Email Sending: Email Content + Screenshot
+              <div className="space-y-2">
+                <Label htmlFor="emailContent">
+                  Email Content <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  id="emailContent"
+                  placeholder="Paste the full email you sent to the recipient..."
+                  className="min-h-32 resize-none"
+                  {...register("emailContent" as "emailContent")}
+                />
+                {errors.emailContent && (
+                  <p className="text-xs text-destructive">{(errors as { emailContent?: { message?: string } }).emailContent?.message}</p>
+                )}
+              </div>
+            ) : (
+              // Social Media Posting/Liking: Post URL + Screenshot
+              <div className="space-y-2">
+                <Label htmlFor="postUrl">
+                  Post URL <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="postUrl"
+                  type="url"
+                  placeholder="https://linkedin.com/posts/... or https://twitter.com/..."
+                  {...register("postUrl" as "postUrl")}
+                />
+                {errors.postUrl && (
+                  <p className="text-xs text-destructive">{(errors as { postUrl?: { message?: string } }).postUrl?.message}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {selectedTask?.type === "social_media_posting" 
+                    ? "Paste the URL of your published post" 
+                    : "Paste the URL of the post you liked"}
+                </p>
+              </div>
+            )}
 
+            {/* Screenshot - required for all task types */}
             <div className="space-y-2">
               <Label htmlFor="screenshotUrl">
                 Evidence Screenshot URL <span className="text-destructive">*</span>
@@ -562,26 +603,11 @@ export default function TasksFeedPage() {
                 {...register("screenshotUrl")}
               />
               {errors.screenshotUrl && (
-                <p className="text-xs text-destructive">{errors.screenshotUrl.message}</p>
+                <p className="text-xs text-destructive">{errors.screenshotUrl?.message}</p>
               )}
               <p className="text-xs text-muted-foreground">
                 Upload your screenshot to an image host and paste the URL here
               </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="liveAppUrl">
-                Live URL <span className="text-muted-foreground text-xs">(optional)</span>
-              </Label>
-              <Input
-                id="liveAppUrl"
-                type="url"
-                placeholder="https://..."
-                {...register("liveAppUrl")}
-              />
-              {errors.liveAppUrl && (
-                <p className="text-xs text-destructive">{errors.liveAppUrl.message}</p>
-              )}
             </div>
 
             <DialogFooter>

@@ -26,11 +26,28 @@ import {
   DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
   Share2, Mail, Heart, Plus, MoreHorizontal, Eye, Trash2,
-  DollarSign, ListTodo, Clock, Users, TrendingUp, TrendingDown
+  DollarSign, ListTodo, Clock, Users, TrendingUp, TrendingDown, Edit2
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { deleteTask, updateTaskStatus } from "@/lib/store"
+import { deleteTask, updateTaskStatus, updateTask } from "@/lib/store"
 import { useSubmissions, useTasks } from "@/hooks/use-store"
 import { useToast } from "@/hooks/use-toast"
 import type { Task, TaskType, TaskStatus } from "@/lib/types"
@@ -55,6 +72,13 @@ export default function TasksManagementPage() {
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set())
   const [isMutating, setIsMutating] = useState(false)
   const [campaignFilter, setCampaignFilter] = useState<string>("all")
+  const [statusFilter, setStatusFilter] = useState<"all" | TaskStatus>("all")
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "reward" | "submissions">("newest")
+  
+  // Bulk edit dialog state (PRD requirement)
+  const [showBulkEditDialog, setShowBulkEditDialog] = useState(false)
+  const [bulkEditField, setBulkEditField] = useState<"amount" | "campaignId">("amount")
+  const [bulkEditValue, setBulkEditValue] = useState("")
   const isDataLoading = isLoading || isLoadingSubmissions
 
   // Get unique campaigns for filter dropdown
@@ -65,12 +89,42 @@ export default function TasksManagementPage() {
     return [...new Set(campaigns)].sort()
   }, [tasks])
 
-  // Filter tasks by campaign
+  // Filter and sort tasks (PRD: "Admin should be able to filter & sort")
   const filteredTasks = useMemo(() => {
-    if (campaignFilter === "all") return tasks
-    if (campaignFilter === "none") return tasks.filter(t => !t.campaignId)
-    return tasks.filter(t => t.campaignId === campaignFilter)
-  }, [tasks, campaignFilter])
+    let result = tasks
+    
+    // Apply campaign filter
+    if (campaignFilter !== "all") {
+      if (campaignFilter === "none") {
+        result = result.filter(t => !t.campaignId)
+      } else {
+        result = result.filter(t => t.campaignId === campaignFilter)
+      }
+    }
+    
+    // Apply status filter
+    if (statusFilter !== "all") {
+      result = result.filter(t => t.status === statusFilter)
+    }
+    
+    // Apply sorting
+    switch (sortBy) {
+      case "newest":
+        result = [...result].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        break
+      case "oldest":
+        result = [...result].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+        break
+      case "reward":
+        result = [...result].sort((a, b) => b.reward - a.reward)
+        break
+      case "submissions":
+        result = [...result].sort((a, b) => b.currentSubmissions - a.currentSubmissions)
+        break
+    }
+    
+    return result
+  }, [tasks, campaignFilter, statusFilter, sortBy])
 
   const handleDelete = async (taskId: string) => {
     setIsMutating(true)
@@ -127,6 +181,36 @@ export default function TasksManagementPage() {
     }
   }
 
+  // PRD requirement: Bulk edit amount and campaign ID
+  const handleBulkEdit = async () => {
+    if (!bulkEditValue.trim()) return
+    setIsMutating(true)
+    try {
+      const updates = bulkEditField === "amount"
+        ? { maxSubmissions: parseInt(bulkEditValue, 10) }
+        : { campaignId: bulkEditValue.trim() || undefined }
+      
+      await Promise.all(Array.from(selectedTasks).map((taskId) => updateTask(taskId, updates)))
+      const count = selectedTasks.size
+      toast({ 
+        title: "Tasks updated", 
+        description: `${count} task${count > 1 ? "s" : ""} ${bulkEditField === "amount" ? "amount" : "campaign ID"} updated.` 
+      })
+      setShowBulkEditDialog(false)
+      setBulkEditValue("")
+    } catch {
+      toast({ title: "Update failed", description: "Something went wrong. Please try again.", variant: "destructive" })
+    } finally {
+      setIsMutating(false)
+    }
+  }
+
+  const openBulkEditDialog = (field: "amount" | "campaignId") => {
+    setBulkEditField(field)
+    setBulkEditValue("")
+    setShowBulkEditDialog(true)
+  }
+
   const toggleTaskSelection = (taskId: string) => {
     setSelectedTasks((prev) => {
       const next = new Set(prev)
@@ -168,11 +252,24 @@ export default function TasksManagementPage() {
             <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">Tasks Management</h1>
             <p className="text-sm text-muted-foreground">Manage all tasks and track submissions.</p>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="flex flex-wrap gap-2 sm:flex-row sm:items-center">
+            {/* Status Filter (PRD requirement) */}
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | TaskStatus)}>
+              <SelectTrigger className="w-[130px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="open">Open</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+            
             {/* Campaign Filter */}
             <Select value={campaignFilter} onValueChange={setCampaignFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Filter by campaign" />
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Campaign" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Campaigns</SelectItem>
@@ -182,6 +279,19 @@ export default function TasksManagementPage() {
                     {campaign}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+            
+            {/* Sort (PRD requirement) */}
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Sort" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest First</SelectItem>
+                <SelectItem value="oldest">Oldest First</SelectItem>
+                <SelectItem value="reward">Highest Reward</SelectItem>
+                <SelectItem value="submissions">Most Submissions</SelectItem>
               </SelectContent>
             </Select>
             <Button asChild size="sm" className="w-full sm:w-auto">
@@ -308,6 +418,23 @@ export default function TasksManagementPage() {
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleBulkStatusChange("cancelled")}>
                       Set to Cancelled
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                {/* PRD: Bulk edit amount and campaign ID */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Edit2 className="mr-1 h-3 w-3" />
+                      Bulk Edit
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => openBulkEditDialog("amount")}>
+                      Edit Amount (Max Submissions)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => openBulkEditDialog("campaignId")}>
+                      Edit Campaign ID
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -456,6 +583,12 @@ export default function TasksManagementPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem asChild>
+                                <Link href={`/admin/composer?edit=${task.id}`}>
+                                  <Edit2 className="mr-2 h-4 w-4" />
+                                  Edit Task
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
                                 <Link href={`/admin/submissions?task=${task.id}`}>
                                   <Eye className="mr-2 h-4 w-4" />
                                   View Submissions
@@ -591,6 +724,63 @@ export default function TasksManagementPage() {
           })}
         </div>
       </div>
+
+      {/* Bulk Edit Dialog (PRD requirement) */}
+      <Dialog open={showBulkEditDialog} onOpenChange={setShowBulkEditDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Bulk Edit {bulkEditField === "amount" ? "Amount" : "Campaign ID"}
+            </DialogTitle>
+            <DialogDescription>
+              Update {selectedTasks.size} selected task{selectedTasks.size > 1 ? "s" : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {bulkEditField === "amount" ? (
+              <div className="space-y-2">
+                <Label htmlFor="bulkAmount">New Max Submissions</Label>
+                <Input
+                  id="bulkAmount"
+                  type="number"
+                  min={1}
+                  max={10000}
+                  placeholder="e.g. 100"
+                  value={bulkEditValue}
+                  onChange={(e) => setBulkEditValue(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  This will update the maximum number of submissions for all selected tasks.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="bulkCampaignId">Campaign ID</Label>
+                <Input
+                  id="bulkCampaignId"
+                  placeholder="e.g. spring-launch"
+                  value={bulkEditValue}
+                  onChange={(e) => setBulkEditValue(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Group tasks together by assigning them to the same campaign.
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBulkEditDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleBulkEdit} 
+              disabled={!bulkEditValue.trim() || isMutating}
+            >
+              {isMutating ? "Updating..." : `Update ${selectedTasks.size} Task${selectedTasks.size > 1 ? "s" : ""}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   )
 }
