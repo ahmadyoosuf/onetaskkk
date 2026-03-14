@@ -1,5 +1,32 @@
 import type { Task, Submission, User, TaskType, Platform } from "./types"
 
+// ─── Simple Pub/Sub for Reactivity ──────────────────────────
+type Listener = () => void
+const listeners = new Set<Listener>()
+
+export function subscribe(listener: Listener): () => void {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
+function notify() {
+  tasksSnapshot = [...tasks]
+  submissionsSnapshot = [...submissions]
+  listeners.forEach((listener) => listener())
+}
+
+// Cached snapshots for useSyncExternalStore (must be referentially stable)
+let tasksSnapshot: Task[] = []
+let submissionsSnapshot: Submission[] = []
+
+export function getTasksSnapshot(): Task[] {
+  return tasksSnapshot
+}
+
+export function getSubmissionsSnapshot(): Submission[] {
+  return submissionsSnapshot
+}
+
 // ─── Mock Data Generation ───────────────────────────────────
 function generateMockTasks(): Task[] {
   const now = new Date()
@@ -126,6 +153,10 @@ function generateMockSubmissions(): Submission[] {
 let tasks: Task[] = generateMockTasks()
 let submissions: Submission[] = generateMockSubmissions()
 
+// Initialize snapshots
+tasksSnapshot = [...tasks]
+submissionsSnapshot = [...submissions]
+
 const users: User[] = [
   { id: "admin-1", name: "Admin User", email: "admin@yoke.app", role: "admin" },
   { id: "user-1", name: "Alice Johnson", email: "alice@example.com", role: "worker" },
@@ -161,6 +192,7 @@ export function createTask(input: CreateTaskInput): Task {
   } as Task
   
   tasks = [newTask, ...tasks]
+  notify()
   return newTask
 }
 
@@ -168,6 +200,7 @@ export function updateTask(id: string, updates: Partial<Task>): Task | undefined
   const index = tasks.findIndex((t) => t.id === id)
   if (index === -1) return undefined
   tasks[index] = { ...tasks[index], ...updates } as Task
+  notify()
   return tasks[index]
 }
 
@@ -178,7 +211,9 @@ export function updateTaskStatus(id: string, status: "open" | "completed" | "can
 export function deleteTask(id: string): boolean {
   const initialLength = tasks.length
   tasks = tasks.filter((t) => t.id !== id)
-  return tasks.length < initialLength
+  const deleted = tasks.length < initialLength
+  if (deleted) notify()
+  return deleted
 }
 
 // ─── Submission Operations ──────────────────────────────────
@@ -209,6 +244,7 @@ export function createSubmission(submission: Omit<Submission, "id" | "submittedA
     }
   }
   
+  notify()
   return newSubmission
 }
 
@@ -225,6 +261,7 @@ export function updateSubmissionStatus(
     reviewedAt: new Date(),
     adminNotes,
   }
+  notify()
   return submissions[index]
 }
 

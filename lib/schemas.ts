@@ -32,10 +32,7 @@ const baseTaskSchema = z.object({
 export const formSubmissionSchema = baseTaskSchema.extend({
   type: z.literal("form_submission"),
   targetUrl: z.string().url("Must be a valid URL"),
-  formFields: z
-    .string()
-    .min(1, "At least one form field is required")
-    .transform((val) => val.split(",").map((f) => f.trim()).filter(Boolean)),
+  formFields: z.string().min(1, "At least one form field is required"),
 })
 
 export const emailSendingSchema = baseTaskSchema.extend({

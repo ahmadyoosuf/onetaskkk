@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useToast } from "@/hooks/use-toast"
@@ -29,7 +29,8 @@ import {
 } from "@/components/ui/select"
 import { FileText, Mail, Heart, DollarSign, Users, ExternalLink, Send, Filter, Calendar } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getTasks, createSubmission, getCurrentUser } from "@/lib/store"
+import { createSubmission, getCurrentUser } from "@/lib/store"
+import { useTasks } from "@/hooks/use-store"
 import { submissionSchema, type SubmissionFormData } from "@/lib/schemas"
 import type { Task, TaskType } from "@/lib/types"
 import { TASK_TYPE_META } from "@/lib/types"
@@ -42,7 +43,7 @@ const TASK_ICONS: Record<TaskType, typeof FileText> = {
 
 export default function TasksFeedPage() {
   const { toast } = useToast()
-  const [tasks] = useState(() => getTasks())
+  const tasks = useTasks()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showSubmitDialog, setShowSubmitDialog] = useState(false)
   const [typeFilter, setTypeFilter] = useState<TaskType | "all">("all")

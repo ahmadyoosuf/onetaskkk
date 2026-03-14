@@ -30,4 +30,4 @@ See [CLAUDE.md](./CLAUDE.md) for detailed decisions.
 
 ## AI Usage
 
-Built with Claude. Raw prompts in `/prompts/`.
+Built with AI assistance. See [.ai_disclosure/](./.ai_disclosure/) for details.

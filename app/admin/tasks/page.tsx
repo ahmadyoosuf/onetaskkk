@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import Link from "next/link"
 import { AppShell } from "@/components/app-shell"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -29,7 +28,8 @@ import {
   DollarSign, ListTodo, Clock, Users
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getTasks, getSubmissions, deleteTask, updateTaskStatus } from "@/lib/store"
+import { getSubmissions, deleteTask, updateTaskStatus } from "@/lib/store"
+import { useTasks } from "@/hooks/use-store"
 import type { Task, TaskType, TaskStatus } from "@/lib/types"
 import { TASK_TYPE_META } from "@/lib/types"
 
@@ -46,17 +46,15 @@ const STATUS_STYLES: Record<TaskStatus, { label: string; className: string }> = 
 }
 
 export default function TasksManagementPage() {
-  const [tasks, setTasks] = useState(() => getTasks())
+  const tasks = useTasks()
   const allSubmissions = getSubmissions()
 
   const handleDelete = (taskId: string) => {
     deleteTask(taskId)
-    setTasks(getTasks())
   }
 
   const handleStatusChange = (taskId: string, newStatus: TaskStatus) => {
     updateTaskStatus(taskId, newStatus)
-    setTasks(getTasks())
   }
 
   // Stats
