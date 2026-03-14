@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { signIn } from "next-auth/react"
 import Link from "next/link"
 import Image from "next/image"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { LogIn, ShieldCheck, ListTodo, ArrowLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { MOCK_USERS } from "@/lib/mock-users"
+import { loginAction } from "./actions"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -37,29 +37,17 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      const selectedUser = MOCK_USERS.find((u) => u.id === selectedUserId)
-      if (!selectedUser) {
-        setError("User not found")
-        setIsLoading(false)
-        return
-      }
-
-      const result = await signIn("credentials", {
-        userId: selectedUserId,
-        redirect: false,
-      })
+      const result = await loginAction(selectedUserId)
 
       if (result?.error) {
-        setError("Sign in failed. Please try again.")
+        setError(result.error)
         setIsLoading(false)
         return
       }
 
-      // Redirect based on selected user's role
-      if (selectedUser.role === "admin") {
-        router.push("/admin/tasks")
-      } else {
-        router.push("/worker")
+      if (result?.redirectTo) {
+        router.push(result.redirectTo)
+        router.refresh()
       }
     } catch {
       setError("An unexpected error occurred.")
