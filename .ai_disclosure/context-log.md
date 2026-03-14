@@ -6,8 +6,6 @@ Engineering notes and AI assistance context during development.
 
 ## Prompt 1: Project Scaffolding & Architecture Planning
 
-**Date:** March 12, 2026
-
 Started by reading through the PRD requirements carefully. The platform needs 4 main screens: Task Composer (admin creates tasks), Tasks Feed (workers browse/claim), Tasks Management (admin CRUD), and Submissions Review (admin approves/rejects).
 
 Initial architecture decision: went with a client-side mock store instead of setting up a full backend since the PRD emphasizes frontend evaluation. Used AI to help scaffold the initial file structure and component hierarchy.
@@ -33,8 +31,6 @@ Also added `data-index` attribute to each row div which is required for measureE
 ---
 
 ## Prompt 2: TypeScript Discriminated Unions for Task Types
-
-**Date:** March 12, 2026
 
 The three task types (form_submission, email_sending, social_media_liking) each have completely different detail fields:
 - Form submission needs `targetUrl` and `formFields[]`
@@ -63,8 +59,6 @@ Hit a wall when the zod schema wasn't validating correctly. Error was cryptic: "
 
 ## Prompt 3: Design System Implementation
 
-**Date:** March 12, 2026
-
 Referenced the secDash design for visual direction - clean, professional, warm tones. Key design tokens:
 - **Primary:** Indigo (#4F46E5) - professional but not boring
 - **Background:** Warm off-white (#FAFAF8) - easier on eyes than pure white
@@ -90,8 +84,6 @@ Mobile-first approach: designed the card layout for 320px width first, then enha
 ---
 
 ## Prompt 4: State Management & Reactivity Bug
-
-**Date:** March 13, 2026
 
 Found a critical bug: creating a task in the Composer, then navigating to the Feed, the new task wouldn't appear. Had to refresh the page to see it.
 
@@ -138,8 +130,6 @@ The snapshot needs to be referentially stable - returning a new array reference 
 
 ## Prompt 5: Code Review & Production Readiness
 
-**Date:** March 13, 2026
-
 Self-review before submission. Found several issues:
 
 1. **TypeScript `ignoreBuildErrors: true`** was in next.config.js - this was a crutch from early development. Removed it and fixed the ~15 type errors that surfaced. Most were missing null checks on `selectedTask?.id` patterns.
@@ -165,8 +155,6 @@ button:not([data-state]):not(.touch-target-sm) { min-height: 44px; }
 
 ## Prompt 6: TanStack Query & Simulated Latency
 
-**Date:** March 14, 2026
-
 PRD explicitly requires simulated network delays (fetches and mutations). Retrofitted this into the existing store.
 
 Created async fetchers with artificial delays. Fetch delay started at a fixed 2s but this was later revised (see Prompt 8).
@@ -185,8 +173,6 @@ Also scaled up mock data from 5 tasks to 500 tasks and 1000 submissions to prope
 
 ## Prompt 7: Submissions Page, Details Field, and Admin Table Refactors
 
-**Date:** March 14, 2026
-
 Three focused refactors:
 
 **1. Task details field to Markdown.** The composer was storing HTML from a rich-text editor. Switched it to a plain textarea outputting Markdown, with `react-markdown` rendering it in detail panels. Cleaner storage, no sanitization headaches.
@@ -201,8 +187,6 @@ Also stripped fake trend math from the stats cards. The percentages were calcula
 
 ## Prompt 8: Lexical Rich-Text Editor
 
-**Date:** March 14, 2026
-
 Replaced the plain textarea in the composer details field with a proper Lexical rich-text editor. The requirement is that the stored value stays Markdown, so the editor needs to output Markdown on every change.
 
 Integration with react-hook-form was the main complexity. Lexical is not a standard controlled input, so `register()` doesn't work. Used `Controller` instead, which wraps Lexical and wires it up manually. `OnChangePlugin` fires on every editor state change, calls `$convertToMarkdownString(TRANSFORMERS)` inside `editorState.read()`, and passes the result to `field.onChange`. For edit mode, `$convertFromMarkdownString` seeds the editor from the existing form value in `initialConfig.editorState`.
@@ -214,8 +198,6 @@ Hit a build failure when deploying: `$wrapNodes` from `@lexical/selection` was d
 ---
 
 ## Prompt 9: Mobile Drawers, Fetch Delay Fix, and Form Reset
-
-**Date:** March 14, 2026
 
 Several PRD compliance fixes and UX improvements:
 
@@ -232,8 +214,6 @@ Also aligned the login page test mocks with the actual fetch-based auth implemen
 ---
 
 ## Prompt 10: Dark Mode
-
-**Date:** March 15, 2026
 
 Added a complete dark mode to the app. Design direction: deep navy base (not pure black), layered card surfaces, indigo primary kept vibrant but slightly lighter for contrast on dark backgrounds.
 
