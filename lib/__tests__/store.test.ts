@@ -201,7 +201,8 @@ describe("store — submission operations", () => {
       reward: 2,
       maxSubmissions: 1,
       allowMultipleSubmissions: true,
-      details: { targetEmail: "owner@example.com", emailContent: "Done" },
+      details: "<p>No more submissions should be accepted.</p>",
+      taskDetails: { targetEmail: "owner@example.com", emailContent: "Done" },
     })
     await vi.runAllTimersAsync()
     const task = await taskPromise
@@ -229,7 +230,8 @@ describe("store — submission operations", () => {
       reward: 3,
       maxSubmissions: 5,
       allowMultipleSubmissions: true,
-      details: { platform: "linkedin", postContent: "Cancelled content" },
+      details: "<p>Task has been cancelled.</p>",
+      taskDetails: { platform: "linkedin", postContent: "Cancelled content" },
     })
     await vi.runAllTimersAsync()
     const task = await taskPromise
