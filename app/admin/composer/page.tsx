@@ -41,12 +41,11 @@ export default function TaskComposerPage() {
       type: "form_submission",
       title: "",
       description: "",
-      reward: undefined,
+      reward: 5,
       maxSubmissions: 100,
-      deadline: undefined,
       targetUrl: "",
       formFields: "",
-    } as TaskFormData,
+    },
     mode: "onBlur",
   })
 
