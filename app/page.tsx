@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 import { ListTodo, ShieldCheck, ArrowRight } from "lucide-react"
 
 export default function RolePickerPage() {
@@ -6,11 +7,15 @@ export default function RolePickerPage() {
     <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
       {/* Logo */}
       <div className="mb-10 flex flex-col items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground text-xl font-bold shadow-md">
-          T
-        </div>
+        <Image
+          src="/favicon.jpg"
+          alt="onetaskkk logo"
+          width={48}
+          height={48}
+          className="rounded-2xl shadow-md"
+        />
         <div className="text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">TaskMarket</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">onetaskkk</h1>
           <p className="mt-1 text-sm text-muted-foreground">Choose how you want to continue</p>
         </div>
       </div>

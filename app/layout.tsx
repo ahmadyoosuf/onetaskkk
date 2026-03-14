@@ -17,8 +17,11 @@ const ibmPlexMono = IBM_Plex_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'TaskMarket',
+  title: 'onetaskkk',
   description: 'Micro-task marketplace platform — post tasks, complete work, manage submissions.',
+  icons: {
+    icon: '/favicon.jpg',
+  },
 }
 
 export const viewport: Viewport = {

@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { LayoutDashboard, ListTodo, ClipboardCheck, PlusCircle, ArrowLeftRight } from "lucide-react"
@@ -38,10 +39,14 @@ export function AppShell({ children, role }: AppShellProps) {
         <div className="mx-auto flex h-12 sm:h-14 max-w-7xl items-center justify-between px-3 sm:px-4">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0 touch-feedback">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
-              T
-            </span>
-            <span className="hidden sm:inline text-lg font-semibold tracking-tight">TaskMarket</span>
+            <Image
+              src="/favicon.jpg"
+              alt="onetaskkk logo"
+              width={28}
+              height={28}
+              className="rounded-lg"
+            />
+            <span className="hidden sm:inline text-lg font-semibold tracking-tight">onetaskkk</span>
           </Link>
 
           {/* Navigation */}
