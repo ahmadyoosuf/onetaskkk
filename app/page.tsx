@@ -173,7 +173,7 @@ export default function TasksFeedPage() {
                       <Card
                         onClick={() => setSelectedTask(task)}
                         className={cn(
-                          "cursor-pointer border-border/30 transition-all hover:border-primary/30 h-full",
+                          "cursor-pointer border-border/30 transition-all hover:border-primary/30 h-full touch-feedback",
                           isSelected && "border-primary/50 bg-primary/5 ring-1 ring-primary/20"
                         )}
                       >
@@ -218,10 +218,10 @@ export default function TasksFeedPage() {
           )}
         </div>
 
-        {/* Task Detail Panel */}
-        <div className="w-full lg:w-80 xl:w-96">
+        {/* Task Detail Panel - Hidden on mobile (use bottom sheet), visible on desktop */}
+        <div className="hidden lg:block lg:w-80 xl:w-96">
           {selectedTask ? (
-            <Card className="border-border/30 lg:sticky lg:top-24">
+            <Card className="border-border/30 sticky top-20">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
@@ -350,18 +350,73 @@ export default function TasksFeedPage() {
         </div>
       </div>
 
+      {/* Mobile Task Detail Sheet */}
+      <Dialog open={!!selectedTask && typeof window !== "undefined" && window.innerWidth < 1024} onOpenChange={(open) => !open && setSelectedTask(null)}>
+        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
+          {selectedTask && (
+            <>
+              <DialogHeader className="pb-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
+                    {(() => {
+                      const Icon = TASK_ICONS[selectedTask.type]
+                      return <Icon className="h-5 w-5" />
+                    })()}
+                  </div>
+                  <div className="min-w-0">
+                    <DialogTitle className="text-base">{selectedTask.title}</DialogTitle>
+                    <DialogDescription className="text-xs">{TASK_TYPE_META[selectedTask.type].label}</DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+              <div className="space-y-4 pt-2">
+                <p className="text-sm text-muted-foreground">{selectedTask.description}</p>
+                
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-lg border border-border/30 p-3 text-center">
+                    <DollarSign className="mx-auto h-5 w-5 text-success" />
+                    <p className="mt-1 text-lg font-semibold">${selectedTask.reward.toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground">Reward</p>
+                  </div>
+                  <div className="rounded-lg border border-border/30 p-3 text-center">
+                    <Users className="mx-auto h-5 w-5 text-primary" />
+                    <p className="mt-1 text-lg font-semibold">
+                      {selectedTask.maxSubmissions - selectedTask.currentSubmissions}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Spots Left</p>
+                  </div>
+                </div>
+
+                {selectedTask.deadline && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Calendar className="h-4 w-4" />
+                    Deadline: {selectedTask.deadline.toLocaleDateString()}
+                  </div>
+                )}
+
+                <Button className="w-full h-12 text-base" onClick={() => setShowSubmitDialog(true)}>
+                  <Send className="mr-2 h-5 w-5" />
+                  Submit Work
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Submit Dialog */}
       <Dialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Submit Work</DialogTitle>
             <DialogDescription>
               Provide proof of completion for "{selectedTask?.title}"
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="proof" className={errors.proof ? "text-destructive" : ""}>
+              <Label htmlFor="proof" className={cn("text-sm", errors.proof && "text-destructive")}>
                 Proof of Completion *
               </Label>
               <Textarea
@@ -369,29 +424,30 @@ export default function TasksFeedPage() {
                 placeholder="Describe how you completed the task..."
                 rows={4}
                 {...register("proof")}
-                className={errors.proof ? "border-destructive" : ""}
+                className={cn("text-base", errors.proof && "border-destructive")}
               />
               {errors.proof && (
                 <p className="text-sm text-destructive">{errors.proof.message}</p>
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="liveAppUrl">Live URL (optional)</Label>
+              <Label htmlFor="liveAppUrl" className="text-sm">Live URL (optional)</Label>
               <Input
                 id="liveAppUrl"
                 type="url"
                 placeholder="https://..."
                 {...register("liveAppUrl")}
+                className="text-base h-11"
               />
               {errors.liveAppUrl && (
                 <p className="text-sm text-destructive">{errors.liveAppUrl.message}</p>
               )}
             </div>
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button type="button" variant="outline" onClick={() => setShowSubmitDialog(false)}>
+            <DialogFooter className="flex-col gap-2 sm:flex-row pt-2">
+              <Button type="button" variant="outline" onClick={() => setShowSubmitDialog(false)} className="w-full sm:w-auto h-11">
                 Cancel
               </Button>
-              <Button type="submit" disabled={!isValid}>
+              <Button type="submit" disabled={!isValid} className="w-full sm:w-auto h-11">
                 <Send className="mr-2 h-4 w-4" />
                 Submit
               </Button>

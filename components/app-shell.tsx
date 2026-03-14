@@ -18,18 +18,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       {/* Glass Header */}
-      <header className="sticky top-0 z-50 glass border-b border-border/30">
-        <div className="mx-auto flex h-14 sm:h-16 max-w-7xl items-center justify-between px-3 sm:px-4">
+      <header className="sticky top-0 z-50 glass border-b border-border/30 safe-area-top">
+        <div className="mx-auto flex h-12 sm:h-14 max-w-7xl items-center justify-between px-3 sm:px-4">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 shrink-0">
-            <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm sm:text-base">
+          <Link href="/" className="flex items-center gap-2 shrink-0 touch-feedback min-h-[44px] items-center">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
               T
             </span>
-            <span className="hidden xs:inline text-lg sm:text-xl font-semibold tracking-tight">TaskMarket</span>
+            <span className="hidden sm:inline text-lg font-semibold tracking-tight">TaskMarket</span>
           </Link>
 
-          {/* Navigation */}
-          <nav className="flex items-center gap-0.5 sm:gap-1">
+          {/* Navigation - horizontal scroll on mobile */}
+          <nav className="flex items-center gap-1 overflow-x-auto scrollbar-hide max-w-[60vw] sm:max-w-none">
             {NAV_ITEMS.map((item) => {
               const isActive = pathname === item.href || 
                 (item.href !== "/" && pathname.startsWith(item.href))
@@ -40,23 +40,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-1.5 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors",
+                    "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs sm:text-sm font-medium transition-colors touch-feedback whitespace-nowrap",
                     isActive
                       ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground active:bg-muted"
                   )}
                 >
-                  <Icon className="h-4 w-4" />
-                  <span className="hidden md:inline">{item.label}</span>
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="hidden lg:inline">{item.label}</span>
                 </Link>
               )
             })}
           </nav>
 
           {/* User indicator */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             <div className="h-2 w-2 rounded-full bg-success animate-breathe" />
-            <span className="hidden sm:inline text-xs sm:text-sm text-muted-foreground">Demo</span>
+            <span className="hidden sm:inline text-xs text-muted-foreground">Demo</span>
           </div>
         </div>
       </header>
