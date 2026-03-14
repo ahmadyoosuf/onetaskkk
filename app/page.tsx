@@ -1,8 +1,9 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useRef } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { useVirtualizer } from "@tanstack/react-virtual"
 import { useToast } from "@/hooks/use-toast"
 import { AppShell } from "@/components/app-shell"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
-import { ScrollArea } from "@/components/ui/scroll-area"
+
 import {
   Dialog,
   DialogContent,
@@ -43,11 +44,20 @@ const TASK_ICONS: Record<TaskType, typeof FileText> = {
 
 export default function TasksFeedPage() {
   const { toast } = useToast()
-  const tasks = useTasks()
+  const { tasks, isLoading } = useTasks()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showSubmitDialog, setShowSubmitDialog] = useState(false)
+  const [showMobileDetail, setShowMobileDetail] = useState(false)
   const [typeFilter, setTypeFilter] = useState<TaskType | "all">("all")
   const [sortBy, setSortBy] = useState<"newest" | "reward">("newest")
+  const parentRef = useRef<HTMLDivElement>(null)
+
+  const handleTaskSelect = (task: Task) => {
+    setSelectedTask(task)
+    if (window.innerWidth < 1024) {
+      setShowMobileDetail(true)
+    }
+  }
 
   const { register, handleSubmit, reset, formState: { errors, isValid } } = useForm<SubmissionFormData>({
     resolver: zodResolver(submissionSchema),
@@ -65,10 +75,21 @@ export default function TasksFeedPage() {
     return result
   }, [tasks, typeFilter, sortBy])
 
-  const onSubmit = (data: SubmissionFormData) => {
+  const virtualizer = useVirtualizer({
+    count: filteredTasks.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 96,
+    measureElement: (el) => el.getBoundingClientRect().height,
+    overscan: 5,
+  })
+
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const onSubmit = async (data: SubmissionFormData) => {
     if (!selectedTask) return
+    setIsSubmitting(true)
     const user = getCurrentUser()
-    createSubmission({
+    await createSubmission({
       taskId: selectedTask.id,
       userId: user.id,
       userName: user.name,
@@ -82,6 +103,7 @@ export default function TasksFeedPage() {
     setShowSubmitDialog(false)
     reset()
     setSelectedTask(null)
+    setIsSubmitting(false)
   }
 
   return (
@@ -122,76 +144,105 @@ export default function TasksFeedPage() {
             </div>
           </div>
 
-          {/* Scrollable Task Feed */}
-          <ScrollArea className="h-[50vh] sm:h-[calc(100vh-220px)]">
-            <div className="space-y-2 pr-2 sm:pr-4">
-              {filteredTasks.length === 0 ? (
-                <Card className="border-border/30 border-dashed">
-                  <CardContent className="flex h-32 items-center justify-center">
-                    <p className="text-muted-foreground">No tasks match your filters.</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                filteredTasks.map((task, index) => {
+          {/* Task Feed */}
+          {isLoading ? (
+            <Card className="border-border/30 border-dashed">
+              <CardContent className="flex h-32 items-center justify-center">
+                <p className="text-muted-foreground animate-pulse">Loading tasks...</p>
+              </CardContent>
+            </Card>
+          ) : filteredTasks.length === 0 ? (
+            <Card className="border-border/30 border-dashed">
+              <CardContent className="flex h-32 items-center justify-center">
+                <p className="text-muted-foreground">No tasks match your filters.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div
+              ref={parentRef}
+              className="overflow-auto scrollbar-hide"
+              style={{ height: "calc(100svh - 200px)" }}
+            >
+              <div
+                style={{
+                  height: `${virtualizer.getTotalSize()}px`,
+                  width: "100%",
+                  position: "relative",
+                }}
+              >
+                {virtualizer.getVirtualItems().map((virtualRow) => {
+                  const task = filteredTasks[virtualRow.index]
                   const Icon = TASK_ICONS[task.type]
                   const meta = TASK_TYPE_META[task.type]
                   const isSelected = selectedTask?.id === task.id
                   const spotsLeft = task.maxSubmissions - task.currentSubmissions
-                  
+
                   return (
-                    <Card
+                    <div
                       key={task.id}
-                      onClick={() => setSelectedTask(task)}
-                      className={cn(
-                        "cursor-pointer border-border/30 transition-all animate-fade-in-up hover:border-primary/30",
-                        isSelected && "border-primary/50 bg-primary/5 ring-1 ring-primary/20"
-                      )}
-                      style={{ animationDelay: `${index * 40}ms` }}
+                      data-index={virtualRow.index}
+                      ref={virtualizer.measureElement}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        transform: `translateY(${virtualRow.start}px)`,
+                        paddingBottom: "8px",
+                      }}
                     >
-                      <CardContent className="p-3 sm:p-4">
-                        <div className="flex items-start gap-3">
-                          <div className={cn(
-                            "flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg transition-colors",
-                            isSelected ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary"
-                          )}>
-                            <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0">
-                                <h3 className="font-medium text-sm sm:text-base leading-tight truncate">{task.title}</h3>
-                                <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground line-clamp-2">
-                                  {task.description}
-                                </p>
+                      <Card
+                        onClick={() => handleTaskSelect(task)}
+                        className={cn(
+                          "cursor-pointer border-border/30 transition-all hover:border-primary/30 touch-feedback",
+                          isSelected && "border-primary/50 bg-primary/5 ring-1 ring-primary/20"
+                        )}
+                      >
+                        <CardContent className="p-3 sm:p-4">
+                          <div className="flex items-start gap-3">
+                            <div className={cn(
+                              "flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg transition-colors",
+                              isSelected ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary"
+                            )}>
+                              <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <h3 className="font-medium text-sm sm:text-base leading-tight truncate">{task.title}</h3>
+                                  <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground line-clamp-2">
+                                    {task.description}
+                                  </p>
+                                </div>
+                                <Badge variant="secondary" className="shrink-0 bg-success/10 text-success border-success/20 text-xs">
+                                  ${task.reward.toFixed(2)}
+                                </Badge>
                               </div>
-                              <Badge variant="secondary" className="shrink-0 bg-success/10 text-success border-success/20 text-xs">
-                                ${task.reward.toFixed(2)}
-                              </Badge>
-                            </div>
-                            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <Users className="h-3 w-3" />
-                                {spotsLeft} left
-                              </span>
-                              <Badge variant="outline" className="border-border/30 text-xs px-1.5 py-0">
-                                {meta.label}
-                              </Badge>
+                              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                  <Users className="h-3 w-3" />
+                                  {spotsLeft} left
+                                </span>
+                                <Badge variant="outline" className="border-border/30 text-xs px-1.5 py-0">
+                                  {meta.label}
+                                </Badge>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                        </CardContent>
+                      </Card>
+                    </div>
                   )
-                })
-              )}
+                })}
+              </div>
             </div>
-          </ScrollArea>
+          )}
         </div>
 
-        {/* Task Detail Panel */}
-        <div className="w-full lg:w-80 xl:w-96">
+        {/* Task Detail Panel - Hidden on mobile (use bottom sheet), visible on desktop */}
+        <div className="hidden lg:block lg:w-80 xl:w-96">
           {selectedTask ? (
-            <Card className="border-border/30 lg:sticky lg:top-24">
+            <Card className="border-border/30 sticky top-20">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
@@ -320,18 +371,76 @@ export default function TasksFeedPage() {
         </div>
       </div>
 
+      {/* Mobile Task Detail Sheet */}
+      <Dialog open={showMobileDetail && !!selectedTask} onOpenChange={(open) => {
+        setShowMobileDetail(open)
+        if (!open) setSelectedTask(null)
+      }}>
+        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
+          {selectedTask && (
+            <>
+              <DialogHeader className="pb-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
+                    {(() => {
+                      const Icon = TASK_ICONS[selectedTask.type]
+                      return <Icon className="h-5 w-5" />
+                    })()}
+                  </div>
+                  <div className="min-w-0">
+                    <DialogTitle className="text-base">{selectedTask.title}</DialogTitle>
+                    <DialogDescription className="text-xs">{TASK_TYPE_META[selectedTask.type].label}</DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+              <div className="space-y-4 pt-2">
+                <p className="text-sm text-muted-foreground">{selectedTask.description}</p>
+                
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-lg border border-border/30 p-3 text-center">
+                    <DollarSign className="mx-auto h-5 w-5 text-success" />
+                    <p className="mt-1 text-lg font-semibold">${selectedTask.reward.toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground">Reward</p>
+                  </div>
+                  <div className="rounded-lg border border-border/30 p-3 text-center">
+                    <Users className="mx-auto h-5 w-5 text-primary" />
+                    <p className="mt-1 text-lg font-semibold">
+                      {selectedTask.maxSubmissions - selectedTask.currentSubmissions}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Spots Left</p>
+                  </div>
+                </div>
+
+                {selectedTask.deadline && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Calendar className="h-4 w-4" />
+                    Deadline: {selectedTask.deadline.toLocaleDateString()}
+                  </div>
+                )}
+
+                <Button className="w-full h-12 text-base" onClick={() => setShowSubmitDialog(true)}>
+                  <Send className="mr-2 h-5 w-5" />
+                  Submit Work
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Submit Dialog */}
       <Dialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Submit Work</DialogTitle>
             <DialogDescription>
               Provide proof of completion for "{selectedTask?.title}"
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="proof" className={errors.proof ? "text-destructive" : ""}>
+              <Label htmlFor="proof" className={cn("text-sm", errors.proof && "text-destructive")}>
                 Proof of Completion *
               </Label>
               <Textarea
@@ -339,31 +448,38 @@ export default function TasksFeedPage() {
                 placeholder="Describe how you completed the task..."
                 rows={4}
                 {...register("proof")}
-                className={errors.proof ? "border-destructive" : ""}
+                className={cn("text-base", errors.proof && "border-destructive")}
               />
               {errors.proof && (
                 <p className="text-sm text-destructive">{errors.proof.message}</p>
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="liveAppUrl">Live URL (optional)</Label>
+              <Label htmlFor="liveAppUrl" className="text-sm">Live URL (optional)</Label>
               <Input
                 id="liveAppUrl"
                 type="url"
                 placeholder="https://..."
                 {...register("liveAppUrl")}
+                className="text-base h-11"
               />
               {errors.liveAppUrl && (
                 <p className="text-sm text-destructive">{errors.liveAppUrl.message}</p>
               )}
             </div>
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button type="button" variant="outline" onClick={() => setShowSubmitDialog(false)}>
+            <DialogFooter className="flex-col gap-2 sm:flex-row pt-2">
+              <Button type="button" variant="outline" onClick={() => setShowSubmitDialog(false)} className="w-full sm:w-auto h-11">
                 Cancel
               </Button>
-              <Button type="submit" disabled={!isValid}>
-                <Send className="mr-2 h-4 w-4" />
-                Submit
+              <Button type="submit" disabled={!isValid || isSubmitting} className="w-full sm:w-auto h-11">
+                {isSubmitting ? (
+                  "Submitting..."
+                ) : (
+                  <>
+                    <Send className="mr-2 h-4 w-4" />
+                    Submit
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </form>

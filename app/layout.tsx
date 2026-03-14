@@ -1,6 +1,7 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Space_Grotesk, IBM_Plex_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { Toaster } from '@/components/ui/toaster'
 import './globals.css'
 
 const spaceGrotesk = Space_Grotesk({
@@ -20,6 +21,15 @@ export const metadata: Metadata = {
   description: 'Micro-task marketplace platform — post tasks, complete work, manage submissions.',
 }
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+  themeColor: '#5c5ce0',
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -29,6 +39,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${spaceGrotesk.variable} ${ibmPlexMono.variable} font-sans antialiased`}>
         {children}
+        <Toaster />
         <Analytics />
       </body>
     </html>
