@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { SubmissionDetail } from "@/components/submissions/submission-detail"
 import {
   Select,
   SelectContent,
@@ -30,7 +31,6 @@ import {
   MessageSquare, ImageIcon, Filter, Layers, ChevronRight, User, Calendar
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getTask } from "@/lib/store"
 import { useTasks, useSubmissions, useUpdateSubmissionStatus } from "@/hooks/use-store"
 import type { Submission, SubmissionStatus } from "@/lib/types"
 
@@ -435,126 +435,14 @@ function SubmissionsContent() {
           <div className="hidden lg:block lg:w-80 xl:w-96">
             {selectedSubmission ? (
               <Card className="border-border/30 sticky top-20">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <CardTitle className="text-base">Submission Details</CardTitle>
-                    <Badge variant="outline" className={STATUS_STYLES[selectedSubmission.status].className}>
-                      {STATUS_STYLES[selectedSubmission.status].label}
-                    </Badge>
-                  </div>
-                  <CardDescription className="truncate">
-                    {getTask(selectedSubmission.taskId)?.title}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Submitter Info */}
-                  <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary shrink-0">
-                      <User className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm truncate">{selectedSubmission.userName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {selectedSubmission.submittedAt.toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Task-type-specific submission fields per PRD */}
-                  {selectedSubmission.postUrl && (
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <ExternalLink className="h-3 w-3" />
-                        Post URL
-                      </Label>
-                      <a
-                        href={selectedSubmission.postUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-sm text-primary hover:underline break-all rounded-lg border border-border/30 bg-background p-3"
-                      >
-                        {selectedSubmission.postUrl}
-                        <ExternalLink className="h-3 w-3 shrink-0" />
-                      </a>
-                    </div>
-                  )}
-                  
-                  {selectedSubmission.emailContent && (
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <FileText className="h-3 w-3" />
-                        Email Content
-                      </Label>
-                      <div className="rounded-lg border border-border/30 bg-background p-3 text-sm whitespace-pre-wrap">
-                        {selectedSubmission.emailContent}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Evidence Screenshot */}
-                  {selectedSubmission.screenshotUrl && (
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <ImageIcon className="h-3 w-3" />
-                        Evidence Screenshot
-                      </Label>
-                      <a
-                        href={selectedSubmission.screenshotUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-sm text-primary hover:underline break-all"
-                      >
-                        {selectedSubmission.screenshotUrl}
-                        <ExternalLink className="h-3 w-3 shrink-0" />
-                      </a>
-                    </div>
-                  )}
-
-
-
-                  {/* Admin Notes */}
-                  {selectedSubmission.adminNotes && (
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <MessageSquare className="h-3 w-3" />
-                        Admin Notes
-                      </Label>
-                      <div className="rounded-lg border border-border/30 bg-muted/30 p-3 text-sm">
-                        {selectedSubmission.adminNotes}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Review Date */}
-                  {selectedSubmission.reviewedAt && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Calendar className="h-3 w-3" />
-                      Reviewed {selectedSubmission.reviewedAt.toLocaleString()}
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  {selectedSubmission.status === "pending" && (
-                    <div className="flex gap-2 pt-2">
-                      <Button 
-                        size="sm"
-                        className="flex-1 bg-success hover:bg-success/90" 
-                        onClick={() => handleReview("approved")}
-                      >
-                        <Check className="mr-1.5 h-4 w-4" />
-                        Approve
-                      </Button>
-                      <Button 
-                        size="sm"
-                        variant="destructive"
-                        className="flex-1"
-                        onClick={() => handleReview("rejected")}
-                      >
-                        <X className="mr-1.5 h-4 w-4" />
-                        Reject
-                      </Button>
-                    </div>
-                  )}
+                <CardContent className="space-y-4 pt-6">
+                  <SubmissionDetail
+                    submission={selectedSubmission}
+                    taskTitle={taskMap.get(selectedSubmission.taskId)?.title || "Unknown Task"}
+                    onApprove={() => handleReview("approved")}
+                    onReject={() => handleReview("rejected")}
+                    isReviewing={isReviewing}
+                  />
                 </CardContent>
               </Card>
             ) : (
@@ -581,104 +469,14 @@ function SubmissionsContent() {
       }}>
         <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
           {selectedSubmission && (
-            <>
-              <DialogHeader className="pb-2">
-                <div className="flex items-center justify-between gap-2">
-                  <DialogTitle className="text-base">Submission Details</DialogTitle>
-                  <Badge variant="outline" className={STATUS_STYLES[selectedSubmission.status].className}>
-                    {STATUS_STYLES[selectedSubmission.status].label}
-                  </Badge>
-                </div>
-                <DialogDescription className="truncate">
-                  {getTask(selectedSubmission.taskId)?.title}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 pt-2">
-                {/* Submitter Info */}
-                <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary shrink-0">
-                    <User className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-medium text-sm truncate">{selectedSubmission.userName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {selectedSubmission.submittedAt.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Task-type-specific submission fields per PRD */}
-                {selectedSubmission.postUrl && (
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <ExternalLink className="h-3 w-3" />
-                      Post URL
-                    </Label>
-                    <a
-                      href={selectedSubmission.postUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-sm text-primary hover:underline break-all rounded-lg border border-border/30 bg-background p-3"
-                    >
-                      {selectedSubmission.postUrl}
-                      <ExternalLink className="h-3 w-3 shrink-0" />
-                    </a>
-                  </div>
-                )}
-                
-                {selectedSubmission.emailContent && (
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <FileText className="h-3 w-3" />
-                      Email Content
-                    </Label>
-                    <div className="rounded-lg border border-border/30 bg-background p-3 text-sm whitespace-pre-wrap">
-                      {selectedSubmission.emailContent}
-                    </div>
-                  </div>
-                )}
-
-                {/* Evidence Screenshot */}
-                {selectedSubmission.screenshotUrl && (
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <ImageIcon className="h-3 w-3" />
-                      Evidence Screenshot
-                    </Label>
-                    <a
-                      href={selectedSubmission.screenshotUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-sm text-primary hover:underline break-all"
-                    >
-                      {selectedSubmission.screenshotUrl}
-                      <ExternalLink className="h-3 w-3 shrink-0" />
-                    </a>
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                {selectedSubmission.status === "pending" && (
-                  <div className="flex gap-2 pt-2">
-                    <Button 
-                      className="flex-1 h-11 bg-success hover:bg-success/90" 
-                      onClick={() => handleReview("approved")}
-                    >
-                      <Check className="mr-1.5 h-4 w-4" />
-                      Approve
-                    </Button>
-                    <Button 
-                      variant="destructive"
-                      className="flex-1 h-11"
-                      onClick={() => handleReview("rejected")}
-                    >
-                      <X className="mr-1.5 h-4 w-4" />
-                      Reject
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </>
+            <SubmissionDetail
+              submission={selectedSubmission}
+              taskTitle={taskMap.get(selectedSubmission.taskId)?.title || "Unknown Task"}
+              onApprove={() => handleReview("approved")}
+              onReject={() => handleReview("rejected")}
+              isReviewing={isReviewing}
+              variant="mobile"
+            />
           )}
         </DialogContent>
       </Dialog>
