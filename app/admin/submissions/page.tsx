@@ -114,6 +114,7 @@ function SubmissionsContent() {
     setShowReviewDialog(false)
     setAdminNotes("")
     setSelectedSubmission(null)
+    setShowMobileDetail(false)
   }
 
   // Running totals

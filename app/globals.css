@@ -140,9 +140,14 @@
     padding-right: env(safe-area-inset-right);
   }
 
-  /* Minimum touch target size (44x44 per Apple HIG) */
-  button, a, [role="button"], [role="option"] {
+  /* Minimum touch target size (44x44 per Apple HIG) — only interactive buttons/links */
+  button:not(.touch-target-sm):not([data-state]),
+  [role="button"]:not(.touch-target-sm) {
     min-height: 44px;
+    @apply touch-manipulation;
+  }
+
+  a {
     @apply touch-manipulation;
   }
 
