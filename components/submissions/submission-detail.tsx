@@ -4,18 +4,18 @@ import { Label } from "@/components/ui/label"
 import type { Submission, SubmissionStatus } from "@/lib/types"
 import { Calendar, Check, Clock, ExternalLink, FileText, ImageIcon, MessageSquare, User, X } from "lucide-react"
 
+const STATUS_LABELS: Record<SubmissionStatus, string> = {
+  pending: "Pending",
+  approved: "Approved",
+  rejected: "Rejected",
+}
+
 type SubmissionDetailProps = {
   submission: Submission
   taskTitle?: string
   onApprove: () => void
   onReject: () => void
   isReviewing: boolean
-}
-
-const STATUS_STYLES: Record<SubmissionStatus, { label: string; className: string }> = {
-  pending: { label: "Pending", className: "bg-warning/10 text-warning border-warning/20" },
-  approved: { label: "Approved", className: "bg-success/10 text-success border-success/20" },
-  rejected: { label: "Rejected", className: "bg-destructive/10 text-destructive border-destructive/20" },
 }
 
 export function SubmissionDetail({
@@ -30,8 +30,8 @@ export function SubmissionDetail({
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-base font-semibold">Submission Details</h3>
-          <Badge variant="outline" className={STATUS_STYLES[submission.status].className}>
-            {STATUS_STYLES[submission.status].label}
+          <Badge variant={submission.status}>
+            {STATUS_LABELS[submission.status]}
           </Badge>
         </div>
         {taskTitle && <p className="truncate text-sm text-muted-foreground">{taskTitle}</p>}

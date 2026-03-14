@@ -213,9 +213,10 @@ describe("store — submission operations", () => {
 
     await expect(store.createSubmission({
       taskId: task.id,
+      taskType: "email_sending",
       userId: "user-2",
       userName: "Second User",
-      proof: "I completed it",
+      screenshotUrl: "https://cdn.example.com/proofs/full-task.png",
     })).rejects.toThrow("Task is no longer accepting submissions")
   })
 
@@ -242,9 +243,11 @@ describe("store — submission operations", () => {
 
     await expect(store.createSubmission({
       taskId: task.id,
+      taskType: "social_media_posting",
       userId: "user-2",
       userName: "Second User",
-      proof: "Attempting cancelled task",
+      postUrl: "https://linkedin.com/posts/cancelled-test",
+      screenshotUrl: "https://cdn.example.com/proofs/cancelled-task.png",
     })).rejects.toThrow("Task is no longer accepting submissions")
   })
 
