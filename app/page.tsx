@@ -31,7 +31,7 @@ import {
 import { FileText, Mail, Heart, DollarSign, Users, ExternalLink, Send, Filter, Calendar } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createSubmission, getCurrentUser } from "@/lib/store"
-import { useTasks } from "@/hooks/use-store"
+import { useSubmissions, useTasks } from "@/hooks/use-store"
 import { submissionSchema, type SubmissionFormData } from "@/lib/schemas"
 import type { Task, TaskType } from "@/lib/types"
 import { TASK_TYPE_META } from "@/lib/types"
@@ -42,9 +42,86 @@ const TASK_ICONS: Record<TaskType, typeof FileText> = {
   social_media_liking: Heart,
 }
 
+function TaskInstructionDetails({ task }: { task: Task }) {
+  return (
+    <div className="space-y-3 rounded-lg bg-muted/50 p-3 text-sm">
+      <Badge variant="outline" className="border-border/30">
+        {task.allowMultipleSubmissions ? "Repeat submissions allowed" : "One submission per worker"}
+      </Badge>
+
+      {task.type === "form_submission" && (
+        <>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-muted-foreground">Target URL</span>
+            <a
+              href={task.details.targetUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-primary hover:underline text-xs"
+            >
+              Visit <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+          {task.details.formFields.length > 0 && (
+            <div>
+              <span className="text-muted-foreground text-xs">Required Fields:</span>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {task.details.formFields.map((field) => (
+                  <Badge key={field} variant="outline" className="text-xs px-1.5 py-0">
+                    {field}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {task.type === "email_sending" && (
+        <>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-muted-foreground">Send to</span>
+            <span className="font-mono text-xs">{task.details.targetEmail}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground text-xs">Email Content:</span>
+            <p className="mt-1 rounded border border-border/30 bg-background p-2 text-xs">
+              {task.details.emailContent}
+            </p>
+          </div>
+        </>
+      )}
+
+      {task.type === "social_media_liking" && (
+        <>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-muted-foreground">Platform</span>
+            <Badge variant="outline" className="capitalize text-xs">
+              {task.details.platform}
+            </Badge>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-muted-foreground">Post</span>
+            <a
+              href={task.details.postUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-primary hover:underline text-xs"
+            >
+              View Post <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function TasksFeedPage() {
   const { toast } = useToast()
   const { tasks, isLoading } = useTasks()
+  const { submissions } = useSubmissions()
+  const currentUser = getCurrentUser()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showSubmitDialog, setShowSubmitDialog] = useState(false)
   const [showMobileDetail, setShowMobileDetail] = useState(false)
@@ -75,6 +152,15 @@ export default function TasksFeedPage() {
     return result
   }, [tasks, typeFilter, sortBy])
 
+  const hasSubmittedSelectedTask = useMemo(() => {
+    if (!selectedTask) return false
+    return submissions.some(
+      (submission) => submission.taskId === selectedTask.id && submission.userId === currentUser.id
+    )
+  }, [currentUser.id, selectedTask, submissions])
+
+  const isSubmitLocked = !!selectedTask && !selectedTask.allowMultipleSubmissions && hasSubmittedSelectedTask
+
   const virtualizer = useVirtualizer({
     count: filteredTasks.length,
     getScrollElement: () => parentRef.current,
@@ -89,11 +175,10 @@ export default function TasksFeedPage() {
     if (!selectedTask) return
     setIsSubmitting(true)
     try {
-      const user = getCurrentUser()
       await createSubmission({
         taskId: selectedTask.id,
-        userId: user.id,
-        userName: user.name,
+        userId: currentUser.id,
+        userName: currentUser.name,
         proof: data.proof,
         liveAppUrl: data.liveAppUrl || undefined,
       })
@@ -104,10 +189,10 @@ export default function TasksFeedPage() {
       setShowSubmitDialog(false)
       reset()
       setSelectedTask(null)
-    } catch {
+    } catch (error) {
       toast({
         title: "Submission failed",
-        description: "Something went wrong. Please try again.",
+        description: error instanceof Error ? error.message : "Something went wrong. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -270,70 +355,7 @@ export default function TasksFeedPage() {
                 <p className="text-sm text-muted-foreground">{selectedTask.description}</p>
                 
                 {/* Task Details */}
-                <div className="space-y-2 rounded-lg bg-muted/50 p-3 text-sm">
-                  {selectedTask.type === "form_submission" && (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Target URL</span>
-                        <a 
-                          href={selectedTask.details.targetUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-primary hover:underline text-xs"
-                        >
-                          Visit <ExternalLink className="h-3 w-3" />
-                        </a>
-                      </div>
-                      {selectedTask.details.formFields.length > 0 && (
-                        <div>
-                          <span className="text-muted-foreground text-xs">Required Fields:</span>
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {selectedTask.details.formFields.map((field) => (
-                              <Badge key={field} variant="outline" className="text-xs px-1.5 py-0">
-                                {field}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-                  {selectedTask.type === "email_sending" && (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Send to</span>
-                        <span className="font-mono text-xs">{selectedTask.details.targetEmail}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground text-xs">Email Content:</span>
-                        <p className="mt-1 text-xs bg-background p-2 rounded border border-border/30">
-                          {selectedTask.details.emailContent}
-                        </p>
-                      </div>
-                    </>
-                  )}
-                  {selectedTask.type === "social_media_liking" && (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Platform</span>
-                        <Badge variant="outline" className="capitalize text-xs">
-                          {selectedTask.details.platform}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Post</span>
-                        <a 
-                          href={selectedTask.details.postUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-primary hover:underline text-xs"
-                        >
-                          View Post <ExternalLink className="h-3 w-3" />
-                        </a>
-                      </div>
-                    </>
-                  )}
-                </div>
+                <TaskInstructionDetails task={selectedTask} />
 
                 {/* Stats */}
                 <div className="grid grid-cols-2 gap-2">
@@ -358,7 +380,18 @@ export default function TasksFeedPage() {
                   </div>
                 )}
 
-                <Button className="w-full" size="sm" onClick={() => setShowSubmitDialog(true)}>
+                {isSubmitLocked && (
+                  <p className="rounded-lg border border-warning/20 bg-warning/10 p-3 text-xs text-warning">
+                    You have already submitted this task. Additional submissions are disabled.
+                  </p>
+                )}
+
+                <Button
+                  className="w-full"
+                  size="sm"
+                  onClick={() => setShowSubmitDialog(true)}
+                  disabled={isSubmitLocked}
+                >
                   <Send className="mr-2 h-4 w-4" />
                   Submit Work
                 </Button>
@@ -404,6 +437,8 @@ export default function TasksFeedPage() {
               </DialogHeader>
               <div className="space-y-4 pt-2">
                 <p className="text-sm text-muted-foreground">{selectedTask.description}</p>
+
+                <TaskInstructionDetails task={selectedTask} />
                 
                 {/* Stats */}
                 <div className="grid grid-cols-2 gap-2">
@@ -428,7 +463,17 @@ export default function TasksFeedPage() {
                   </div>
                 )}
 
-                <Button className="w-full h-12 text-base" onClick={() => setShowSubmitDialog(true)}>
+                {isSubmitLocked && (
+                  <p className="rounded-lg border border-warning/20 bg-warning/10 p-3 text-xs text-warning">
+                    You have already submitted this task. Additional submissions are disabled.
+                  </p>
+                )}
+
+                <Button
+                  className="w-full h-12 text-base"
+                  onClick={() => setShowSubmitDialog(true)}
+                  disabled={isSubmitLocked}
+                >
                   <Send className="mr-2 h-5 w-5" />
                   Submit Work
                 </Button>
@@ -480,7 +525,7 @@ export default function TasksFeedPage() {
               <Button type="button" variant="outline" onClick={() => setShowSubmitDialog(false)} className="w-full sm:w-auto h-11">
                 Cancel
               </Button>
-              <Button type="submit" disabled={!isValid || isSubmitting} className="w-full sm:w-auto h-11">
+              <Button type="submit" disabled={!isValid || isSubmitting || isSubmitLocked} className="w-full sm:w-auto h-11">
                 {isSubmitting ? (
                   "Submitting..."
                 ) : (

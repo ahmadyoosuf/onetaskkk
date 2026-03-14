@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
+import { describe, it, expect, afterEach, vi } from "vitest"
 import type * as StoreModule from "../store"
 
 // Fresh store instance per test via module reset + clear localStorage
@@ -24,6 +24,7 @@ describe("store — task operations", () => {
       description: "A description",
       reward: 5,
       maxSubmissions: 100,
+      allowMultipleSubmissions: false,
       details: { targetUrl: "https://example.com", formFields: ["Name", "Email"] },
     })
     await vi.runAllTimersAsync()
@@ -32,6 +33,7 @@ describe("store — task operations", () => {
     expect(task.title).toBe("My Test Task")
     expect(task.type).toBe("form_submission")
     expect(task.status).toBe("open")
+    expect(task.allowMultipleSubmissions).toBe(false)
     expect(store.getTasks().length).toBe(initial + 1)
     expect(store.getTasks()[0].id).toBe(task.id)
   })
@@ -73,6 +75,14 @@ describe("store — task operations", () => {
     expect(updated?.status).toBe("cancelled")
     expect(store.getTasks().find((t) => t.id === open.id)?.status).toBe("cancelled")
   })
+
+  it("seeded social tasks only use supported platforms", async () => {
+    const store = await freshStore()
+    const supportedPlatforms = new Set(["linkedin", "twitter", "instagram"])
+    const socialTasks = store.getTasks().filter((task) => task.type === "social_media_liking")
+
+    expect(socialTasks.every((task) => supportedPlatforms.has(task.details.platform))).toBe(true)
+  })
 })
 
 describe("store — submission operations", () => {
@@ -83,7 +93,18 @@ describe("store — submission operations", () => {
   it("createSubmission adds a submission and increments task count", async () => {
     vi.useFakeTimers()
     const store = await freshStore()
-    const task = store.getTasks().find((t) => t.status === "open")!
+
+    const taskPromise = store.createTask({
+      type: "form_submission",
+      title: "Submission Test Task",
+      description: "A dedicated task for submission behavior tests.",
+      reward: 4,
+      maxSubmissions: 25,
+      allowMultipleSubmissions: true,
+      details: { targetUrl: "https://example.com/form", formFields: ["Name"] },
+    })
+    await vi.runAllTimersAsync()
+    const task = await taskPromise
     const before = task.currentSubmissions
 
     const promise = store.createSubmission({
@@ -99,6 +120,39 @@ describe("store — submission operations", () => {
     expect(submission.taskId).toBe(task.id)
     const updatedTask = store.getTasks().find((t) => t.id === task.id)!
     expect(updatedTask.currentSubmissions).toBe(before + 1)
+  })
+
+  it("blocks repeat submissions when the task disallows them", async () => {
+    vi.useFakeTimers()
+    const store = await freshStore()
+
+    const taskPromise = store.createTask({
+      type: "email_sending",
+      title: "Single Attempt Task",
+      description: "Only one submission per worker is allowed.",
+      reward: 2,
+      maxSubmissions: 10,
+      allowMultipleSubmissions: false,
+      details: { targetEmail: "owner@example.com", emailContent: "Send this exact message." },
+    })
+    await vi.runAllTimersAsync()
+    const task = await taskPromise
+
+    const firstSubmission = store.createSubmission({
+      taskId: task.id,
+      userId: "user-1",
+      userName: "Test User",
+      proof: "Initial completion proof",
+    })
+    await vi.runAllTimersAsync()
+    await firstSubmission
+
+    await expect(store.createSubmission({
+      taskId: task.id,
+      userId: "user-1",
+      userName: "Test User",
+      proof: "Trying to submit again",
+    })).rejects.toThrow("already submitted")
   })
 
   it("updateSubmissionStatus approves with notes and sets reviewedAt", async () => {
@@ -144,6 +198,7 @@ describe("store — localStorage persistence", () => {
       description: "Survives reload",
       reward: 3,
       maxSubmissions: 50,
+      allowMultipleSubmissions: true,
       details: { targetEmail: "test@example.com", emailContent: "Hello!" },
     })
     await vi.runAllTimersAsync()

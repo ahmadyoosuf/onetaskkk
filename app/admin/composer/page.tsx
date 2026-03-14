@@ -21,6 +21,7 @@ import { TitleField } from "@/components/composer/title-field"
 import { DescriptionField } from "@/components/composer/description-field"
 import { RewardField } from "@/components/composer/reward-field"
 import { MaxSubmissionsField } from "@/components/composer/max-submissions-field"
+import { AllowMultipleSubmissionsField } from "@/components/composer/allow-multiple-submissions-field"
 import { DeadlineField } from "@/components/composer/deadline-field"
 import { FormSubmissionFields } from "@/components/composer/form-submission-fields"
 import { EmailSendingFields } from "@/components/composer/email-sending-fields"
@@ -45,13 +46,14 @@ export default function TaskComposerPage() {
       description: "",
       reward: 5,
       maxSubmissions: 100,
+      allowMultipleSubmissions: false,
       targetUrl: "",
       formFields: "",
     },
     mode: "onBlur",
   })
 
-  const { handleSubmit, setValue, formState: { isSubmitting, errors } } = methods
+  const { handleSubmit, setValue, formState: { isSubmitting } } = methods
 
   const handleTypeChange = (newType: TaskType) => {
     setTaskType(newType)
@@ -67,6 +69,7 @@ export default function TaskComposerPage() {
           description: data.description,
           reward: data.reward,
           maxSubmissions: data.maxSubmissions,
+          allowMultipleSubmissions: data.allowMultipleSubmissions,
           deadline: data.deadline,
           details: {
             targetUrl: data.targetUrl,
@@ -80,6 +83,7 @@ export default function TaskComposerPage() {
           description: data.description,
           reward: data.reward,
           maxSubmissions: data.maxSubmissions,
+          allowMultipleSubmissions: data.allowMultipleSubmissions,
           deadline: data.deadline,
           details: {
             targetEmail: data.targetEmail,
@@ -93,6 +97,7 @@ export default function TaskComposerPage() {
           description: data.description,
           reward: data.reward,
           maxSubmissions: data.maxSubmissions,
+          allowMultipleSubmissions: data.allowMultipleSubmissions,
           deadline: data.deadline,
           details: {
             postUrl: data.postUrl,
@@ -192,6 +197,7 @@ export default function TaskComposerPage() {
                   <RewardField />
                   <MaxSubmissionsField />
                 </div>
+                <AllowMultipleSubmissionsField />
                 <DeadlineField />
               </CardContent>
             </Card>

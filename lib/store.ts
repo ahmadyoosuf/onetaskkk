@@ -33,6 +33,13 @@ function saveToStorage<T>(key: string, data: T[]): void {
   }
 }
 
+function withTaskDefaults(task: Task): Task {
+  return {
+    ...task,
+    allowMultipleSubmissions: task.allowMultipleSubmissions ?? true,
+  }
+}
+
 // ─── Simulated Network Delays (per PRD) ─────────────────────
 const FETCH_DELAY = 2000 // 2 seconds for data fetching
 const MUTATION_DELAY_MIN = 1000 // 1-3 seconds for mutations
@@ -111,7 +118,7 @@ const TASK_TEMPLATES = {
     { title: "Like Product Launch Post", description: "Like our product launch announcement on LinkedIn.", postUrl: "https://linkedin.com/posts/acme", platform: "linkedin" as Platform },
     { title: "Twitter Engagement Campaign", description: "Like and retweet our latest product announcement tweet.", postUrl: "https://twitter.com/acme/status", platform: "twitter" as Platform },
     { title: "Instagram Post Engagement", description: "Like our latest Instagram post to boost visibility.", postUrl: "https://instagram.com/p/acme", platform: "instagram" as Platform },
-    { title: "Facebook Page Interaction", description: "Like and share our Facebook page announcement.", postUrl: "https://facebook.com/acme/posts", platform: "facebook" as Platform },
+    { title: "Instagram Story Engagement", description: "Like our latest Instagram story highlight to boost visibility.", postUrl: "https://instagram.com/stories/highlights/acme", platform: "instagram" as Platform },
   ],
 }
 
@@ -138,6 +145,7 @@ function generateMockTasks(): Task[] {
       description: template.description,
       reward: parseFloat((0.5 + Math.random() * 9.5).toFixed(2)),
       maxSubmissions: maxSubs,
+      allowMultipleSubmissions: i % 4 !== 0,
       currentSubmissions: currentSubs,
       status: isCompleted ? "completed" : isCancelled ? "cancelled" : "open",
       createdAt: new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000),
@@ -200,7 +208,7 @@ function generateMockSubmissions(): Submission[] {
 }
 
 // ─── In-Memory Store ────────────────────────────────────────
-let tasks: Task[] = loadFromStorage<Task>(STORAGE_KEYS.tasks) ?? generateMockTasks()
+let tasks: Task[] = (loadFromStorage<Task>(STORAGE_KEYS.tasks) ?? generateMockTasks()).map(withTaskDefaults)
 let submissions: Submission[] = loadFromStorage<Submission>(STORAGE_KEYS.submissions) ?? generateMockSubmissions()
 
 // Initialize snapshots
@@ -231,6 +239,7 @@ type CreateTaskInputBase = {
   description: string
   reward: number
   maxSubmissions: number
+  allowMultipleSubmissions: boolean
   deadline?: Date
 }
 
@@ -246,6 +255,7 @@ export async function createTask(input: CreateTaskInput): Promise<Task> {
     description: input.description,
     reward: input.reward,
     maxSubmissions: input.maxSubmissions,
+    allowMultipleSubmissions: input.allowMultipleSubmissions,
     currentSubmissions: 0,
     status: "open",
     createdAt: new Date(),
@@ -293,6 +303,25 @@ export function getSubmission(id: string): Submission | undefined {
 }
 
 export async function createSubmission(submission: Omit<Submission, "id" | "submittedAt" | "status">): Promise<Submission> {
+  const taskIndex = tasks.findIndex((t) => t.id === submission.taskId)
+  if (taskIndex === -1) {
+    throw new Error("Task not found")
+  }
+
+  const task = tasks[taskIndex]
+  if (task.status !== "open" || task.currentSubmissions >= task.maxSubmissions) {
+    throw new Error("Task is no longer accepting submissions")
+  }
+
+  if (!task.allowMultipleSubmissions) {
+    const alreadySubmitted = submissions.some(
+      (existing) => existing.taskId === submission.taskId && existing.userId === submission.userId
+    )
+    if (alreadySubmitted) {
+      throw new Error("You have already submitted this task")
+    }
+  }
+
   const newSubmission: Submission = {
     ...submission,
     id: `sub-${Date.now()}`,
@@ -304,13 +333,9 @@ export async function createSubmission(submission: Omit<Submission, "id" | "subm
   submissions = [newSubmission, ...submissions]
   
   // Increment task submission count (immutable update)
-  const taskIndex = tasks.findIndex((t) => t.id === submission.taskId)
-  if (taskIndex !== -1) {
-    const task = tasks[taskIndex]
-    const newCount = task.currentSubmissions + 1
-    const newStatus = newCount >= task.maxSubmissions ? "completed" : task.status
-    tasks[taskIndex] = { ...task, currentSubmissions: newCount, status: newStatus }
-  }
+  const newCount = task.currentSubmissions + 1
+  const newStatus = newCount >= task.maxSubmissions ? "completed" : task.status
+  tasks[taskIndex] = { ...task, currentSubmissions: newCount, status: newStatus }
   
   notify()
   return newSubmission

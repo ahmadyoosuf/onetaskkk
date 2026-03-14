@@ -30,8 +30,8 @@ import {
   DollarSign, ListTodo, Clock, Users
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getSubmissions, deleteTask, updateTaskStatus } from "@/lib/store"
-import { useTasks } from "@/hooks/use-store"
+import { deleteTask, updateTaskStatus } from "@/lib/store"
+import { useSubmissions, useTasks } from "@/hooks/use-store"
 import { useToast } from "@/hooks/use-toast"
 import type { Task, TaskType, TaskStatus } from "@/lib/types"
 import { TASK_TYPE_META } from "@/lib/types"
@@ -50,10 +50,11 @@ const STATUS_STYLES: Record<TaskStatus, { label: string; className: string }> = 
 
 export default function TasksManagementPage() {
   const { tasks, isLoading } = useTasks()
+  const { submissions, isLoading: isLoadingSubmissions } = useSubmissions()
   const { toast } = useToast()
-  const allSubmissions = getSubmissions()
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set())
   const [isMutating, setIsMutating] = useState(false)
+  const isDataLoading = isLoading || isLoadingSubmissions
 
   const handleDelete = async (taskId: string) => {
     setIsMutating(true)
@@ -134,7 +135,7 @@ export default function TasksManagementPage() {
   const totalTasks = tasks.length
   const openTasks = tasks.filter((t) => t.status === "open").length
   const totalRewards = tasks.reduce((sum, t) => sum + t.reward * t.currentSubmissions, 0)
-  const totalSubmissions = allSubmissions.length
+  const totalSubmissions = submissions.length
 
   return (
     <AppShell>
@@ -246,137 +247,143 @@ export default function TasksManagementPage() {
             <CardDescription>View and manage all created tasks.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">
-                    <Checkbox
-                      checked={selectedTasks.size === tasks.length && tasks.length > 0}
-                      onCheckedChange={toggleAllSelection}
-                      aria-label="Select all tasks"
-                    />
-                  </TableHead>
-                  <TableHead>Task</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Reward</TableHead>
-                  <TableHead>Progress</TableHead>
-                  <TableHead className="w-10"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tasks.map((task) => {
-                  const Icon = TASK_ICONS[task.type]
-                  const meta = TASK_TYPE_META[task.type]
-                  const statusStyle = STATUS_STYLES[task.status]
-                  const progress = (task.currentSubmissions / task.maxSubmissions) * 100
-                  const taskSubmissions = allSubmissions.filter((s) => s.taskId === task.id)
-                  const pendingCount = taskSubmissions.filter((s) => s.status === "pending").length
+            {isDataLoading ? (
+              <div className="flex h-32 items-center justify-center">
+                <p className="text-muted-foreground animate-pulse">Loading tasks...</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={selectedTasks.size === tasks.length && tasks.length > 0}
+                        onCheckedChange={toggleAllSelection}
+                        aria-label="Select all tasks"
+                      />
+                    </TableHead>
+                    <TableHead>Task</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Reward</TableHead>
+                    <TableHead>Progress</TableHead>
+                    <TableHead className="w-10"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tasks.map((task) => {
+                    const Icon = TASK_ICONS[task.type]
+                    const meta = TASK_TYPE_META[task.type]
+                    const statusStyle = STATUS_STYLES[task.status]
+                    const progress = (task.currentSubmissions / task.maxSubmissions) * 100
+                    const taskSubmissions = submissions.filter((s) => s.taskId === task.id)
+                    const pendingCount = taskSubmissions.filter((s) => s.status === "pending").length
 
-                  return (
-                    <TableRow key={task.id} className={selectedTasks.has(task.id) ? "bg-primary/5" : ""}>
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedTasks.has(task.id)}
-                          onCheckedChange={() => toggleTaskSelection(task.id)}
-                          aria-label={`Select ${task.title}`}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                            <Icon className="h-4 w-4" />
+                    return (
+                      <TableRow key={task.id} className={selectedTasks.has(task.id) ? "bg-primary/5" : ""}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedTasks.has(task.id)}
+                            onCheckedChange={() => toggleTaskSelection(task.id)}
+                            aria-label={`Select ${task.title}`}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                              <Icon className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{task.title}</p>
+                              <p className="text-xs text-muted-foreground line-clamp-1">
+                                {task.description}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium">{task.title}</p>
-                            <p className="text-xs text-muted-foreground line-clamp-1">
-                              {task.description}
-                            </p>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="border-border/30">
+                            {meta.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Badge 
+                                variant="outline" 
+                                className={cn(statusStyle.className, "cursor-pointer hover:opacity-80 transition-opacity")}
+                              >
+                                {statusStyle.label}
+                              </Badge>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                              <DropdownMenuItem 
+                                onClick={() => handleStatusChange(task.id, "open")}
+                                className={task.status === "open" ? "bg-muted" : ""}
+                              >
+                                Open
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleStatusChange(task.id, "completed")}
+                                className={task.status === "completed" ? "bg-muted" : ""}
+                              >
+                                Completed
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleStatusChange(task.id, "cancelled")}
+                                className={task.status === "cancelled" ? "bg-muted" : ""}
+                              >
+                                Cancelled
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          ${task.reward.toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Progress value={progress} className="w-20 h-2" />
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                              {task.currentSubmissions}/{task.maxSubmissions}
+                            </span>
+                            {pendingCount > 0 && (
+                              <Badge variant="secondary" className="text-xs bg-warning/10 text-warning border-warning/20">
+                                {pendingCount} pending
+                              </Badge>
+                            )}
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="border-border/30">
-                          {meta.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Badge 
-                              variant="outline" 
-                              className={cn(statusStyle.className, "cursor-pointer hover:opacity-80 transition-opacity")}
-                            >
-                              {statusStyle.label}
-                            </Badge>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start">
-                            <DropdownMenuItem 
-                              onClick={() => handleStatusChange(task.id, "open")}
-                              className={task.status === "open" ? "bg-muted" : ""}
-                            >
-                              Open
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleStatusChange(task.id, "completed")}
-                              className={task.status === "completed" ? "bg-muted" : ""}
-                            >
-                              Completed
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleStatusChange(task.id, "cancelled")}
-                              className={task.status === "cancelled" ? "bg-muted" : ""}
-                            >
-                              Cancelled
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        ${task.reward.toFixed(2)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Progress value={progress} className="w-20 h-2" />
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">
-                            {task.currentSubmissions}/{task.maxSubmissions}
-                          </span>
-                          {pendingCount > 0 && (
-                            <Badge variant="secondary" className="text-xs bg-warning/10 text-warning border-warning/20">
-                              {pendingCount} pending
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link href={`/admin/submissions?task=${task.id}`}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Submissions
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className="text-destructive"
-                              onClick={() => handleDelete(task.id)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete Task
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem asChild>
+                                <Link href={`/admin/submissions?task=${task.id}`}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Submissions
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                className="text-destructive"
+                                onClick={() => handleDelete(task.id)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Task
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
 
@@ -385,12 +392,18 @@ export default function TasksManagementPage() {
           <div className="flex items-center justify-between">
             <h2 className="font-medium">All Tasks ({tasks.length})</h2>
           </div>
-          {tasks.map((task) => {
+          {isDataLoading ? (
+            <Card className="border-border/30 border-dashed">
+              <CardContent className="flex h-32 items-center justify-center">
+                <p className="text-muted-foreground animate-pulse">Loading tasks...</p>
+              </CardContent>
+            </Card>
+          ) : tasks.map((task) => {
             const Icon = TASK_ICONS[task.type]
             const meta = TASK_TYPE_META[task.type]
             const statusStyle = STATUS_STYLES[task.status]
             const progress = (task.currentSubmissions / task.maxSubmissions) * 100
-            const taskSubmissions = allSubmissions.filter((s) => s.taskId === task.id)
+            const taskSubmissions = submissions.filter((s) => s.taskId === task.id)
             const pendingCount = taskSubmissions.filter((s) => s.status === "pending").length
 
             return (

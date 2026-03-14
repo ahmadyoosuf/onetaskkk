@@ -19,6 +19,7 @@ const baseTaskSchema = z.object({
     .int("Must be a whole number")
     .min(1, "At least 1 submission required")
     .max(10000, "Maximum 10,000 submissions"),
+  allowMultipleSubmissions: z.boolean(),
   deadline: z
     .date()
     .optional()

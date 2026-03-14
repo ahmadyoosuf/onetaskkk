@@ -12,6 +12,7 @@ export interface BaseTask {
   description: string
   reward: number
   maxSubmissions: number
+  allowMultipleSubmissions: boolean
   currentSubmissions: number
   status: TaskStatus
   createdAt: Date

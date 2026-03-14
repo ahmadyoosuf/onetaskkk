@@ -40,6 +40,19 @@ const STATUS_STYLES: Record<SubmissionStatus, { label: string; className: string
   rejected: { label: "Rejected", className: "bg-destructive/10 text-destructive border-destructive/20", icon: X },
 }
 
+type SubmissionListRow =
+  | {
+      kind: "group"
+      taskId: string
+      taskTitle: string
+      count: number
+    }
+  | {
+      kind: "submission"
+      submission: Submission
+      taskTitle: string
+    }
+
 function SubmissionsContent() {
   const { toast } = useToast()
   const searchParams = useSearchParams()
@@ -56,6 +69,7 @@ function SubmissionsContent() {
   const [groupByTask, setGroupByTask] = useState(false)
   const [showMobileDetail, setShowMobileDetail] = useState(false)
   const parentRef = useRef<HTMLDivElement>(null)
+  const taskMap = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks])
 
   // Handle submission selection - show mobile sheet on small screens
   const handleSubmissionSelect = (submission: Submission) => {
@@ -76,28 +90,54 @@ function SubmissionsContent() {
     return result
   }, [submissions, statusFilter, taskFilter])
 
-  const virtualizer = useVirtualizer({
-    count: filteredSubmissions.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 64,
-    measureElement: (el) => el.getBoundingClientRect().height,
-    overscan: 5,
-  })
-
-  // Group submissions by task
-  const groupedSubmissions = useMemo(() => {
-    if (!groupByTask) return null
-    const groups = new Map<string, { task: typeof tasks[0] | undefined; submissions: Submission[] }>()
-    for (const sub of filteredSubmissions) {
-      if (!groups.has(sub.taskId)) {
-        groups.set(sub.taskId, { task: tasks.find((t) => t.id === sub.taskId), submissions: [] })
-      }
-      groups.get(sub.taskId)!.submissions.push(sub)
+  const listRows = useMemo<SubmissionListRow[]>(() => {
+    if (!groupByTask) {
+      return filteredSubmissions.map((submission) => ({
+        kind: "submission",
+        submission,
+        taskTitle: taskMap.get(submission.taskId)?.title || "Unknown Task",
+      }))
     }
-    return Array.from(groups.values()).sort((a, b) => 
-      (b.task?.createdAt.getTime() || 0) - (a.task?.createdAt.getTime() || 0)
-    )
-  }, [filteredSubmissions, tasks, groupByTask])
+
+    const groups = new Map<string, Submission[]>()
+    for (const submission of filteredSubmissions) {
+      const group = groups.get(submission.taskId)
+      if (group) {
+        group.push(submission)
+      } else {
+        groups.set(submission.taskId, [submission])
+      }
+    }
+
+    return Array.from(groups.entries())
+      .sort((a, b) => (taskMap.get(b[0])?.createdAt.getTime() || 0) - (taskMap.get(a[0])?.createdAt.getTime() || 0))
+      .flatMap(([taskId, group]) => [
+        {
+          kind: "group" as const,
+          taskId,
+          taskTitle: taskMap.get(taskId)?.title || "Unknown Task",
+          count: group.length,
+        },
+        ...group.map((submission) => ({
+          kind: "submission" as const,
+          submission,
+          taskTitle: taskMap.get(submission.taskId)?.title || "Unknown Task",
+        })),
+      ])
+  }, [filteredSubmissions, groupByTask, taskMap])
+
+  const groupCount = useMemo(
+    () => listRows.reduce((count, row) => count + (row.kind === "group" ? 1 : 0), 0),
+    [listRows]
+  )
+
+  const virtualizer = useVirtualizer({
+    count: listRows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: (index) => listRows[index]?.kind === "group" ? 44 : 72,
+    measureElement: (el) => el.getBoundingClientRect().height,
+    overscan: 8,
+  })
 
   const handleReview = (action: "approved" | "rejected") => {
     setReviewAction(action)
@@ -219,53 +259,12 @@ function SubmissionsContent() {
               </Button>
             </div>
 
-            {/* Virtualized List or Grouped View */}
-            {groupByTask && groupedSubmissions ? (
-              <div className="h-[calc(100vh-280px)] sm:h-[calc(100vh-300px)] overflow-auto scrollbar-hide rounded-lg border border-border/30 p-2 space-y-4">
-                {groupedSubmissions.map((group) => (
-                  <div key={group.task?.id || "unknown"} className="space-y-2">
-                    <div className="flex items-center justify-between px-2 py-1 bg-muted/50 rounded-md">
-                      <span className="font-medium text-sm truncate">{group.task?.title || "Unknown Task"}</span>
-                      <Badge variant="outline" className="text-xs">{group.submissions.length}</Badge>
-                    </div>
-                    {group.submissions.map((submission) => {
-                      const statusStyle = STATUS_STYLES[submission.status]
-                      const StatusIcon = statusStyle.icon
-                      const isSelected = selectedSubmission?.id === submission.id
-                      return (
-                        <div
-                          key={submission.id}
-                          onClick={() => handleSubmissionSelect(submission)}
-                          className={cn(
-                            "flex cursor-pointer items-center justify-between gap-3 rounded-lg border p-3 transition-all ml-2",
-                            isSelected
-                              ? "border-primary/50 bg-primary/5"
-                              : "border-border/20 hover:border-border/40 hover:bg-muted/30"
-                          )}
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full", statusStyle.className)}>
-                              <StatusIcon className="h-3.5 w-3.5" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-medium text-sm truncate">{submission.userName}</p>
-                              <p className="text-xs text-muted-foreground">{submission.submittedAt.toLocaleDateString()}</p>
-                            </div>
-                          </div>
-                          <ChevronRight className={cn("h-4 w-4 text-muted-foreground", isSelected && "rotate-90")} />
-                        </div>
-                      )
-                    })}
-                  </div>
-                ))}
-              </div>
-            ) : (
             <div
               ref={parentRef}
               className="overflow-auto scrollbar-hide rounded-lg border border-border/30"
               style={{ height: "calc(100svh - 300px)" }}
             >
-              {filteredSubmissions.length === 0 ? (
+              {listRows.length === 0 ? (
                 <div className="flex h-32 items-center justify-center">
                   <p className="text-muted-foreground">No submissions found.</p>
                 </div>
@@ -278,15 +277,12 @@ function SubmissionsContent() {
                   }}
                 >
                   {virtualizer.getVirtualItems().map((virtualRow) => {
-                    const submission = filteredSubmissions[virtualRow.index]
-                    const task = getTask(submission.taskId)
-                    const statusStyle = STATUS_STYLES[submission.status]
-                    const StatusIcon = statusStyle.icon
-                    const isSelected = selectedSubmission?.id === submission.id
+                    const row = listRows[virtualRow.index]
+                    if (!row) return null
 
                     return (
                       <div
-                        key={submission.id}
+                        key={row.kind === "group" ? `group-${row.taskId}` : row.submission.id}
                         data-index={virtualRow.index}
                         ref={virtualizer.measureElement}
                         style={{
@@ -295,51 +291,65 @@ function SubmissionsContent() {
                           left: 0,
                           width: "100%",
                           transform: `translateY(${virtualRow.start}px)`,
-                          padding: "2px 4px",
+                          padding: row.kind === "group" ? "8px 8px 2px" : groupByTask ? "2px 8px 2px 20px" : "2px 4px",
                         }}
                       >
-                        <div
-                          onClick={() => handleSubmissionSelect(submission)}
-                          className={cn(
-                            "flex cursor-pointer items-center justify-between gap-3 rounded-lg border p-3 transition-all touch-feedback",
-                            isSelected
-                              ? "border-primary/50 bg-primary/5"
-                              : "border-border/20 hover:border-border/40 hover:bg-muted/30"
-                          )}
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className={cn(
-                              "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-                              statusStyle.className
-                            )}>
-                              <StatusIcon className="h-4 w-4" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-medium text-sm truncate">{submission.userName}</p>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {task?.title || "Unknown Task"}
-                              </p>
-                            </div>
+                        {row.kind === "group" ? (
+                          <div className="flex items-center justify-between rounded-md bg-muted/50 px-2 py-1">
+                            <span className="truncate text-sm font-medium">{row.taskTitle}</span>
+                            <Badge variant="outline" className="text-xs">{row.count}</Badge>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="hidden sm:block text-xs text-muted-foreground">
-                              {submission.submittedAt.toLocaleDateString()}
-                            </span>
-                            <ChevronRight className={cn(
-                              "h-4 w-4 text-muted-foreground transition-transform",
-                              isSelected && "rotate-90"
-                            )} />
-                          </div>
-                        </div>
+                        ) : (() => {
+                          const statusStyle = STATUS_STYLES[row.submission.status]
+                          const StatusIcon = statusStyle.icon
+                          const isSelected = selectedSubmission?.id === row.submission.id
+
+                          return (
+                            <div
+                              onClick={() => handleSubmissionSelect(row.submission)}
+                              className={cn(
+                                "flex cursor-pointer items-center justify-between gap-3 rounded-lg border p-3 transition-all touch-feedback",
+                                isSelected
+                                  ? "border-primary/50 bg-primary/5"
+                                  : "border-border/20 hover:border-border/40 hover:bg-muted/30"
+                              )}
+                            >
+                              <div className="flex min-w-0 items-center gap-3">
+                                <div className={cn(
+                                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                                  statusStyle.className
+                                )}>
+                                  <StatusIcon className="h-4 w-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-medium">{row.submission.userName}</p>
+                                  <p className="truncate text-xs text-muted-foreground">
+                                    {groupByTask ? row.submission.submittedAt.toLocaleDateString() : row.taskTitle}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex shrink-0 items-center gap-2">
+                                {!groupByTask && (
+                                  <span className="hidden text-xs text-muted-foreground sm:block">
+                                    {row.submission.submittedAt.toLocaleDateString()}
+                                  </span>
+                                )}
+                                <ChevronRight className={cn(
+                                  "h-4 w-4 text-muted-foreground transition-transform",
+                                  isSelected && "rotate-90"
+                                )} />
+                              </div>
+                            </div>
+                          )
+                        })()}
                       </div>
                     )
                   })}
                 </div>
               )}
             </div>
-            )}
             <p className="text-xs text-muted-foreground text-center">
-              Showing {filteredSubmissions.length} submissions{groupByTask && groupedSubmissions ? ` in ${groupedSubmissions.length} groups` : ""}
+              Showing {filteredSubmissions.length} submissions{groupByTask ? ` in ${groupCount} groups` : ""}
             </p>
           </div>
 

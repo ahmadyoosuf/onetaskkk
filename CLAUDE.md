@@ -4,7 +4,7 @@ Frontend evaluation — micro-task platform with admin and worker roles.
 
 ## Stack
 
-- Next.js 15 + React 19 + TypeScript
+- Next.js 16 + React 19 + TypeScript
 - Tailwind CSS v4
 - Shadcn UI (customized design system)
 - react-hook-form + zod (form validation)

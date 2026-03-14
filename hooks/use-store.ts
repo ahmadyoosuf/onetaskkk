@@ -11,35 +11,30 @@ import {
 } from "@/lib/store"
 import type { Task, Submission } from "@/lib/types"
 
-// SWR hooks with 2-second fetch delay (per PRD)
+// Subscribe to the external store for authoritative live data.
+// We still kick off the async fetchers so the mocked loading/error path remains exercised.
 export function useTasks(): { tasks: Task[]; isLoading: boolean; error: Error | undefined } {
-  const { data, error, isLoading } = useSWR("tasks", fetchTasks, {
-    fallbackData: getTasksSnapshot(),
+  const snapshot = useSyncExternalStore(subscribe, getTasksSnapshot, getTasksSnapshot)
+  const { error, isLoading } = useSWR("tasks", fetchTasks, {
     revalidateOnFocus: false,
   })
-  
-  // Also subscribe to local changes for immediate optimistic updates
-  const snapshot = useSyncExternalStore(subscribe, getTasksSnapshot, getTasksSnapshot)
-  
+
   return { 
-    tasks: data || snapshot, 
-    isLoading: isLoading && !data,
+    tasks: snapshot,
+    isLoading: isLoading && snapshot.length === 0,
     error 
   }
 }
 
 export function useSubmissions(): { submissions: Submission[]; isLoading: boolean; error: Error | undefined } {
-  const { data, error, isLoading } = useSWR("submissions", fetchSubmissions, {
-    fallbackData: getSubmissionsSnapshot(),
+  const snapshot = useSyncExternalStore(subscribe, getSubmissionsSnapshot, getSubmissionsSnapshot)
+  const { error, isLoading } = useSWR("submissions", fetchSubmissions, {
     revalidateOnFocus: false,
   })
-  
-  // Also subscribe to local changes for immediate optimistic updates
-  const snapshot = useSyncExternalStore(subscribe, getSubmissionsSnapshot, getSubmissionsSnapshot)
-  
+
   return { 
-    submissions: data || snapshot, 
-    isLoading: isLoading && !data,
+    submissions: snapshot,
+    isLoading: isLoading && snapshot.length === 0,
     error 
   }
 }

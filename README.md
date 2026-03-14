@@ -22,7 +22,7 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ## Stack
 
-Next.js 15, React 19, Tailwind v4, Shadcn UI, react-hook-form + zod, TanStack Virtual
+Next.js 16, React 19, Tailwind v4, Shadcn UI, react-hook-form + zod, TanStack Virtual
 
 ## Architecture
 
