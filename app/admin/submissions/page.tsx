@@ -28,7 +28,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
-  Clock, Check, X, FileText, Filter, Layers, ChevronRight
+  Clock, Check, X, FileText, Filter, Layers, ChevronRight,
+  User, ExternalLink, ImageIcon, MessageSquare, Calendar,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTasks, useSubmissions, useUpdateSubmissionStatus } from "@/hooks/use-store"
