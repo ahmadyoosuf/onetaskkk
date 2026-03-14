@@ -301,7 +301,7 @@ function SubmissionsContent() {
             {/* Task Filter & Group Toggle */}
             <div className="flex flex-wrap items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
-              <Select value={taskFilter} onValueChange={setTaskFilter}>
+              <Select value={taskFilter} onValueChange={(v) => setTaskFilter(v)}>
                 <SelectTrigger className="w-full sm:w-64">
                   <SelectValue placeholder="Filter by task" />
                 </SelectTrigger>

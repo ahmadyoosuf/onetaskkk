@@ -233,7 +233,7 @@ function TasksFeedContent() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}>
                 <SelectTrigger className="w-full sm:w-40">
                   <Filter className="mr-2 h-4 w-4 shrink-0" />
                   <SelectValue placeholder="Filter" />
@@ -245,7 +245,7 @@ function TasksFeedContent() {
                   <SelectItem value="social_media_liking">Social Media</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={sortBy} onValueChange={setSortBy}>
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
                 <SelectTrigger className="w-28 sm:w-32">
                   <SelectValue />
                 </SelectTrigger>

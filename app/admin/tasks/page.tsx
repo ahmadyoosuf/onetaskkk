@@ -270,7 +270,7 @@ function TasksManagementContent() {
             </Select>
             
             {/* Campaign Filter */}
-            <Select value={campaignFilter} onValueChange={setCampaignFilter}>
+            <Select value={campaignFilter} onValueChange={(v) => setCampaignFilter(v)}>
               <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder="Campaign" />
               </SelectTrigger>
