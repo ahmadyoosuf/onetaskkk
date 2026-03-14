@@ -137,7 +137,7 @@ export function useCreateSubmission() {
 export function useUpdateSubmissionStatus() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, status, adminNotes }: { id: string; status: SubmissionStatus; adminNotes?: string }) => 
+    mutationFn: ({ id, status, adminNotes }: { id: string; status: "approved" | "rejected"; adminNotes?: string }) => 
       updateSubmissionStatus(id, status, adminNotes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["submissions"] })
