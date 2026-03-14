@@ -35,8 +35,8 @@ import { Share2, Mail, Heart, Users, Filter, Flame, Clock, ExternalLink, DollarS
 import { cn } from "@/lib/utils"
 import { getCurrentUser } from "@/lib/store"
 import { useSubmissions, useTasks, useCreateSubmission } from "@/hooks/use-store"
-import { socialMediaSubmissionSchema, emailSubmissionSchema } from "@/lib/schemas"
-import type { Task, TaskType, SubmissionFormData } from "@/lib/types"
+import { socialMediaSubmissionSchema, emailSubmissionSchema, type SubmissionFormData } from "@/lib/schemas"
+import type { Task, TaskType } from "@/lib/types"
 import { TASK_TYPE_META } from "@/lib/types"
 
 const TASK_ICONS: Record<TaskType, typeof Share2> = {
@@ -81,7 +81,7 @@ function TasksFeedContent() {
   const isEmailTask = selectedTask?.type === "email_sending"
   const currentSchema = isEmailTask ? emailSubmissionSchema : socialMediaSubmissionSchema
 
-  const { register, handleSubmit, reset, formState: { errors, isValid } } = useForm({
+  const { register, handleSubmit, reset, formState: { errors, isValid } } = useForm<SubmissionFormData>({
     resolver: zodResolver(currentSchema),
     mode: "onChange",
   })
