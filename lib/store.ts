@@ -2,8 +2,8 @@ import type { Task, Submission, User, TaskType, Platform } from "./types"
 
 // ─── LocalStorage Persistence ────────────────────────────────
 const STORAGE_KEYS = {
-  tasks: "taskmarket_tasks",
-  submissions: "taskmarket_submissions",
+  tasks: "taskmarket_tasks_v2",
+  submissions: "taskmarket_submissions_v2",
 } as const
 
 function reviveDates(_key: string, value: unknown): unknown {
@@ -34,11 +34,24 @@ function saveToStorage<T>(key: string, data: T[]): void {
 }
 
 function withTaskDefaults(task: Task): Task {
+  // Patch missing taskDetails for tasks persisted before the discriminated union refactor
+  let taskDetails = (task as Task & { taskDetails?: unknown }).taskDetails
+  if (!taskDetails) {
+    if (task.type === "social_media_posting") {
+      taskDetails = { platform: "linkedin" as Platform, postContent: "", accountHandle: "" }
+    } else if (task.type === "email_sending") {
+      taskDetails = { emailContent: "", targetEmail: "" }
+    } else {
+      taskDetails = { postUrl: "", platform: "linkedin" as Platform }
+    }
+  }
+
   return {
     ...task,
-    details: task.details ?? "<p>No additional details provided.</p>",
+    taskDetails,
+    details: task.details ?? "No additional details provided.",
     allowMultipleSubmissions: task.allowMultipleSubmissions ?? true,
-  }
+  } as Task
 }
 
 // ─── Simulated Network Delays (per PRD) ─────────────────────
@@ -153,7 +166,7 @@ function generateMockTasks(): Task[] {
       type,
       title: `${template.title}${i > 0 ? ` #${i + 1}` : ""}`,
       description: template.description,
-      details: `<p><strong>Instructions:</strong> Complete the task exactly as specified.</p><ul><li>Follow all steps carefully.</li><li>Submit proof when finished.</li></ul><p>This task is part of our quality review workflow and includes additional validation before approval.</p>`,
+      details: `**Instructions:** Complete the task exactly as specified.\n\n- Follow all steps carefully.\n- Submit proof when finished.\n\nThis task is part of our quality review workflow and includes additional validation before approval.`,
       reward: parseFloat((0.5 + Math.random() * 9.5).toFixed(2)),
       maxSubmissions: maxSubs,
       allowMultipleSubmissions: i % 4 !== 0,
