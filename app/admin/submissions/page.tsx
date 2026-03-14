@@ -454,7 +454,7 @@ function SubmissionsContent() {
                     </Badge>
                   </div>
                   <CardDescription className="truncate">
-                    {getTask(selectedSubmission.taskId)?.title}
+                    {taskMap.get(selectedSubmission.taskId)?.title}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -601,7 +601,7 @@ function SubmissionsContent() {
                   </Badge>
                 </div>
                 <DialogDescription className="truncate">
-                  {getTask(selectedSubmission.taskId)?.title}
+                  {taskMap.get(selectedSubmission.taskId)?.title}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 pt-2">
