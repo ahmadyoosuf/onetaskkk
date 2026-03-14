@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { useQueryState, parseAsStringLiteral } from "nuqs"
+import ReactMarkdown from "react-markdown"
 import { useToast } from "@/hooks/use-toast"
 import { AppShell } from "@/components/app-shell"
 import { ErrorBoundary, DataErrorState } from "@/components/error-boundary"
@@ -26,13 +27,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from "@/components/ui/drawer"
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Share2, Mail, Heart, Users, Filter, Flame, Clock, ExternalLink, DollarSign, Calendar, Send } from "lucide-react"
+import { Share2, Mail, Heart, Users, Filter, Flame, Clock, DollarSign, Calendar, Send } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getCurrentUser } from "@/lib/store"
 import { useSubmissions, useTasks, useCreateSubmission } from "@/hooks/use-store"
@@ -58,7 +66,7 @@ function TasksFeedContent() {
   const currentUser = getCurrentUser()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showSubmitDialog, setShowSubmitDialog] = useState(false)
-  const [showMobileDetail, setShowMobileDetail] = useState(false)
+  const [showMobileDrawer, setShowMobileDrawer] = useState(false)
   
   // URL state management with nuqs
   const [typeFilter, setTypeFilter] = useQueryState("type", typeFilterParser)
@@ -74,7 +82,7 @@ function TasksFeedContent() {
   const handleTaskSelect = (task: Task) => {
     setSelectedTask(task)
     if (window.innerWidth < 1024) {
-      setShowMobileDetail(true)
+      setShowMobileDrawer(true)
     }
   }
 
@@ -329,7 +337,7 @@ function TasksFeedContent() {
           )}
         </div>
 
-        {/* Task Detail Panel - Hidden on mobile (use bottom sheet), visible on desktop */}
+        {/* Task Detail Panel - Hidden on mobile (use bottom drawer), visible on desktop */}
         <div className="hidden lg:block lg:w-80 xl:w-96">
           {selectedTask ? (
             <Card className="border-border/30 sticky top-20">
@@ -357,15 +365,15 @@ function TasksFeedContent() {
         </div>
       </div>
 
-      {/* Mobile Task Detail Sheet */}
-      <Dialog open={showMobileDetail && !!selectedTask} onOpenChange={(open) => {
-        setShowMobileDetail(open)
+      {/* Mobile Task Detail Drawer */}
+      <Drawer open={showMobileDrawer && !!selectedTask} onOpenChange={(open) => {
+        setShowMobileDrawer(open)
         if (!open) setSelectedTask(null)
       }}>
-        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
+        <DrawerContent className="max-h-[85vh]">
           {selectedTask && (
-            <>
-              <DialogHeader className="pb-2">
+            <div className="overflow-y-auto p-4">
+              <DrawerHeader className="p-0 pb-4">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
                     {(() => {
@@ -374,18 +382,18 @@ function TasksFeedContent() {
                     })()}
                   </div>
                   <div className="min-w-0">
-                    <DialogTitle className="text-base">{selectedTask.title}</DialogTitle>
-                    <DialogDescription className="text-xs">{TASK_TYPE_META[selectedTask.type].label}</DialogDescription>
+                    <DrawerTitle className="text-base text-left">{selectedTask.title}</DrawerTitle>
+                    <DrawerDescription className="text-xs text-left">{TASK_TYPE_META[selectedTask.type].label}</DrawerDescription>
                   </div>
                 </div>
-              </DialogHeader>
-              <div className="space-y-4 pt-2">
+              </DrawerHeader>
+              
+              <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">{selectedTask.description}</p>
 
-                <div
-                  className="prose prose-sm max-w-none rounded-lg border border-border/30 bg-muted/30 p-3"
-                  dangerouslySetInnerHTML={{ __html: selectedTask.details }}
-                />
+                <div className="prose prose-sm max-w-none rounded-lg border border-border/30 bg-muted/30 p-3">
+                  <ReactMarkdown>{selectedTask.details}</ReactMarkdown>
+                </div>
 
                 <TaskInstructionDetails task={selectedTask} />
                 
@@ -419,9 +427,9 @@ function TasksFeedContent() {
                 )}
 
                 <Button
-                  className="w-full"
+                  className="w-full h-11"
                   onClick={() => {
-                    setShowMobileDetail(false)
+                    setShowMobileDrawer(false)
                     setShowSubmitDialog(true)
                   }}
                   disabled={isSubmitLocked}
@@ -430,10 +438,10 @@ function TasksFeedContent() {
                   Submit Work
                 </Button>
               </div>
-            </>
+            </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </DrawerContent>
+      </Drawer>
 
       {/* Submit Work Dialog */}
       <Dialog open={showSubmitDialog} onOpenChange={(open) => {

@@ -10,7 +10,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-import { Share2, Mail, Heart, Plus, Save } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Share2, Mail, Heart, Plus, Save, Check, RotateCcw, ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createTask, updateTask, getTask } from "@/lib/store"
 import { taskFormSchema, type TaskFormData } from "@/lib/schemas"
@@ -47,6 +55,8 @@ function TaskComposerContent() {
   
   const [taskType, setTaskType] = useState<TaskType>("social_media_posting")
   const [isLoadingTask, setIsLoadingTask] = useState(isEditMode)
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false)
+  const [createdTaskTitle, setCreatedTaskTitle] = useState("")
 
   const methods = useForm<TaskFormData>({
     resolver: zodResolver(taskFormSchema),
@@ -122,6 +132,30 @@ function TaskComposerContent() {
     setValue("type", newType, { shouldValidate: false })
   }
 
+  const handleCreateAnother = () => {
+    reset({
+      type: "social_media_posting",
+      title: "",
+      description: "",
+      details: "",
+      reward: 5,
+      maxSubmissions: 100,
+      allowMultipleSubmissions: false,
+      platform: undefined,
+      postContent: "",
+      accountHandle: "",
+      campaignId: "",
+    })
+    setTaskType("social_media_posting")
+    setShowSuccessDialog(false)
+    setCreatedTaskTitle("")
+  }
+
+  const handleViewTasks = () => {
+    setShowSuccessDialog(false)
+    router.push("/admin/tasks")
+  }
+
   const onSubmit = async (data: TaskFormData) => {
     try {
       // Build task payload based on type
@@ -185,16 +219,13 @@ function TaskComposerContent() {
           title: "Task updated",
           description: `"${data.title}" has been updated successfully.`,
         })
+        router.push("/admin/tasks")
       } else {
-        // Create mode: create new task
+        // Create mode: create new task and show success dialog
         await createTask(taskPayload)
-        toast({
-          title: "Task created",
-          description: `"${data.title}" is now live and accepting submissions.`,
-        })
+        setCreatedTaskTitle(data.title)
+        setShowSuccessDialog(true)
       }
-
-      router.push("/admin/tasks")
     } catch {
       toast({
         title: isEditMode ? "Failed to update task" : "Failed to create task",
@@ -337,6 +368,31 @@ function TaskComposerContent() {
             </div>
           </form>
         </FormProvider>
+
+        {/* Success Dialog with Reset Option */}
+        <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader className="text-center sm:text-center">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-success/10">
+                <Check className="h-6 w-6 text-success" />
+              </div>
+              <DialogTitle>Task Created Successfully</DialogTitle>
+              <DialogDescription>
+                &ldquo;{createdTaskTitle}&rdquo; is now live and accepting submissions.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex-col gap-2 sm:flex-col">
+              <Button onClick={handleViewTasks} className="w-full h-11">
+                <ArrowRight className="mr-2 h-4 w-4" />
+                View All Tasks
+              </Button>
+              <Button variant="outline" onClick={handleCreateAnother} className="w-full h-11">
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Create Another Task
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppShell>
   )
