@@ -4,6 +4,7 @@ import { useState, useMemo, Suspense } from "react"
 import Link from "next/link"
 import { useQueryState, parseAsStringLiteral, parseAsString } from "nuqs"
 import { AppShell } from "@/components/app-shell"
+import { ErrorBoundary } from "@/components/error-boundary"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -70,7 +71,7 @@ const statusFilterParser = parseAsStringLiteral(["all", "open", "completed", "ca
 const sortByParser = parseAsStringLiteral(["newest", "oldest", "reward", "submissions"] as const).withDefault("newest")
 
 function TasksManagementContent() {
-  const { tasks, isLoading, error } = useTasks()
+  const { tasks, isLoading } = useTasks()
   const { submissions, isLoading: isLoadingSubmissions } = useSubmissions()
   const { toast } = useToast()
   
@@ -461,8 +462,10 @@ function TasksManagementContent() {
           </CardHeader>
           <CardContent>
             {isDataLoading ? (
-              <div className="flex h-32 items-center justify-center">
-                <p className="text-muted-foreground animate-pulse">Loading tasks...</p>
+              <div className="space-y-3 p-4">
+                <div className="h-4 w-2/5 rounded bg-muted animate-pulse" />
+                <div className="h-20 rounded bg-muted animate-pulse" />
+                <div className="h-20 rounded bg-muted animate-pulse" />
               </div>
             ) : (
               <Table>
@@ -625,8 +628,10 @@ function TasksManagementContent() {
           </div>
           {isDataLoading ? (
             <Card className="border-border/30 border-dashed">
-              <CardContent className="flex h-32 items-center justify-center">
-                <p className="text-muted-foreground animate-pulse">Loading tasks...</p>
+              <CardContent className="space-y-3 p-4">
+                <div className="h-4 w-2/5 rounded bg-muted animate-pulse" />
+                <div className="h-20 rounded bg-muted animate-pulse" />
+                <div className="h-20 rounded bg-muted animate-pulse" />
               </CardContent>
             </Card>
           ) : filteredTasks.map((task) => {
@@ -803,7 +808,9 @@ export default function TasksManagementPage() {
         </div>
       </AppShell>
     }>
-      <TasksManagementContent />
+      <ErrorBoundary>
+        <TasksManagementContent />
+      </ErrorBoundary>
     </Suspense>
   )
 }

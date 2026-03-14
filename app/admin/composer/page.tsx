@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useForm, FormProvider } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { AppShell } from "@/components/app-shell"
+import { ErrorBoundary } from "@/components/error-boundary"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -344,7 +345,9 @@ export default function TaskComposerPage() {
         </div>
       </AppShell>
     }>
-      <TaskComposerContent />
+      <ErrorBoundary>
+        <TaskComposerContent />
+      </ErrorBoundary>
     </Suspense>
   )
 }

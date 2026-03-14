@@ -5,6 +5,7 @@ import { useVirtualizer } from "@tanstack/react-virtual"
 import { useQueryState, parseAsStringLiteral, parseAsBoolean, parseAsString } from "nuqs"
 import { useToast } from "@/hooks/use-toast"
 import { AppShell } from "@/components/app-shell"
+import { ErrorBoundary, DataErrorState } from "@/components/error-boundary"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -58,7 +59,7 @@ const statusFilterParser = parseAsStringLiteral(["all", "pending", "approved", "
 
 function SubmissionsContent() {
   const { toast } = useToast()
-  const { submissions, isLoading: isLoadingSubmissions, error } = useSubmissions()
+  const { submissions, isLoading: isLoadingSubmissions, error, refetch } = useSubmissions()
   const { tasks, isLoading: isLoadingTasks } = useTasks()
   const updateSubmissionStatusMutation = useUpdateSubmissionStatus()
   const isDataLoading = isLoadingSubmissions || isLoadingTasks
@@ -330,9 +331,20 @@ function SubmissionsContent() {
               className="overflow-auto scrollbar-hide rounded-lg border border-border/30"
               style={{ height: "calc(100svh - 300px)" }}
             >
-              {isDataLoading ? (
-                <div className="flex h-32 items-center justify-center">
-                  <p className="text-muted-foreground animate-pulse">Loading submissions...</p>
+              {error ? (
+                <div className="p-3">
+                  <DataErrorState
+                    title="Failed to load submissions"
+                    description="We couldn't load submissions right now."
+                    error={error}
+                    onRetry={refetch}
+                  />
+                </div>
+              ) : isDataLoading ? (
+                <div className="space-y-2 p-3">
+                  <div className="h-4 w-1/3 rounded bg-muted animate-pulse" />
+                  <div className="h-16 rounded bg-muted animate-pulse" />
+                  <div className="h-16 rounded bg-muted animate-pulse" />
                 </div>
               ) : listRows.length === 0 ? (
                 <div className="flex h-32 items-center justify-center">
@@ -747,12 +759,15 @@ export default function SubmissionsPage() {
   return (
     <Suspense fallback={
       <AppShell role="admin">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-muted-foreground">Loading submissions...</div>
+        <div className="flex-1 space-y-3">
+          <div className="h-10 w-64 rounded bg-muted animate-pulse" />
+          <div className="h-[420px] rounded-lg border border-border/30 bg-muted/30 animate-pulse" />
         </div>
       </AppShell>
     }>
-      <SubmissionsContent />
+      <ErrorBoundary>
+        <SubmissionsContent />
+      </ErrorBoundary>
     </Suspense>
   )
 }
