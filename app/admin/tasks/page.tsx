@@ -1,11 +1,13 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { AppShell } from "@/components/app-shell"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Table,
   TableBody,
@@ -48,13 +50,48 @@ const STATUS_STYLES: Record<TaskStatus, { label: string; className: string }> = 
 export default function TasksManagementPage() {
   const tasks = useTasks()
   const allSubmissions = getSubmissions()
+  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set())
 
   const handleDelete = (taskId: string) => {
     deleteTask(taskId)
+    setSelectedTasks((prev) => {
+      const next = new Set(prev)
+      next.delete(taskId)
+      return next
+    })
   }
 
   const handleStatusChange = (taskId: string, newStatus: TaskStatus) => {
     updateTaskStatus(taskId, newStatus)
+  }
+
+  const handleBulkStatusChange = (newStatus: TaskStatus) => {
+    selectedTasks.forEach((taskId) => updateTaskStatus(taskId, newStatus))
+  }
+
+  const handleBulkDelete = () => {
+    selectedTasks.forEach((taskId) => deleteTask(taskId))
+    setSelectedTasks(new Set())
+  }
+
+  const toggleTaskSelection = (taskId: string) => {
+    setSelectedTasks((prev) => {
+      const next = new Set(prev)
+      if (next.has(taskId)) {
+        next.delete(taskId)
+      } else {
+        next.add(taskId)
+      }
+      return next
+    })
+  }
+
+  const toggleAllSelection = () => {
+    if (selectedTasks.size === tasks.length) {
+      setSelectedTasks(new Set())
+    } else {
+      setSelectedTasks(new Set(tasks.map((t) => t.id)))
+    }
   }
 
   // Stats
@@ -128,6 +165,44 @@ export default function TasksManagementPage() {
           </Card>
         </div>
 
+        {/* Bulk Actions Bar */}
+        {selectedTasks.size > 0 && (
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="flex flex-wrap items-center justify-between gap-3 p-3">
+              <span className="text-sm font-medium">
+                {selectedTasks.size} task{selectedTasks.size > 1 ? "s" : ""} selected
+              </span>
+              <div className="flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      Change Status
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => handleBulkStatusChange("open")}>
+                      Set to Open
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleBulkStatusChange("completed")}>
+                      Set to Completed
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleBulkStatusChange("cancelled")}>
+                      Set to Cancelled
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
+                  <Trash2 className="mr-1 h-3 w-3" />
+                  Delete
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedTasks(new Set())}>
+                  Clear
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Tasks Table */}
         <Card className="border-border/30">
           <CardHeader>
@@ -138,6 +213,13 @@ export default function TasksManagementPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={selectedTasks.size === tasks.length && tasks.length > 0}
+                      onCheckedChange={toggleAllSelection}
+                      aria-label="Select all tasks"
+                    />
+                  </TableHead>
                   <TableHead>Task</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Status</TableHead>
@@ -156,7 +238,14 @@ export default function TasksManagementPage() {
                   const pendingCount = taskSubmissions.filter((s) => s.status === "pending").length
 
                   return (
-                    <TableRow key={task.id}>
+                    <TableRow key={task.id} className={selectedTasks.has(task.id) ? "bg-primary/5" : ""}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedTasks.has(task.id)}
+                          onCheckedChange={() => toggleTaskSelection(task.id)}
+                          aria-label={`Select ${task.title}`}
+                        />
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">

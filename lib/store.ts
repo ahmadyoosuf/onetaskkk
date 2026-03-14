@@ -183,13 +183,28 @@ type CreateTaskInput = {
 }
 
 export function createTask(input: CreateTaskInput): Task {
-  const newTask = {
-    ...input,
+  const base = {
     id: `task-${Date.now()}`,
-    createdAt: new Date(),
+    type: input.type,
+    title: input.title,
+    description: input.description,
+    reward: input.reward,
+    maxSubmissions: input.maxSubmissions,
     currentSubmissions: 0,
     status: "open" as const,
-  } as Task
+    createdAt: new Date(),
+    deadline: input.deadline,
+  }
+  
+  let newTask: Task
+  
+  if (input.type === "form_submission") {
+    newTask = { ...base, type: "form_submission", details: input.details as Task & { type: "form_submission" }["details"] }
+  } else if (input.type === "email_sending") {
+    newTask = { ...base, type: "email_sending", details: input.details as Task & { type: "email_sending" }["details"] }
+  } else {
+    newTask = { ...base, type: "social_media_liking", details: input.details as Task & { type: "social_media_liking" }["details"] }
+  }
   
   tasks = [newTask, ...tasks]
   notify()
@@ -235,13 +250,13 @@ export function createSubmission(submission: Omit<Submission, "id" | "submittedA
   }
   submissions = [newSubmission, ...submissions]
   
-  // Increment task submission count
-  const task = tasks.find((t) => t.id === submission.taskId)
-  if (task) {
-    task.currentSubmissions++
-    if (task.currentSubmissions >= task.maxSubmissions) {
-      task.status = "completed"
-    }
+  // Increment task submission count (immutable update)
+  const taskIndex = tasks.findIndex((t) => t.id === submission.taskId)
+  if (taskIndex !== -1) {
+    const task = tasks[taskIndex]
+    const newCount = task.currentSubmissions + 1
+    const newStatus = newCount >= task.maxSubmissions ? "completed" : task.status
+    tasks[taskIndex] = { ...task, currentSubmissions: newCount, status: newStatus }
   }
   
   notify()

@@ -1,8 +1,9 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useRef } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { useVirtualizer } from "@tanstack/react-virtual"
 import { useToast } from "@/hooks/use-toast"
 import { AppShell } from "@/components/app-shell"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
-import { ScrollArea } from "@/components/ui/scroll-area"
+
 import {
   Dialog,
   DialogContent,
@@ -48,6 +49,7 @@ export default function TasksFeedPage() {
   const [showSubmitDialog, setShowSubmitDialog] = useState(false)
   const [typeFilter, setTypeFilter] = useState<TaskType | "all">("all")
   const [sortBy, setSortBy] = useState<"newest" | "reward">("newest")
+  const parentRef = useRef<HTMLDivElement>(null)
 
   const { register, handleSubmit, reset, formState: { errors, isValid } } = useForm<SubmissionFormData>({
     resolver: zodResolver(submissionSchema),
@@ -64,6 +66,13 @@ export default function TasksFeedPage() {
     }
     return result
   }, [tasks, typeFilter, sortBy])
+
+  const virtualizer = useVirtualizer({
+    count: filteredTasks.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 100,
+    overscan: 5,
+  })
 
   const onSubmit = (data: SubmissionFormData) => {
     if (!selectedTask) return
@@ -122,70 +131,91 @@ export default function TasksFeedPage() {
             </div>
           </div>
 
-          {/* Scrollable Task Feed */}
-          <ScrollArea className="h-[50vh] sm:h-[calc(100vh-220px)]">
-            <div className="space-y-2 pr-2 sm:pr-4">
-              {filteredTasks.length === 0 ? (
-                <Card className="border-border/30 border-dashed">
-                  <CardContent className="flex h-32 items-center justify-center">
-                    <p className="text-muted-foreground">No tasks match your filters.</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                filteredTasks.map((task, index) => {
+          {/* Virtualized Task Feed */}
+          {filteredTasks.length === 0 ? (
+            <Card className="border-border/30 border-dashed">
+              <CardContent className="flex h-32 items-center justify-center">
+                <p className="text-muted-foreground">No tasks match your filters.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div
+              ref={parentRef}
+              className="h-[50vh] sm:h-[calc(100vh-220px)] overflow-auto"
+            >
+              <div
+                style={{
+                  height: `${virtualizer.getTotalSize()}px`,
+                  width: "100%",
+                  position: "relative",
+                }}
+              >
+                {virtualizer.getVirtualItems().map((virtualRow) => {
+                  const task = filteredTasks[virtualRow.index]
                   const Icon = TASK_ICONS[task.type]
                   const meta = TASK_TYPE_META[task.type]
                   const isSelected = selectedTask?.id === task.id
                   const spotsLeft = task.maxSubmissions - task.currentSubmissions
-                  
+
                   return (
-                    <Card
+                    <div
                       key={task.id}
-                      onClick={() => setSelectedTask(task)}
-                      className={cn(
-                        "cursor-pointer border-border/30 transition-all animate-fade-in-up hover:border-primary/30",
-                        isSelected && "border-primary/50 bg-primary/5 ring-1 ring-primary/20"
-                      )}
-                      style={{ animationDelay: `${index * 40}ms` }}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        height: `${virtualRow.size}px`,
+                        transform: `translateY(${virtualRow.start}px)`,
+                      }}
+                      className="pr-2 sm:pr-4 pb-2"
                     >
-                      <CardContent className="p-3 sm:p-4">
-                        <div className="flex items-start gap-3">
-                          <div className={cn(
-                            "flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg transition-colors",
-                            isSelected ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary"
-                          )}>
-                            <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0">
-                                <h3 className="font-medium text-sm sm:text-base leading-tight truncate">{task.title}</h3>
-                                <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground line-clamp-2">
-                                  {task.description}
-                                </p>
+                      <Card
+                        onClick={() => setSelectedTask(task)}
+                        className={cn(
+                          "cursor-pointer border-border/30 transition-all hover:border-primary/30 h-full",
+                          isSelected && "border-primary/50 bg-primary/5 ring-1 ring-primary/20"
+                        )}
+                      >
+                        <CardContent className="p-3 sm:p-4">
+                          <div className="flex items-start gap-3">
+                            <div className={cn(
+                              "flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg transition-colors",
+                              isSelected ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary"
+                            )}>
+                              <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <h3 className="font-medium text-sm sm:text-base leading-tight truncate">{task.title}</h3>
+                                  <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground line-clamp-2">
+                                    {task.description}
+                                  </p>
+                                </div>
+                                <Badge variant="secondary" className="shrink-0 bg-success/10 text-success border-success/20 text-xs">
+                                  ${task.reward.toFixed(2)}
+                                </Badge>
                               </div>
-                              <Badge variant="secondary" className="shrink-0 bg-success/10 text-success border-success/20 text-xs">
-                                ${task.reward.toFixed(2)}
-                              </Badge>
-                            </div>
-                            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <Users className="h-3 w-3" />
-                                {spotsLeft} left
-                              </span>
-                              <Badge variant="outline" className="border-border/30 text-xs px-1.5 py-0">
-                                {meta.label}
-                              </Badge>
+                              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                  <Users className="h-3 w-3" />
+                                  {spotsLeft} left
+                                </span>
+                                <Badge variant="outline" className="border-border/30 text-xs px-1.5 py-0">
+                                  {meta.label}
+                                </Badge>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                        </CardContent>
+                      </Card>
+                    </div>
                   )
-                })
-              )}
+                })}
+              </div>
             </div>
-          </ScrollArea>
+          )}
         </div>
 
         {/* Task Detail Panel */}
