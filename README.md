@@ -48,6 +48,9 @@ Next.js 16, React 19, TypeScript, Tailwind CSS v4, shadcn UI, Lexical (rich-text
 - Dark mode is fully implemented with system-preference detection and `localStorage` persistence.
 - 70% mobile audience assumed. Bottom-sheet drawers (Vaul) replace dialogs on small screens.
 - TanStack Query is the single source of truth for all state — no conflicting pub/sub stores.
+- Unified `api` object in store.ts provides "Server Experience" — Client Components never touch raw data.
+- Mock data: 1,000 submissions distributed across all 500 tasks (not concentrated in first 200).
+- Confirmation dialogs prevent accidental bulk deletions (ADHD UX requirement).
 
 ## Architecture
 

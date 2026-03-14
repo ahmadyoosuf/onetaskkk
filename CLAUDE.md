@@ -42,7 +42,7 @@ Frontend evaluation — micro-task platform with admin and worker roles.
 lib/
   types.ts      — discriminated union types (Task, Submission)
   schemas.ts    — zod schemas for form validation (description now optional)
-  store.ts      — IndexedDB-backed CRUD with 500 tasks, 1000 submissions
+  store.ts      — IndexedDB-backed CRUD with unified `api` object, 500 tasks, 1000 submissions
   auth.ts       — mock authentication helpers
 
 components/
@@ -112,6 +112,12 @@ Previously used ephemeral `blob:` URLs that disappeared on page reload. Now imag
 **Why TanStack Query as single source of truth?**
 Removed the conflicting `useSyncExternalStore` pub/sub implementation. TanStack Query now strictly manages all state and loading flags, including the PRD-mandated 1-3s simulated fetch delays.
 
+**Why unified `api` object in store.ts?**
+PRD mandates "Server Experience" — Client Components should never touch raw data arrays. The `api` object (`api.tasks.list`, `api.submissions.create`, etc.) encapsulates all CRUD operations, making it trivial to swap for real API routes later.
+
+**Why confirmation dialogs on bulk delete?**
+PRD's ADHD UX requirement: prevent accidental data loss. Bulk destructive actions now require explicit confirmation before execution.
+
 ## Customized shadcn Components
 
 - **Button** — Added `loading` prop with spinner, `success` and `warning` variants
@@ -126,7 +132,7 @@ Removed the conflicting `useSyncExternalStore` pub/sub implementation. TanStack 
 
 ## Testing Notes
 
-- 500 tasks and 1000 submissions for virtualizer stress testing
+- 500 tasks and 1000 submissions distributed across all tasks (not just first 200)
 - Login at `/login`, select demo user, test role-specific navigation
 - Status updates are interactive — click badges to change
 - URL state persists across navigation (try `/worker?type=email_sending&sort=reward`)

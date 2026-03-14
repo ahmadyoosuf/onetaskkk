@@ -83,6 +83,8 @@ function TasksManagementContent() {
   const [showBulkEditDialog, setShowBulkEditDialog] = useState(false)
   const [bulkEditField, setBulkEditField] = useState<"amount" | "campaignId">("amount")
   const [bulkEditValue, setBulkEditValue] = useState("")
+  // Confirmation dialog for destructive actions (PRD ADHD UX requirement)
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false)
   const isDataLoading = isLoading || isLoadingSubmissions
 
   // Get unique campaigns for filter dropdown
@@ -395,7 +397,7 @@ function TasksManagementContent() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button variant="destructive" size="sm" onClick={handleBulkDelete} loading={isMutating}>
+                <Button variant="destructive" size="sm" onClick={() => setShowBulkDeleteConfirm(true)} loading={isMutating}>
                   <Trash2 className="mr-1 h-3 w-3" />
                   Delete
                 </Button>
@@ -597,6 +599,43 @@ function TasksManagementContent() {
           )}
         </div>
       </div>
+
+      {/* Bulk Delete Confirmation Dialog (PRD ADHD UX requirement) */}
+      <Dialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Confirm Bulk Delete</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to permanently delete {selectedTasks.size} task{selectedTasks.size > 1 ? "s" : ""}? 
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm">
+            <p className="font-medium text-destructive">Warning:</p>
+            <ul className="mt-1 list-inside list-disc text-muted-foreground text-xs">
+              <li>All selected tasks will be permanently removed</li>
+              <li>Associated submissions will be orphaned</li>
+              <li>This cannot be reversed</li>
+            </ul>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setShowBulkDeleteConfirm(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={async () => {
+                await handleBulkDelete()
+                setShowBulkDeleteConfirm(false)
+              }}
+              loading={isMutating}
+            >
+              <Trash2 className="mr-1.5 h-4 w-4" />
+              Delete {selectedTasks.size} Task{selectedTasks.size > 1 ? "s" : ""}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Bulk Edit Dialog (PRD requirement) */}
       <Dialog open={showBulkEditDialog} onOpenChange={setShowBulkEditDialog}>

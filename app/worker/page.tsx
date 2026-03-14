@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/select"
 import { Share2, Mail, Heart, Users, Filter, Flame, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getCurrentUser } from "@/lib/store"
+import { api } from "@/lib/store"
 import { useSubmissions, useTasks, useCreateSubmission } from "@/hooks/use-store"
 import { socialMediaSubmissionSchema, emailSubmissionSchema, type SubmissionFormData } from "@/lib/schemas"
 import type { Task, TaskType } from "@/lib/types"
@@ -62,7 +62,7 @@ function TasksFeedContent() {
   const { tasks, isLoading, error, refetch } = useTasks()
   const { submissions } = useSubmissions()
   const createSubmissionMutation = useCreateSubmission()
-  const currentUser = getCurrentUser()
+  const currentUser = api.users.current()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showSubmitDialog, setShowSubmitDialog] = useState(false)
   const [showMobileDrawer, setShowMobileDrawer] = useState(false)
@@ -337,7 +337,8 @@ function TasksFeedContent() {
         </div>
 
         {/* Task Detail Panel - Hidden on mobile (use bottom drawer), visible on desktop */}
-        <div className="hidden lg:block lg:w-80 xl:w-96">
+        {/* PRD ADHD UX: Widened from w-80/w-96 to w-96/w-[28rem] for better readability */}
+        <div className="hidden lg:block lg:w-96 xl:w-[28rem]">
           {selectedTask ? (
             <Card className="border-border/30 sticky top-20">
               <CardContent className="p-4">

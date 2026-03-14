@@ -174,8 +174,8 @@ function generateMockSubmissions(generatedTasks: Task[]): Submission[] {
   const statuses: Array<"pending" | "approved" | "rejected"> = ["pending", "approved", "rejected"]
   
   for (let i = 0; i < 1000; i++) {
-    // Spread submissions across first 200 tasks for realistic distribution
-    const taskIndex = i % Math.min(200, generatedTasks.length)
+    // PRD fix: Spread submissions across ALL tasks (not just first 200)
+    const taskIndex = i % generatedTasks.length
     const task = generatedTasks[taskIndex]
     const taskId = task.id
     const taskType = task.type
@@ -431,3 +431,36 @@ export function getCurrentUser(): User {
 export function getAdminUser(): User {
   return users[0]
 }
+
+// ─── Unified API Object ─────────────────────────────────────
+// PRD: "Server Experience" — Client Components must never touch raw arrays
+// All data operations go through this unified API layer
+export const api = {
+  // Tasks
+  tasks: {
+    list: fetchTasks,
+    get: async (id: string): Promise<Task | undefined> => {
+      await initializeStore()
+      return simulateFetchDelay(getTask(id))
+    },
+    create: createTask,
+    update: updateTask,
+    updateStatus: updateTaskStatus,
+    delete: deleteTask,
+  },
+  // Submissions
+  submissions: {
+    list: fetchSubmissions,
+    get: async (id: string): Promise<Submission | undefined> => {
+      await initializeStore()
+      return simulateFetchDelay(getSubmission(id))
+    },
+    create: createSubmission,
+    updateStatus: updateSubmissionStatus,
+  },
+  // Users
+  users: {
+    current: getCurrentUser,
+    admin: getAdminUser,
+  },
+} as const

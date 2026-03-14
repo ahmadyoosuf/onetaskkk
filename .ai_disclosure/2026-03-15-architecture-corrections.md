@@ -92,16 +92,54 @@ This session addressed critical architectural issues to achieve full PRD complia
 - Collapsible full instructions
 - Visual distinction with primary/5 background
 
+### 10. Unified API Layer (store.ts)
+
+**Problem:** Client Components directly imported raw data arrays from store.
+
+**Solution:** Created unified `api` object:
+- `api.tasks.list`, `api.tasks.create`, `api.tasks.update`, etc.
+- `api.submissions.list`, `api.submissions.create`, etc.
+- `api.users.current()`, `api.users.admin()`
+- Mimics "Server Experience" per PRD
+- Easy swap to real API routes later
+
+### 11. Mock Data Distribution Fix
+
+**Problem:** 1,000 submissions only distributed across first 200 tasks.
+
+**Solution:** Changed distribution to cover all 500 tasks:
+- `taskIndex = i % generatedTasks.length` instead of `i % 200`
+- All tasks now have realistic submission counts
+
+### 12. Instructions Panel Width (Worker Feed)
+
+**Problem:** Task detail panel too narrow for ADHD-friendly readability.
+
+**Solution:** Widened panel:
+- Changed from `lg:w-80 xl:w-96` to `lg:w-96 xl:w-[28rem]`
+- Better readability for task instructions
+
+### 13. Bulk Delete Confirmation Dialog
+
+**Problem:** Bulk delete executed immediately without confirmation.
+
+**Solution:** Added confirmation dialog:
+- Shows count of tasks to be deleted
+- Lists consequences (permanent, orphaned submissions)
+- Requires explicit "Delete X Tasks" button click
+- Prevents accidental data loss per ADHD UX requirement
+
 ## Files Modified
 
-- `lib/store.ts` — Complete rewrite for IndexedDB
-- `hooks/use-store.ts` — Simplified to pure TanStack Query
+- `lib/store.ts` — IndexedDB rewrite + unified API object + distribution fix
+- `hooks/use-store.ts` — Uses API object, pure TanStack Query
 - `components/ui/image-upload.tsx` — Base64 data URI conversion
 - `lib/schemas.ts` — Optional description
 - `components/submissions/submission-detail.tsx` — Full task context
 - `components/admin/tasks-table.tsx` — Pagination
 - `app/admin/submissions/page.tsx` — sortBy, full task passing
-- `app/admin/tasks/page.tsx` — Mobile virtualization, bulk edit validation
+- `app/admin/tasks/page.tsx` — Mobile virtualization, bulk edit validation, confirmation dialog
+- `app/worker/page.tsx` — Widened instructions panel, uses API object
 - `package.json` — Added idb-keyval dependency
 - `README.md` — Updated architecture notes
 - `CLAUDE.md` — Updated key decisions
