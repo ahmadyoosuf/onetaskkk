@@ -39,7 +39,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   Share2, Mail, Heart, Plus, MoreHorizontal, Eye, Trash2,
-  DollarSign, ListTodo, Clock, Users, TrendingUp, TrendingDown, Edit2
+  DollarSign, ListTodo, Clock, Users, Edit2
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useSubmissions, useTasks, useDeleteTask, useUpdateTaskStatus, useUpdateTask } from "@/hooks/use-store"
@@ -208,17 +208,11 @@ function TasksManagementContent() {
     setShowBulkEditDialog(true)
   }
 
-  // Stats with mock trend data (simulating week-over-week changes)
+  // Stats
   const totalTasks = filteredTasks.length
   const openTasks = filteredTasks.filter((t) => t.status === "open").length
   const totalRewards = filteredTasks.reduce((sum, t) => sum + t.reward * t.currentSubmissions, 0)
   const totalSubmissions = submissions.length
-  
-  // Mock trend percentages (in a real app, these would be calculated from historical data)
-  const tasksTrend = totalTasks > 0 ? Math.round((totalTasks / (totalTasks + 3)) * 100 - 85) : 0
-  const openTasksTrend = openTasks > 0 ? Math.round((openTasks / totalTasks) * 100 - 60) : 0
-  const submissionsTrend = totalSubmissions > 0 ? Math.round((totalSubmissions / (totalSubmissions + 8)) * 100 - 70) : 0
-  const rewardsTrend = totalRewards > 0 ? 12.5 : 0 // Mock positive trend
 
   return (
       <AppShell role="admin">
@@ -284,19 +278,8 @@ function TasksManagementContent() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card className="border-border/30">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <ListTodo className="h-5 w-5" />
-                </div>
-                {tasksTrend !== 0 && (
-                  <div className={cn(
-                    "flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium",
-                    tasksTrend > 0 ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
-                  )}>
-                    {tasksTrend > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                    {Math.abs(tasksTrend)}%
-                  </div>
-                )}
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <ListTodo className="h-5 w-5" />
               </div>
               <div className="mt-3">
                 <p className="text-2xl font-semibold">{totalTasks}</p>
@@ -306,19 +289,8 @@ function TasksManagementContent() {
           </Card>
           <Card className="border-border/30">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10 text-success">
-                  <Clock className="h-5 w-5" />
-                </div>
-                {openTasksTrend !== 0 && (
-                  <div className={cn(
-                    "flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium",
-                    openTasksTrend > 0 ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
-                  )}>
-                    {openTasksTrend > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                    {Math.abs(openTasksTrend)}%
-                  </div>
-                )}
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10 text-success">
+                <Clock className="h-5 w-5" />
               </div>
               <div className="mt-3">
                 <p className="text-2xl font-semibold">{openTasks}</p>
@@ -328,19 +300,8 @@ function TasksManagementContent() {
           </Card>
           <Card className="border-border/30">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-info/10 text-info">
-                  <Users className="h-5 w-5" />
-                </div>
-                {submissionsTrend !== 0 && (
-                  <div className={cn(
-                    "flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium",
-                    submissionsTrend > 0 ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
-                  )}>
-                    {submissionsTrend > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                    {Math.abs(submissionsTrend)}%
-                  </div>
-                )}
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-info/10 text-info">
+                <Users className="h-5 w-5" />
               </div>
               <div className="mt-3">
                 <p className="text-2xl font-semibold">{totalSubmissions}</p>
@@ -350,19 +311,8 @@ function TasksManagementContent() {
           </Card>
           <Card className="border-border/30">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10 text-warning">
-                  <DollarSign className="h-5 w-5" />
-                </div>
-                {rewardsTrend !== 0 && (
-                  <div className={cn(
-                    "flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium",
-                    rewardsTrend > 0 ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
-                  )}>
-                    {rewardsTrend > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                    {Math.abs(rewardsTrend)}%
-                  </div>
-                )}
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10 text-warning">
+                <DollarSign className="h-5 w-5" />
               </div>
               <div className="mt-3">
                 <p className="text-2xl font-semibold">${totalRewards.toFixed(2)}</p>
