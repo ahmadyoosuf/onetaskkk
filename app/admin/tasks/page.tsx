@@ -2,7 +2,7 @@
 
 import { useState, useMemo, Suspense } from "react"
 import Link from "next/link"
-import { useQueryState, parseAsStringLiteral } from "nuqs"
+import { useQueryState, parseAsStringLiteral, parseAsString } from "nuqs"
 import { AppShell } from "@/components/app-shell"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -83,7 +83,7 @@ function TasksManagementContent() {
   
   // URL state management with nuqs
   const [statusFilter, setStatusFilter] = useQueryState("status", statusFilterParser)
-  const [campaignFilter, setCampaignFilter] = useQueryState("campaign", parseAsStringLiteral(["all"] as const).withDefault("all"))
+  const [campaignFilter, setCampaignFilter] = useQueryState("campaign", parseAsString.withDefault("all"))
   const [sortBy, setSortBy] = useQueryState("sort", sortByParser)
   
   // Bulk edit dialog state (PRD requirement)

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, Suspense } from "react"
 import { useVirtualizer } from "@tanstack/react-virtual"
-import { useQueryState, parseAsStringLiteral, parseAsBoolean } from "nuqs"
+import { useQueryState, parseAsStringLiteral, parseAsBoolean, parseAsString } from "nuqs"
 import { useToast } from "@/hooks/use-toast"
 import { AppShell } from "@/components/app-shell"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -66,7 +66,7 @@ function SubmissionsContent() {
   
   // URL state management with nuqs
   const [statusFilter, setStatusFilter] = useQueryState("status", statusFilterParser)
-  const [taskFilter, setTaskFilter] = useQueryState("task", parseAsStringLiteral(["all"] as const).withDefault("all"))
+  const [taskFilter, setTaskFilter] = useQueryState("task", parseAsString.withDefault("all"))
   const [groupByTask, setGroupByTask] = useQueryState("group", parseAsBoolean.withDefault(false))
   
   const [showReviewDialog, setShowReviewDialog] = useState(false)
