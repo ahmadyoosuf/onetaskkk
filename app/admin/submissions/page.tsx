@@ -34,10 +34,10 @@ import { getTask } from "@/lib/store"
 import { useTasks, useSubmissions, useUpdateSubmissionStatus } from "@/hooks/use-store"
 import type { Submission, SubmissionStatus } from "@/lib/types"
 
-const STATUS_STYLES: Record<SubmissionStatus, { label: string; className: string; icon: typeof Clock }> = {
-  pending: { label: "Pending", className: "bg-warning/10 text-warning border-warning/20", icon: Clock },
-  approved: { label: "Approved", className: "bg-success/10 text-success border-success/20", icon: Check },
-  rejected: { label: "Rejected", className: "bg-destructive/10 text-destructive border-destructive/20", icon: X },
+const STATUS_META: Record<SubmissionStatus, { label: string; icon: typeof Clock }> = {
+  pending: { label: "Pending", icon: Clock },
+  approved: { label: "Approved", icon: Check },
+  rejected: { label: "Rejected", icon: X },
 }
 
 type SubmissionListRow =
@@ -261,10 +261,10 @@ function SubmissionsContent() {
             All ({submissions.length})
           </Badge>
           <Badge 
-            variant="outline" 
+            variant="pending" 
             className={cn(
               "cursor-pointer px-3 py-1.5 text-xs sm:text-sm transition-all",
-              statusFilter === "pending" ? "bg-warning/20 text-warning border-warning/50" : STATUS_STYLES.pending.className + " hover:bg-warning/5"
+              statusFilter === "pending" ? "bg-warning/20 text-warning border-warning/50" : "hover:bg-warning/5"
             )}
             onClick={() => setStatusFilter("pending")}
           >
@@ -272,10 +272,10 @@ function SubmissionsContent() {
             Pending ({pendingCount})
           </Badge>
           <Badge 
-            variant="outline" 
+            variant="approved" 
             className={cn(
               "cursor-pointer px-3 py-1.5 text-xs sm:text-sm transition-all",
-              statusFilter === "approved" ? "bg-success/20 text-success border-success/50" : STATUS_STYLES.approved.className + " hover:bg-success/5"
+              statusFilter === "approved" ? "bg-success/20 text-success border-success/50" : "hover:bg-success/5"
             )}
             onClick={() => setStatusFilter("approved")}
           >
@@ -283,10 +283,10 @@ function SubmissionsContent() {
             Approved ({approvedCount})
           </Badge>
           <Badge 
-            variant="outline" 
+            variant="rejected" 
             className={cn(
               "cursor-pointer px-3 py-1.5 text-xs sm:text-sm transition-all",
-              statusFilter === "rejected" ? "bg-destructive/20 text-destructive border-destructive/50" : STATUS_STYLES.rejected.className + " hover:bg-destructive/5"
+              statusFilter === "rejected" ? "bg-destructive/20 text-destructive border-destructive/50" : "hover:bg-destructive/5"
             )}
             onClick={() => setStatusFilter("rejected")}
           >
@@ -370,8 +370,8 @@ function SubmissionsContent() {
                             <Badge variant="outline" className="text-xs">{row.count}</Badge>
                           </div>
                         ) : (() => {
-                          const statusStyle = STATUS_STYLES[row.submission.status]
-                          const StatusIcon = statusStyle.icon
+                          const statusMeta = STATUS_META[row.submission.status]
+                          const StatusIcon = statusMeta.icon
                           const isSelected = selectedSubmission?.id === row.submission.id
 
                           return (
@@ -438,8 +438,8 @@ function SubmissionsContent() {
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between gap-2">
                     <CardTitle className="text-base">Submission Details</CardTitle>
-                    <Badge variant="outline" className={STATUS_STYLES[selectedSubmission.status].className}>
-                      {STATUS_STYLES[selectedSubmission.status].label}
+                    <Badge variant={selectedSubmission.status}>
+                      {STATUS_META[selectedSubmission.status].label}
                     </Badge>
                   </div>
                   <CardDescription className="truncate">
@@ -585,8 +585,8 @@ function SubmissionsContent() {
               <DialogHeader className="pb-2">
                 <div className="flex items-center justify-between gap-2">
                   <DialogTitle className="text-base">Submission Details</DialogTitle>
-                  <Badge variant="outline" className={STATUS_STYLES[selectedSubmission.status].className}>
-                    {STATUS_STYLES[selectedSubmission.status].label}
+                  <Badge variant={selectedSubmission.status}>
+                    {STATUS_META[selectedSubmission.status].label}
                   </Badge>
                 </div>
                 <DialogDescription className="truncate">

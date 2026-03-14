@@ -617,8 +617,8 @@ function TasksFeedContent() {
               <Button type="button" variant="outline" onClick={() => setShowSubmitDialog(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={!isValid || createSubmissionMutation.isPending}>
-                {createSubmissionMutation.isPending ? "Submitting..." : "Submit"}
+              <Button type="submit" disabled={!isValid} loading={createSubmissionMutation.isPending}>
+                Submit
               </Button>
             </DialogFooter>
           </form>
