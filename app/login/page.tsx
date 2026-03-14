@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { signIn } from "next-auth/react"
 import Link from "next/link"
 import Image from "next/image"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,7 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { LogIn, ShieldCheck, ListTodo, ArrowLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { loginAs, MOCK_USERS } from "@/lib/auth"
+import { MOCK_USERS } from "@/lib/mock-users"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -20,6 +21,7 @@ export default function LoginPage() {
   
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Filter users based on the selected role from URL parameter
   const filteredUsers = useMemo(() => {
@@ -32,20 +34,37 @@ export default function LoginPage() {
   const handleLogin = async () => {
     if (!selectedUserId) return
     setIsLoading(true)
-    
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    
-    const user = loginAs(selectedUserId)
-    if (user) {
-      // Redirect based on role
-      if (user.role === "admin") {
+    setError(null)
+
+    try {
+      const selectedUser = MOCK_USERS.find((u) => u.id === selectedUserId)
+      if (!selectedUser) {
+        setError("User not found")
+        setIsLoading(false)
+        return
+      }
+
+      const result = await signIn("credentials", {
+        userId: selectedUserId,
+        redirect: false,
+      })
+
+      if (result?.error) {
+        setError("Sign in failed. Please try again.")
+        setIsLoading(false)
+        return
+      }
+
+      // Redirect based on selected user's role
+      if (selectedUser.role === "admin") {
         router.push("/admin/tasks")
       } else {
         router.push("/worker")
       }
+    } catch {
+      setError("An unexpected error occurred.")
+      setIsLoading(false)
     }
-    setIsLoading(false)
   }
 
   const selectedUser = filteredUsers.find((u) => u.id === selectedUserId)
@@ -91,6 +110,13 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Error Message */}
+          {error && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
           {/* User Selection */}
           <div className="space-y-2">
             <Label className="text-sm text-muted-foreground">Choose an account</Label>
@@ -188,7 +214,7 @@ export default function LoginPage() {
           </Button>
 
           <p className="text-xs text-muted-foreground text-center">
-            This is a demo app. No real authentication is performed.
+            This is a demo app using Auth.js for session management.
           </p>
         </CardContent>
       </Card>
