@@ -88,8 +88,7 @@ export const socialMediaSubmissionSchema = z.object({
     .min(1, "Post URL is required"),
   screenshotUrl: z
     .string()
-    .url("Must be a valid URL")
-    .min(1, "Screenshot URL is required"),
+    .min(1, "Screenshot is required"),
 })
 
 // Email Sending: Email Content + Screenshot
@@ -100,8 +99,7 @@ export const emailSubmissionSchema = z.object({
     .max(2000, "Email content must be less than 2000 characters"),
   screenshotUrl: z
     .string()
-    .url("Must be a valid URL")
-    .min(1, "Screenshot URL is required"),
+    .min(1, "Screenshot is required"),
 })
 
 export type SocialMediaSubmissionData = z.infer<typeof socialMediaSubmissionSchema>

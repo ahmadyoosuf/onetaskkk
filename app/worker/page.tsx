@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
+import { ImageUpload } from "@/components/ui/image-upload"
 import { TaskDetail, TaskInstructionDetails } from "@/components/tasks/task-detail"
 
 import {
@@ -81,7 +82,7 @@ function TasksFeedContent() {
   const isEmailTask = selectedTask?.type === "email_sending"
   const currentSchema = isEmailTask ? emailSubmissionSchema : socialMediaSubmissionSchema
 
-  const { register, handleSubmit, reset, formState: { errors, isValid } } = useForm<SubmissionFormData>({
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors, isValid } } = useForm<SubmissionFormData>({
     resolver: zodResolver(currentSchema),
     mode: "onChange",
   })
@@ -487,24 +488,14 @@ function TasksFeedContent() {
               </div>
             )}
 
-            {/* Screenshot - required for all task types */}
-            <div className="space-y-2">
-              <Label htmlFor="screenshotUrl">
-                Evidence Screenshot URL <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="screenshotUrl"
-                type="url"
-                placeholder="https://imgur.com/... or https://screenshots.com/..."
-                {...register("screenshotUrl")}
-              />
-              {errors.screenshotUrl && (
-                <p className="text-xs text-destructive">{String(errors.screenshotUrl.message ?? "")}</p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Upload your screenshot to an image host and paste the URL here
-              </p>
-            </div>
+            {/* Screenshot upload - required for all task types */}
+            <ImageUpload
+              label="Evidence Screenshot"
+              required
+              value={watch("screenshotUrl")}
+              onChange={(url) => setValue("screenshotUrl", url ?? "", { shouldValidate: true })}
+              error={errors.screenshotUrl?.message ? String(errors.screenshotUrl.message) : undefined}
+            />
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowSubmitDialog(false)}>
