@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useRef, Suspense } from "react"
+import { useState, useMemo, useRef, useEffect, useCallback, Suspense } from "react"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { useQueryState, parseAsStringLiteral, parseAsBoolean, parseAsString } from "nuqs"
 import { useToast } from "@/hooks/use-toast"
@@ -187,8 +187,9 @@ function SubmissionsContent() {
       })
       setShowReviewDialog(false)
       setAdminNotes("")
-      setSelectedSubmission(null)
-      setShowMobileDrawer(false)
+      // Auto-advance to next pending instead of clearing selection
+      advanceToNextPending()
+      if (showMobileDrawer) setShowMobileDrawer(false)
     } catch {
       toast({
         title: "Review failed",
@@ -199,6 +200,60 @@ function SubmissionsContent() {
   }
   
   const isReviewing = updateSubmissionStatusMutation.isPending
+
+  // Auto-advance: find next pending submission after current one
+  const advanceToNextPending = useCallback(() => {
+    const currentIndex = filteredSubmissions.findIndex(s => s.id === selectedSubmission?.id)
+    const nextPending = filteredSubmissions.find((s, i) => i > currentIndex && s.status === "pending")
+      || filteredSubmissions.find((s, i) => i < currentIndex && s.status === "pending")
+    setSelectedSubmission(nextPending ?? null)
+  }, [filteredSubmissions, selectedSubmission])
+
+  // Keyboard shortcuts: A = approve, R = reject, J/K = navigate submissions
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input/textarea
+      const target = e.target as HTMLElement
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return
+      // Don't trigger if a dialog is open
+      if (showReviewDialog) return
+
+      if (!selectedSubmission || selectedSubmission.status !== "pending") return
+
+      if (e.key === "a" || e.key === "A") {
+        e.preventDefault()
+        handleReview("approved")
+      } else if (e.key === "r" || e.key === "R") {
+        e.preventDefault()
+        handleReview("rejected")
+      }
+    }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [selectedSubmission, showReviewDialog])
+
+  // J/K navigation between submissions
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return
+      if (showReviewDialog) return
+
+      if (e.key === "j" || e.key === "J") {
+        e.preventDefault()
+        const currentIndex = filteredSubmissions.findIndex(s => s.id === selectedSubmission?.id)
+        const next = filteredSubmissions[currentIndex + 1]
+        if (next) setSelectedSubmission(next)
+      } else if (e.key === "k" || e.key === "K") {
+        e.preventDefault()
+        const currentIndex = filteredSubmissions.findIndex(s => s.id === selectedSubmission?.id)
+        const prev = filteredSubmissions[currentIndex - 1]
+        if (prev) setSelectedSubmission(prev)
+      }
+    }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [selectedSubmission, filteredSubmissions, showReviewDialog])
 
   // Running totals
   const pendingCount = submissions.filter((s) => s.status === "pending").length

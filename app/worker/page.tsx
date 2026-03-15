@@ -39,7 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Share2, Mail, Heart, Users, Filter, Flame, Clock } from "lucide-react"
+import { Share2, Mail, Heart, Users, Filter, Flame, Clock, ArrowUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { api } from "@/lib/store"
 import { useSubmissions, useTasks, useCreateSubmission } from "@/hooks/use-store"
@@ -99,8 +99,17 @@ function TasksFeedContent() {
     reset()
   }, [selectedTask?.id, reset])
 
+  // Count open tasks per type for tab badges
+  const openTasks = useMemo(() => tasks.filter((t) => t.status === "open"), [tasks])
+  const typeCounts = useMemo(() => ({
+    all: openTasks.length,
+    social_media_posting: openTasks.filter(t => t.type === "social_media_posting").length,
+    email_sending: openTasks.filter(t => t.type === "email_sending").length,
+    social_media_liking: openTasks.filter(t => t.type === "social_media_liking").length,
+  }), [openTasks])
+
   const filteredTasks = useMemo(() => {
-    let result = tasks.filter((t) => t.status === "open")
+    let result = openTasks
     if (typeFilter !== "all") {
       result = result.filter((t) => t.type === typeFilter)
     }
@@ -108,7 +117,7 @@ function TasksFeedContent() {
       result = [...result].sort((a, b) => b.reward - a.reward)
     }
     return result
-  }, [tasks, typeFilter, sortBy])
+  }, [openTasks, typeFilter, sortBy])
 
   const hasSubmittedSelectedTask = useMemo(() => {
     if (!selectedTask) return false
@@ -163,7 +172,7 @@ function TasksFeedContent() {
       <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
         {/* Task List */}
         <div className="flex-1 space-y-4">
-          {/* Header & Filters */}
+          {/* Header */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">Available Tasks</h1>
@@ -171,29 +180,51 @@ function TasksFeedContent() {
                 {hasMounted ? `${filteredTasks.length} task${filteredTasks.length !== 1 ? "s" : ""} available` : "\u00A0"}
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}>
-                <SelectTrigger className="w-full sm:w-40">
-                  <Filter className="mr-2 h-4 w-4 shrink-0" />
-                  <SelectValue placeholder="Filter" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="social_media_posting">Social Media Posting</SelectItem>
-                  <SelectItem value="email_sending">Email Sending</SelectItem>
-                <SelectItem value="social_media_liking">Social Media Liking</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
-                <SelectTrigger className="w-28 sm:w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="newest">Date</SelectItem>
-                  <SelectItem value="reward">Highest Reward</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+              <SelectTrigger className="w-28 sm:w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Date</SelectItem>
+                <SelectItem value="reward">Highest Reward</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Task Type Tabs */}
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-0.5" role="tablist" aria-label="Filter by task type">
+            {([
+              { key: "all" as const, label: "All", icon: Filter },
+              { key: "social_media_posting" as const, label: "Posting", icon: Share2 },
+              { key: "email_sending" as const, label: "Email", icon: Mail },
+              { key: "social_media_liking" as const, label: "Liking", icon: Heart },
+            ]).map(({ key, label, icon: TabIcon }) => {
+              const isActive = typeFilter === key
+              const count = typeCounts[key]
+              return (
+                <button
+                  key={key}
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setTypeFilter(key)}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all whitespace-nowrap touch-feedback",
+                    isActive
+                      ? "bg-primary/10 text-primary border border-primary/30"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent"
+                  )}
+                >
+                  <TabIcon className="h-3.5 w-3.5 shrink-0" />
+                  <span>{label}</span>
+                  <span className={cn(
+                    "rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-none",
+                    isActive ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
+                  )}>
+                    {count}
+                  </span>
+                </button>
+              )
+            })}
           </div>
 
           {/* Task Feed */}
