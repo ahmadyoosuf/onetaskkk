@@ -1,5 +1,3 @@
-'use client'
-
 import type { Metadata, Viewport } from 'next'
 import { Space_Grotesk, IBM_Plex_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
@@ -45,7 +43,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const requiredVar = process.env.MISSING_TEST_ENV_VAR;
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
