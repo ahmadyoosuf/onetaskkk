@@ -516,6 +516,12 @@ function SubmissionsContent() {
         <DrawerContent className="max-h-[85vh]">
           {selectedSubmission && (
             <div className="overflow-y-auto p-4">
+              <DrawerHeader className="p-0 pb-4">
+                <DrawerTitle className="text-base text-left">Review Submission</DrawerTitle>
+                <DrawerDescription className="text-xs text-left">
+                  {selectedSubmission.userName} &middot; {taskMap.get(selectedSubmission.taskId)?.title ?? "Unknown Task"}
+                </DrawerDescription>
+              </DrawerHeader>
               <SubmissionDetail
                 submission={selectedSubmission}
                 task={taskMap.get(selectedSubmission.taskId)}

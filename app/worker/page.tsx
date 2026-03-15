@@ -108,7 +108,7 @@ function TasksFeedContent() {
       result = [...result].sort((a, b) => b.reward - a.reward)
     }
     return result
-  }, [openTasks, typeFilter, sortBy])
+  }, [tasks, typeFilter, sortBy])
 
   const hasSubmittedSelectedTask = useMemo(() => {
     if (!selectedTask) return false
