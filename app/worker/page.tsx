@@ -41,8 +41,8 @@ import {
 } from "@/components/ui/select"
 import { Share2, Mail, Heart, Users, Filter, Flame, Clock, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { api } from "@/lib/store"
 import { useSubmissions, useTasks, useCreateSubmission } from "@/hooks/use-store"
+import { useAuth } from "@/components/providers/auth-provider"
 import { socialMediaSubmissionSchema, emailSubmissionSchema, type SubmissionFormData } from "@/lib/schemas"
 import type { Task, TaskType } from "@/lib/types"
 import { TASK_TYPE_META } from "@/lib/types"
@@ -62,7 +62,7 @@ function TasksFeedContent() {
   const { tasks, isLoading, error, refetch } = useTasks()
   const { submissions } = useSubmissions()
   const createSubmissionMutation = useCreateSubmission()
-  const currentUser = api.users.current()
+  const { user: currentUser } = useAuth()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showSubmitDialog, setShowSubmitDialog] = useState(false)
   const [showMobileDrawer, setShowMobileDrawer] = useState(false)
@@ -113,11 +113,12 @@ function TasksFeedContent() {
   // Track which tasks the current user has already submitted
   const submittedTaskIds = useMemo(() => {
     const ids = new Set<string>()
+    if (!currentUser) return ids
     for (const s of submissions) {
       if (s.userId === currentUser.id) ids.add(s.taskId)
     }
     return ids
-  }, [submissions, currentUser.id])
+  }, [submissions, currentUser])
 
   const hasSubmittedSelectedTask = useMemo(() => {
     if (!selectedTask) return false
@@ -135,7 +136,7 @@ function TasksFeedContent() {
   })
 
   const onSubmit = async (data: SubmissionFormData) => {
-    if (!selectedTask) return
+    if (!selectedTask || !currentUser) return
     try {
       // Build PRD-compliant submission based on task type
       const submissionData = {

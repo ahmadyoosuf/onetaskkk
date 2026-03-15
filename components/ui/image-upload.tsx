@@ -55,17 +55,14 @@ export function ImageUpload({
     
     // Validate file size (max 5MB to avoid IndexedDB bloat)
     const MAX_SIZE = 5 * 1024 * 1024
-    if (file.size > MAX_SIZE) {
-      console.warn("[v0] Image too large, skipping (max 5MB)")
-      return
-    }
+    if (file.size > MAX_SIZE) return
     
     setIsConverting(true)
     try {
       const dataUri = await fileToBase64(file)
       onChange(dataUri)
-    } catch (err) {
-      console.error("[v0] Failed to convert image:", err)
+    } catch {
+      // Silently ignore conversion errors — the upload UI will remain in its empty state
     } finally {
       setIsConverting(false)
     }

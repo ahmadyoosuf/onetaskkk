@@ -1,5 +1,6 @@
 import { get, set, createStore } from "idb-keyval"
 import type { Task, Submission, User, TaskType, Platform } from "./types"
+import { MOCK_USERS } from "./mock-users"
 
 // ─── IndexedDB Persistence ────────────────────────────────────
 // Main store for structured data (tasks, submissions without images)
@@ -465,18 +466,18 @@ export async function updateSubmissionStatus(
 }
 
 // ─── User Operations ────────────────────────────────────────
-const users: User[] = [
-  { id: "admin-1", name: "Admin User", email: "admin@yoke.app", role: "admin" },
-  { id: "user-1", name: "Alice Johnson", email: "alice@example.com", role: "worker" },
-  { id: "user-2", name: "Bob Smith", email: "bob@example.com", role: "worker" },
-]
+// These helpers are for components that need a fallback user reference
+// in contexts where the auth session is unavailable (e.g. mock data generation).
+// The auth-provider / session cookie is the source of truth for the logged-in user.
 
+/** @deprecated Use useAuth() from auth-provider in React components instead. */
 export function getCurrentUser(): User {
-  return users[1]
+  // Falls back to the first worker in MOCK_USERS for non-React call sites.
+  return MOCK_USERS.find((u) => u.role === "worker") ?? MOCK_USERS[0]
 }
 
 export function getAdminUser(): User {
-  return users[0]
+  return MOCK_USERS.find((u) => u.role === "admin") ?? MOCK_USERS[0]
 }
 
 // ─── Unified API Object ─────────────────────────────────────
