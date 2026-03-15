@@ -39,7 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Share2, Mail, Heart, Users, Filter, Flame, Clock } from "lucide-react"
+import { Share2, Mail, Heart, Users, Filter, Flame, Clock, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { api } from "@/lib/store"
 import { useSubmissions, useTasks, useCreateSubmission } from "@/hooks/use-store"
@@ -110,12 +110,19 @@ function TasksFeedContent() {
     return result
   }, [tasks, typeFilter, sortBy])
 
+  // Track which tasks the current user has already submitted
+  const submittedTaskIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const s of submissions) {
+      if (s.userId === currentUser.id) ids.add(s.taskId)
+    }
+    return ids
+  }, [submissions, currentUser.id])
+
   const hasSubmittedSelectedTask = useMemo(() => {
     if (!selectedTask) return false
-    return submissions.some(
-      (submission) => submission.taskId === selectedTask.id && submission.userId === currentUser.id
-    )
-  }, [currentUser.id, selectedTask, submissions])
+    return submittedTaskIds.has(selectedTask.id)
+  }, [selectedTask, submittedTaskIds])
 
   const isSubmitLocked = !!selectedTask && !selectedTask.allowMultipleSubmissions && hasSubmittedSelectedTask
 
@@ -181,7 +188,7 @@ function TasksFeedContent() {
                   <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="social_media_posting">Social Media Posting</SelectItem>
                   <SelectItem value="email_sending">Email Sending</SelectItem>
-                <SelectItem value="social_media_liking">Social Media Liking</SelectItem>
+                  <SelectItem value="social_media_liking">Social Media Liking</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
@@ -240,6 +247,7 @@ function TasksFeedContent() {
                   const isHot = spotsLeft <= 5 && spotsLeft > 0
                   const isAlmostFull = spotsLeft <= 2 && spotsLeft > 0
                   const progressPercent = (task.currentSubmissions / task.maxSubmissions) * 100
+                  const hasSubmitted = submittedTaskIds.has(task.id)
 
                   return (
                     <div
@@ -286,7 +294,13 @@ function TasksFeedContent() {
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-2">
                                     <h3 className="font-medium text-sm sm:text-base leading-tight truncate">{task.title}</h3>
-                                    {isHot && (
+                                    {hasSubmitted && (
+                                      <span className="flex items-center gap-0.5 rounded-full bg-success/10 px-1.5 py-0.5 text-[10px] font-medium text-success shrink-0">
+                                        <Check className="h-2.5 w-2.5" />
+                                        Submitted
+                                      </span>
+                                    )}
+                                    {isHot && !hasSubmitted && (
                                       <span className={cn(
                                         "flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium shrink-0",
                                         isAlmostFull ? "bg-destructive/10 text-destructive" : "bg-warning/10 text-warning"

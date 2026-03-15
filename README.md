@@ -58,4 +58,4 @@ See [CLAUDE.md](./CLAUDE.md) for detailed decisions.
 
 ## AI Usage
 
-Built with AI assistance. See [.ai_disclosure/](./.ai_disclosure/) for details.
+AI tools were used as a coding assistant for boilerplate and scaffolding. Architecture, design, and all technical decisions were developer-led. See [.ai_disclosure/](./.ai_disclosure/) for the full log.

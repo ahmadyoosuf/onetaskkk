@@ -235,13 +235,15 @@ export function TasksTable({
           return (
             <div className="flex items-center gap-2">
               <Progress value={progress} className="w-20 h-2" />
-              <span className="text-xs text-muted-foreground whitespace-nowrap">
+              <Link href={`/admin/submissions?task=${task.id}`} className="text-xs text-muted-foreground whitespace-nowrap hover:text-foreground transition-colors hover:underline">
                 {task.currentSubmissions}/{task.maxSubmissions}
-              </span>
+              </Link>
               {pendingCount > 0 && (
-                <Badge variant="secondary" className="text-xs bg-warning/10 text-warning border-warning/20">
-                  {pendingCount} pending
-                </Badge>
+                <Link href={`/admin/submissions?task=${task.id}&status=pending`}>
+                  <Badge variant="secondary" className="text-xs bg-warning/10 text-warning border-warning/20 cursor-pointer hover:bg-warning/20 transition-colors">
+                    {pendingCount} pending
+                  </Badge>
+                </Link>
               )}
             </div>
           )

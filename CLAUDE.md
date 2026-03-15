@@ -148,4 +148,4 @@ PRD's ADHD UX requirement: prevent accidental data loss. Bulk destructive action
 
 ## AI Disclosure
 
-See `/.ai_disclosure/` for transparency on AI assistance used during development.
+AI tools were used as a coding assistant during development — boilerplate generation, component scaffolding, and syntax lookup. All architectural decisions, PRD interpretation, design direction, bug diagnosis, and code review were done by the developer. See `/.ai_disclosure/` for the full log.
