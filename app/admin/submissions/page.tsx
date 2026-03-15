@@ -424,7 +424,7 @@ function SubmissionsContent() {
                             <div
                               onClick={() => handleSubmissionSelect(row.submission)}
                               className={cn(
-                                "flex cursor-pointer items-center justify-between gap-3 rounded-lg border p-3 transition-all touch-feedback",
+                                "group flex cursor-pointer items-center justify-between gap-3 rounded-lg border p-3 transition-all touch-feedback",
                                 isSelected
                                   ? "border-primary/50 bg-primary/5"
                                   : "border-border/20 hover:border-border/40 hover:bg-muted/30"
@@ -453,6 +453,33 @@ function SubmissionsContent() {
                                 </div>
                               </div>
                               <div className="flex shrink-0 items-center gap-2">
+                                {/* Inline quick-actions for pending submissions (PRD: reduce drag) */}
+                                {row.submission.status === "pending" && (
+                                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity lg:opacity-0 lg:group-hover:opacity-100">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setSelectedSubmission(row.submission)
+                                        handleReview("approved")
+                                      }}
+                                      className="flex h-7 w-7 items-center justify-center rounded-md bg-success/10 text-success hover:bg-success/20 transition-colors"
+                                      aria-label={`Approve ${row.submission.userName}'s submission`}
+                                    >
+                                      <Check className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setSelectedSubmission(row.submission)
+                                        handleReview("rejected")
+                                      }}
+                                      className="flex h-7 w-7 items-center justify-center rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
+                                      aria-label={`Reject ${row.submission.userName}'s submission`}
+                                    >
+                                      <X className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                )}
                                 {!groupByTask && (
                                   <span className="hidden text-xs text-muted-foreground sm:block">
                                     {row.submission.submittedAt.toLocaleDateString()}
