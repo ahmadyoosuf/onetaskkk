@@ -211,35 +211,26 @@ export function SubmissionDetail({
         )}
 
         {submission.status === "pending" && (
-          <div className="space-y-2 pt-2">
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                className="flex-1 bg-success hover:bg-success/90"
-                onClick={onApprove}
-                disabled={isReviewing}
-              >
-                <Check className="mr-1.5 h-4 w-4" />
-                Approve
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                className="flex-1"
-                onClick={onReject}
-                disabled={isReviewing}
-              >
-                <X className="mr-1.5 h-4 w-4" />
-                Reject
-              </Button>
-            </div>
-            <p className="text-[10px] text-muted-foreground text-center hidden lg:block">
-              Keyboard: <kbd className="rounded border border-border/50 bg-muted px-1 py-0.5 font-mono text-[10px]">A</kbd> approve
-              <span className="mx-1.5">|</span>
-              <kbd className="rounded border border-border/50 bg-muted px-1 py-0.5 font-mono text-[10px]">R</kbd> reject
-              <span className="mx-1.5">|</span>
-              <kbd className="rounded border border-border/50 bg-muted px-1 py-0.5 font-mono text-[10px]">J</kbd><kbd className="ml-0.5 rounded border border-border/50 bg-muted px-1 py-0.5 font-mono text-[10px]">K</kbd> navigate
-            </p>
+          <div className="flex gap-2 pt-2">
+            <Button
+              size="sm"
+              className="flex-1 bg-success hover:bg-success/90"
+              onClick={onApprove}
+              disabled={isReviewing}
+            >
+              <Check className="mr-1.5 h-4 w-4" />
+              Approve
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              className="flex-1"
+              onClick={onReject}
+              disabled={isReviewing}
+            >
+              <X className="mr-1.5 h-4 w-4" />
+              Reject
+            </Button>
           </div>
         )}
       </div>
