@@ -1,4 +1,4 @@
-import type { Metadata, Viewport } from 'next'
+importh type { Metadata, Viewport } from 'next'
 import { Space_Grotesk, IBM_Plex_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from '@/components/ui/toaster'
