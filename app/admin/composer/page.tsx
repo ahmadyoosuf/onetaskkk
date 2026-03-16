@@ -25,6 +25,10 @@ import { taskFormSchema, type TaskFormData } from "@/lib/schemas"
 import { TASK_TYPE_META, type TaskType } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 
+// Phase 2 Components
+import { PhasesEditor, type PhaseEntry } from "@/components/composer/phases-editor"
+import { DripFeedField } from "@/components/composer/drip-feed-field"
+
 // Field Components
 import { TitleField } from "@/components/composer/title-field"
 import { DescriptionField } from "@/components/composer/description-field"
@@ -57,6 +61,15 @@ function TaskComposerContent() {
   const [isLoadingTask, setIsLoadingTask] = useState(isEditMode)
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
   const [createdTaskTitle, setCreatedTaskTitle] = useState("")
+  
+  // Phase 2: Phases state
+  const [phasesEnabled, setPhasesEnabled] = useState(false)
+  const [phases, setPhases] = useState<PhaseEntry[]>([])
+  
+  // Phase 2: Drip feed state
+  const [dripFeedEnabled, setDripFeedEnabled] = useState(false)
+  const [dripAmount, setDripAmount] = useState(5)
+  const [dripInterval, setDripInterval] = useState(6)
 
   const methods = useForm<TaskFormData>({
     resolver: zodResolver(taskFormSchema),
@@ -125,6 +138,24 @@ function TaskComposerContent() {
     }
     
     reset(formData as TaskFormData)
+    
+    // Phase 2: Load phases & drip feed state
+    if (task.phases && task.phases.length > 0) {
+      setPhasesEnabled(true)
+      setPhases(task.phases.map((p) => ({
+        id: `phase-edit-${p.phaseIndex}`,
+        phaseName: p.phaseName,
+        slots: p.slots,
+        instructions: p.instructions,
+        reward: p.reward,
+      })))
+    }
+    if (task.dripFeed?.enabled) {
+      setDripFeedEnabled(true)
+      setDripAmount(task.dripFeed.dripAmount)
+      setDripInterval(task.dripFeed.dripInterval)
+    }
+    
     setIsLoadingTask(false)
     }
     loadTask()
@@ -152,6 +183,12 @@ function TaskComposerContent() {
     setTaskType("social_media_posting")
     setShowSuccessDialog(false)
     setCreatedTaskTitle("")
+    // Phase 2: Reset phases & drip feed
+    setPhasesEnabled(false)
+    setPhases([])
+    setDripFeedEnabled(false)
+    setDripAmount(5)
+    setDripInterval(6)
   }
 
   const handleViewTasks = () => {
@@ -166,6 +203,27 @@ function TaskComposerContent() {
 
       const desc = data.description || undefined
 
+      // Phase 2: Build phases array if enabled
+      const phasesPayload = phasesEnabled && phases.length >= 2
+        ? phases.map((p, i) => ({
+            phaseIndex: i + 1,
+            phaseName: p.phaseName,
+            slots: p.slots,
+            instructions: p.instructions,
+            reward: p.reward,
+          }))
+        : undefined
+
+      // Phase 2: Build drip feed config if enabled
+      const dripFeedPayload = dripFeedEnabled && dripAmount > 0 && dripInterval > 0
+        ? {
+            enabled: true as const,
+            dripAmount,
+            dripInterval,
+            startedAt: new Date(),
+          }
+        : undefined
+
       if (data.type === "social_media_posting") {
         taskPayload = {
           type: "social_media_posting",
@@ -177,6 +235,8 @@ function TaskComposerContent() {
           allowMultipleSubmissions: data.allowMultipleSubmissions,
           deadline: data.deadline,
           campaignId: data.campaignId || undefined,
+          phases: phasesPayload,
+          dripFeed: dripFeedPayload,
           taskDetails: {
             platform: data.platform,
             postContent: data.postContent,
@@ -194,6 +254,8 @@ function TaskComposerContent() {
           allowMultipleSubmissions: data.allowMultipleSubmissions,
           deadline: data.deadline,
           campaignId: data.campaignId || undefined,
+          phases: phasesPayload,
+          dripFeed: dripFeedPayload,
           taskDetails: {
             targetEmail: data.targetEmail,
             emailContent: data.emailContent,
@@ -210,6 +272,8 @@ function TaskComposerContent() {
           allowMultipleSubmissions: data.allowMultipleSubmissions,
           deadline: data.deadline,
           campaignId: data.campaignId || undefined,
+          phases: phasesPayload,
+          dripFeed: dripFeedPayload,
           taskDetails: {
             postUrl: data.postUrl,
             platform: data.platform,
@@ -353,6 +417,44 @@ function TaskComposerContent() {
                 {taskType === "social_media_posting" && <SocialMediaPostingFields />}
                 {taskType === "email_sending" && <EmailSendingFields />}
                 {taskType === "social_media_liking" && <SocialMediaFields />}
+              </CardContent>
+            </Card>
+
+            {/* Phase 2: Task Phases */}
+            <Card className="border-border/30">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base">Task Phases</CardTitle>
+                <CardDescription>
+                  Optionally break this task into sequential stages with different instructions and rewards.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PhasesEditor
+                  enabled={phasesEnabled}
+                  onEnabledChange={setPhasesEnabled}
+                  phases={phases}
+                  onPhasesChange={setPhases}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Phase 2: Drip Feed */}
+            <Card className="border-border/30">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base">Drip Feed</CardTitle>
+                <CardDescription>
+                  Control the rate of slot releases to pace worker completions.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <DripFeedField
+                  enabled={dripFeedEnabled}
+                  onEnabledChange={setDripFeedEnabled}
+                  dripAmount={dripAmount}
+                  onDripAmountChange={setDripAmount}
+                  dripInterval={dripInterval}
+                  onDripIntervalChange={setDripInterval}
+                />
               </CardContent>
             </Card>
 

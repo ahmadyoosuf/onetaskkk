@@ -31,10 +31,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Edit2, Eye, Heart, Mail, MoreHorizontal, Share2, Trash2 } from "lucide-react"
+import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Edit2, Eye, Heart, Layers, Mail, MoreHorizontal, Share2, Timer, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Task, TaskStatus, TaskType, Submission } from "@/lib/types"
-import { TASK_TYPE_META } from "@/lib/types"
+import { TASK_TYPE_META, getActivePhase, getDripFeedState } from "@/lib/types"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 const TASK_ICONS: Record<TaskType, typeof Share2> = {
   social_media_posting: Share2,
@@ -231,19 +237,98 @@ export function TasksTable({
           const progress = (task.currentSubmissions / task.maxSubmissions) * 100
           const taskSubmissions = submissions.filter((s) => s.taskId === task.id)
           const pendingCount = taskSubmissions.filter((s) => s.status === "pending").length
+          const isPhased = task.phases && task.phases.length > 0
+          const dripState = task.dripFeed?.enabled ? getDripFeedState(task) : null
 
           return (
-            <div className="flex items-center gap-2">
-              <Progress value={progress} className="w-20 h-2" />
-              <Link href={`/admin/submissions?task=${task.id}`} className="text-xs text-muted-foreground whitespace-nowrap hover:text-foreground transition-colors hover:underline">
-                {task.currentSubmissions}/{task.maxSubmissions}
-              </Link>
-              {pendingCount > 0 && (
-                <Link href={`/admin/submissions?task=${task.id}&status=pending`}>
-                  <Badge variant="secondary" className="text-xs bg-warning/10 text-warning border-warning/20 cursor-pointer hover:bg-warning/20 transition-colors">
-                    {pendingCount} pending
-                  </Badge>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                {/* Phase indicator */}
+                {isPhased && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          <Layers className="h-3 w-3 text-info" />
+                          <span className="text-[10px] text-info font-medium">{task.phases!.length}P</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-medium">Task Phases</p>
+                          {task.phases!.map((phase) => {
+                            const phaseProg = (phase.currentSubmissions / phase.slots) * 100
+                            const isActive = phase.currentSubmissions < phase.slots
+                            return (
+                              <div key={phase.phaseIndex} className="flex items-center gap-2 text-xs">
+                                <span className={cn(
+                                  "h-1.5 w-1.5 rounded-full shrink-0",
+                                  phaseProg >= 100 ? "bg-success" : isActive ? "bg-primary" : "bg-muted"
+                                )} />
+                                <span className="truncate flex-1">{phase.phaseName}</span>
+                                <span className="text-muted-foreground whitespace-nowrap">
+                                  {phase.currentSubmissions}/{phase.slots}
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+                {/* Drip feed indicator */}
+                {dripState && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className={cn(
+                          "flex items-center gap-0.5 shrink-0",
+                          dripState.state === "active" ? "text-success" : dripState.state === "waiting" ? "text-warning" : "text-muted-foreground"
+                        )}>
+                          <Timer className="h-3 w-3" />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <p className="text-xs">
+                          Drip Feed: {dripState.state === "active" ? "Active" : dripState.state === "waiting" ? "Waiting" : "Completed"}
+                          {dripState.nextReleaseIn !== null && ` - Next in ${Math.ceil(dripState.nextReleaseIn / 3600)}h`}
+                          {" "}({dripState.totalReleased} released)
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+                <Progress value={progress} className="w-20 h-2" />
+                <Link href={`/admin/submissions?task=${task.id}`} className="text-xs text-muted-foreground whitespace-nowrap hover:text-foreground transition-colors hover:underline">
+                  {task.currentSubmissions}/{task.maxSubmissions}
                 </Link>
+                {pendingCount > 0 && (
+                  <Link href={`/admin/submissions?task=${task.id}&status=pending`}>
+                    <Badge variant="secondary" className="text-xs bg-warning/10 text-warning border-warning/20 cursor-pointer hover:bg-warning/20 transition-colors">
+                      {pendingCount} pending
+                    </Badge>
+                  </Link>
+                )}
+              </div>
+              {/* Phase mini progress bars */}
+              {isPhased && (
+                <div className="flex gap-0.5 w-20">
+                  {task.phases!.map((phase) => {
+                    const phaseProg = Math.min(100, (phase.currentSubmissions / phase.slots) * 100)
+                    return (
+                      <div key={phase.phaseIndex} className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all",
+                            phaseProg >= 100 ? "bg-success" : "bg-primary/60"
+                          )}
+                          style={{ width: `${phaseProg}%` }}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
               )}
             </div>
           )

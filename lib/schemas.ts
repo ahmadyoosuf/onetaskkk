@@ -1,5 +1,44 @@
 import { z } from "zod"
 
+// ─── Phase Schema (Phase 2) ─────────────────────────────────
+export const taskPhaseSchema = z.object({
+  phaseName: z
+    .string()
+    .min(2, "Phase name must be at least 2 characters")
+    .max(100, "Phase name must be less than 100 characters"),
+  slots: z
+    .number({ invalid_type_error: "Slots is required" })
+    .int("Must be a whole number")
+    .min(1, "At least 1 slot required")
+    .max(10000, "Maximum 10,000 slots"),
+  instructions: z
+    .string()
+    .min(10, "Instructions must be at least 10 characters")
+    .max(5000, "Instructions must be less than 5000 characters"),
+  reward: z
+    .number({ invalid_type_error: "Reward is required" })
+    .min(0.1, "Minimum reward is A$0.10")
+    .max(1000, "Maximum reward is A$1,000"),
+})
+
+export type TaskPhaseFormData = z.infer<typeof taskPhaseSchema>
+
+// ─── Drip Feed Schema (Phase 2) ─────────────────────────────
+export const dripFeedSchema = z.object({
+  enabled: z.boolean(),
+  dripAmount: z
+    .number({ invalid_type_error: "Amount is required" })
+    .int("Must be a whole number")
+    .min(1, "At least 1 slot per release")
+    .max(10000, "Maximum 10,000 per release"),
+  dripInterval: z
+    .number({ invalid_type_error: "Interval is required" })
+    .min(0.5, "Minimum interval is 30 minutes")
+    .max(168, "Maximum interval is 7 days (168 hours)"),
+})
+
+export type DripFeedFormData = z.infer<typeof dripFeedSchema>
+
 // ─── Base Task Schema ───────────────────────────────────────
 const baseTaskSchema = z.object({
   title: z
