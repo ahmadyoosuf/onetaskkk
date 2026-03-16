@@ -284,7 +284,20 @@ function TaskComposerContent() {
 
       // Edit mode: update existing task
       if (isEditMode && editTaskId) {
-        await api.tasks.update(editTaskId, taskPayload)
+        // Fetch existing task to preserve currentSubmissions on phases
+        const existingTask = await api.tasks.get(editTaskId)
+        const existingPhases = existingTask?.phases ?? []
+
+        // Build a Partial<Task>-compatible payload by adding currentSubmissions back to phases
+        const updatePayload: Parameters<typeof api.tasks.update>[1] = {
+          ...taskPayload,
+          phases: taskPayload.phases?.map((p, i) => ({
+            ...p,
+            currentSubmissions: existingPhases[i]?.currentSubmissions ?? 0,
+          })),
+        }
+
+        await api.tasks.update(editTaskId, updatePayload)
         toast({
           title: "Task updated",
           description: `"${data.title}" has been updated successfully.`,
