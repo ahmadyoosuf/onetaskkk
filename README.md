@@ -36,6 +36,41 @@ pnpm build
 - **Email Sending** - send templated emails to specified recipients
 - **Social Media Liking** - engage with posts on social platforms
 
+## Phase 2
+
+Phase 2 adds task phases, drip feed slot release, worker earnings tracking, past submissions history, admin phase filtering, and bulk CSV task upload.
+
+### New Routes
+
+| Route | Role | Description |
+|-------|------|-------------|
+| `/worker/earnings` | Worker | Earnings dashboard with breakdown and activity |
+| `/worker/submissions` | Worker | Past submissions list with status and detail view |
+
+### Task Phases
+
+Tasks can optionally be broken into sequential phases (e.g. Phase 1: 20 slots, Phase 2: 50 slots). Each phase has its own name, slot count, instructions, and reward. Workers see only the active phase. Admins see all phases with progress bars. A phase auto-advances when its slots fill up.
+
+### Drip Feed
+
+Slot release can be controlled at the task level. When enabled, slots are released in batches on a timed interval (e.g. 5 slots every 6 hours). Workers see a live countdown timer until the next batch. Drip feed has three states: active (slots available), waiting (next batch pending), and completed (all slots released).
+
+### Worker Earnings
+
+Workers see a dashboard at `/worker/earnings` with total earnings, confirmed earnings, pending earnings, approval rate, top-earning tasks, and a recent activity feed. Earnings compute correctly for phased tasks by using each phase's reward amount. Pending submissions are shown as optimistic earnings.
+
+### Worker Past Submissions
+
+Workers can view all their past submissions at `/worker/submissions`. The list supports status filtering (all, pending, approved, rejected), sort controls, and a detail drawer showing evidence images, admin notes, review timestamps, and phase indicators.
+
+### Bulk CSV Upload
+
+Admins can create multiple tasks at once by uploading a CSV file in the composer. The upload supports drag-and-drop, file validation, error highlighting per row, and a preview dialog before import. A downloadable CSV template is provided with columns for all three task types.
+
+### Admin Phase Filtering
+
+The admin submissions page now shows a phase filter dropdown when viewing a phased task. Submission rows display phase badges (P1, P2, etc.) inline. The filter works alongside existing task, status, and group-by-task controls.
+
 ## Stack
 
 Next.js 16, React 19, TypeScript, Tailwind CSS v4, shadcn UI, Lexical (rich-text Markdown editor), TanStack Query, TanStack Table, TanStack Virtual, react-hook-form + zod, nuqs, Vaul (bottom-sheet drawer), idb-keyval (IndexedDB)

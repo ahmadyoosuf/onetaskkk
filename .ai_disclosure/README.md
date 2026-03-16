@@ -23,6 +23,25 @@ Every piece of generated code was reviewed, tested, and modified before being co
 
 The project started with AI generating an initial scaffold from the PRD. From there, each iteration was a specific, targeted change driven by my reading of the requirements. Later sessions were mostly debugging and refactoring — replacing the textarea with Lexical, swapping the custom table for TanStack Table, replacing Dialog with Vaul, migrating from localStorage to IndexedDB. I directed what to build, reviewed what came back, and decided what shipped.
 
+## Phase 2
+
+Phase 2 added task phases, drip feed slot release, worker earnings, past submissions, bulk CSV upload, and admin phase filtering.
+
+### How AI was used in Phase 2
+
+AI continued as a coding assistant for scaffolding new components (phases editor, drip feed field, CSV upload, earnings dashboard, past submissions page) and extending existing files (types, schemas, store, hooks, task detail, worker feed, admin submissions). All generated code was reviewed, tested, and modified before being committed.
+
+### What I owned and decided in Phase 2
+
+- **Phase architecture**: Chose sequential auto-advancing phases stored as an array on the Task type, with `getActivePhase` computed from current submissions vs slots
+- **Drip feed design**: Decided on wall-clock computation instead of stored state, avoiding timers or polling on the data layer. UI countdown runs a local interval for display only
+- **Earnings model**: Chose optimistic earnings (pending submissions count toward total) for immediate worker feedback. Phase-aware reward lookup uses `phaseIndex` on submissions to match the correct phase reward
+- **CSV upload flow**: Decided on preview-before-import pattern with per-row error highlighting rather than silent import with post-hoc error reporting
+- **Worker navigation**: Added separate nav items for Earnings and My Work instead of tabs on the feed page, keeping each workflow focused
+- **Admin phase filtering**: Scoped the phase filter dropdown to appear only when a phased task is selected, avoiding UI clutter for non-phased tasks
+- **Data migration strategy**: Bumped IndexedDB storage keys to v3 for clean Phase 2 data seeding without corrupting Phase 1 data
+- **Component decomposition**: Extracted `PhaseProgressCard` and `DripFeedCountdown` as isolated components within task-detail rather than creating separate files, matching the existing pattern
+
 ## Tools used
 
 - v0.dev (Claude-powered) for code generation and refactoring
