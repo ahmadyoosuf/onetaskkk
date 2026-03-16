@@ -28,6 +28,7 @@ import { useToast } from "@/hooks/use-toast"
 // Phase 2 Components
 import { PhasesEditor, type PhaseEntry } from "@/components/composer/phases-editor"
 import { DripFeedField } from "@/components/composer/drip-feed-field"
+import { CSVUpload } from "@/components/composer/csv-upload"
 
 // Field Components
 import { TitleField } from "@/components/composer/title-field"
@@ -317,6 +318,19 @@ function TaskComposerContent() {
           </p>
         </div>
         
+        {/* Phase 2: Bulk CSV Upload (only in create mode) */}
+        {!isEditMode && (
+          <Card className="border-border/30">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base">Bulk Upload</CardTitle>
+              <CardDescription>Create multiple tasks at once by uploading a CSV file.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CSVUpload onTasksCreated={() => router.push("/admin/tasks")} />
+            </CardContent>
+          </Card>
+        )}
+
         {isLoadingTask && (
           <Card className="border-border/30 border-dashed">
             <CardContent className="flex h-32 items-center justify-center">

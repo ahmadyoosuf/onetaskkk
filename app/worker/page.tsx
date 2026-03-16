@@ -39,13 +39,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Share2, Mail, Heart, Users, Filter, Flame, Clock, Check } from "lucide-react"
+import { Share2, Mail, Heart, Users, Filter, Flame, Clock, Check, Layers, Timer } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useSubmissions, useTasks, useCreateSubmission } from "@/hooks/use-store"
 import { useAuth } from "@/components/providers/auth-provider"
 import { socialMediaSubmissionSchema, emailSubmissionSchema, type SubmissionFormData } from "@/lib/schemas"
 import type { Task, TaskType } from "@/lib/types"
-import { TASK_TYPE_META } from "@/lib/types"
+import { TASK_TYPE_META, getActivePhase, getDripFeedState } from "@/lib/types"
 
 const TASK_ICONS: Record<TaskType, typeof Share2> = {
   social_media_posting: Share2,
@@ -124,6 +124,14 @@ function TasksFeedContent() {
     if (!selectedTask) return false
     return submittedTaskIds.has(selectedTask.id)
   }, [selectedTask, submittedTaskIds])
+
+  // Current user's submissions for the selected task (for phase progress display)
+  const userTaskSubmissions = useMemo(() => {
+    if (!currentUser || !selectedTask) return []
+    return submissions.filter(
+      (s) => s.userId === currentUser.id && s.taskId === selectedTask.id
+    )
+  }, [submissions, currentUser, selectedTask])
 
   const isSubmitLocked = !!selectedTask && !selectedTask.allowMultipleSubmissions && hasSubmittedSelectedTask
 
@@ -332,6 +340,27 @@ function TasksFeedContent() {
                                 <Badge variant="outline" className="border-border/30 text-xs px-1.5 py-0">
                                   {meta.label}
                                 </Badge>
+                                {task.phases && task.phases.length > 0 && (() => {
+                                  const ap = getActivePhase(task)
+                                  return (
+                                    <span className="flex items-center gap-0.5 rounded-full bg-info/10 px-1.5 py-0.5 text-[10px] font-medium text-info">
+                                      <Layers className="h-2.5 w-2.5" />
+                                      {ap ? ap.phaseName : "All done"}
+                                    </span>
+                                  )
+                                })()}
+                                {task.dripFeed?.enabled && (() => {
+                                  const ds = getDripFeedState(task)
+                                  if (ds.state === "waiting") {
+                                    return (
+                                      <span className="flex items-center gap-0.5 rounded-full bg-warning/10 px-1.5 py-0.5 text-[10px] font-medium text-warning">
+                                        <Timer className="h-2.5 w-2.5" />
+                                        Waiting
+                                      </span>
+                                    )
+                                  }
+                                  return null
+                                })()}
                                 {task.deadline && (
                                   <span className="flex items-center gap-1 text-muted-foreground">
                                     <Clock className="h-3 w-3" />
@@ -361,6 +390,7 @@ function TasksFeedContent() {
                   task={selectedTask}
                   isSubmitLocked={isSubmitLocked}
                   onSubmit={() => setShowSubmitDialog(true)}
+                  userSubmissions={userTaskSubmissions}
                 />
               </CardContent>
             </Card>
@@ -411,6 +441,7 @@ function TasksFeedContent() {
                   setShowMobileDrawer(false)
                   setShowSubmitDialog(true)
                 }}
+                userSubmissions={userTaskSubmissions}
               />
             </div>
           )}

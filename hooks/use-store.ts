@@ -126,3 +126,61 @@ export function useUpdateSubmissionStatus() {
     },
   })
 }
+
+/**
+ * Phase 2: Worker earnings — computed from approved submissions.
+ * Uses optimistic updates so earnings reflect immediately when a task is submitted.
+ */
+export function useWorkerEarnings(userId: string | undefined) {
+  const { submissions } = useSubmissions()
+  const { tasks } = useTasks()
+
+  // Build a task lookup map once
+  const taskMap = new Map(tasks.map((t) => [t.id, t]))
+
+  // Approved earnings
+  let approvedEarnings = 0
+  // Pending (optimistic) earnings — submitted but not yet reviewed
+  let pendingEarnings = 0
+  let totalSubmitted = 0
+  let totalApproved = 0
+
+  if (userId) {
+    for (const s of submissions) {
+      if (s.userId !== userId) continue
+      totalSubmitted++
+      const task = taskMap.get(s.taskId)
+      // For phased tasks, use the phase-level reward
+      let reward = task?.reward ?? 0
+      if (task?.phases && s.phaseIndex) {
+        const phase = task.phases.find((p) => p.phaseIndex === s.phaseIndex)
+        if (phase) reward = phase.reward
+      }
+      if (s.status === "approved") {
+        approvedEarnings += reward
+        totalApproved++
+      } else if (s.status === "pending") {
+        pendingEarnings += reward
+      }
+    }
+  }
+
+  return {
+    approvedEarnings,
+    pendingEarnings,
+    totalEarnings: approvedEarnings + pendingEarnings,
+    totalSubmitted,
+    totalApproved,
+  }
+}
+
+/**
+ * Phase 2: Worker's past submissions list for the submissions screen.
+ */
+export function useWorkerSubmissions(userId: string | undefined) {
+  const { submissions, isLoading, error, refetch } = useSubmissions()
+  const workerSubs = userId 
+    ? submissions.filter((s) => s.userId === userId) 
+    : []
+  return { submissions: workerSubs, isLoading, error, refetch }
+}

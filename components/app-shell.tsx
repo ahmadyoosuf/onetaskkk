@@ -4,7 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, ListTodo, ClipboardCheck, PlusCircle, ArrowLeftRight, LogOut, User } from "lucide-react"
+import { LayoutDashboard, ListTodo, ClipboardCheck, PlusCircle, ArrowLeftRight, LogOut, User, DollarSign, FileText } from "lucide-react"
 import { useAuth } from "@/components/providers/auth-provider"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import {
@@ -22,6 +22,8 @@ type AppRole = "worker" | "admin"
 const NAV_ITEMS: Record<AppRole, { href: string; label: string; icon: typeof ListTodo }[]> = {
   worker: [
     { href: "/worker", label: "Feed", icon: ListTodo },
+    { href: "/worker/earnings", label: "Earnings", icon: DollarSign },
+    { href: "/worker/submissions", label: "My Work", icon: FileText },
   ],
   admin: [
     { href: "/admin/composer", label: "Compose", icon: PlusCircle },
