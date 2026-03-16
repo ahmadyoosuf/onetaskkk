@@ -37,13 +37,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   Share2, Mail, Heart, Plus, MoreHorizontal, Eye, Trash2,
-  DollarSign, ListTodo, Clock, Users, Edit2
+  DollarSign, ListTodo, Clock, Users, Edit2, Layers, Timer
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useSubmissions, useTasks, useDeleteTask, useUpdateTaskStatus, useUpdateTask } from "@/hooks/use-store"
 import { useToast } from "@/hooks/use-toast"
 import type { Task, TaskType, TaskStatus } from "@/lib/types"
-import { TASK_TYPE_META } from "@/lib/types"
+import { TASK_TYPE_META, getDripFeedState } from "@/lib/types"
 
 const TASK_ICONS: Record<TaskType, typeof Share2> = {
   social_media_posting: Share2,
@@ -533,6 +533,26 @@ function TasksManagementContent() {
                             <Badge variant={task.status} className="text-xs">
                               {TASK_STATUS_LABELS[task.status]}
                             </Badge>
+                            {task.phases && task.phases.length > 0 && (
+                              <Badge variant="outline" className="text-xs border-info/30 text-info bg-info/5">
+                                <Layers className="mr-1 h-3 w-3" />
+                                {task.phases.length} Phases
+                              </Badge>
+                            )}
+                            {task.dripFeed?.enabled && (() => {
+                              const ds = getDripFeedState(task)
+                              return (
+                                <Badge variant="outline" className={cn(
+                                  "text-xs",
+                                  ds.state === "active" ? "border-success/30 text-success bg-success/5" :
+                                  ds.state === "waiting" ? "border-warning/30 text-warning bg-warning/5" :
+                                  "border-border/30 text-muted-foreground"
+                                )}>
+                                  <Timer className="mr-1 h-3 w-3" />
+                                  Drip
+                                </Badge>
+                              )
+                            })()}
                             <span className="text-sm font-mono font-medium text-success">A${task.reward.toFixed(2)}</span>
                             {pendingCount > 0 && (
                               <Badge variant="secondary" className="text-xs bg-warning/10 text-warning border-warning/20">
@@ -547,6 +567,30 @@ function TasksManagementContent() {
                               {task.currentSubmissions}/{task.maxSubmissions}
                             </span>
                           </div>
+                          {/* Phase 2: Phase mini progress on mobile */}
+                          {task.phases && task.phases.length > 0 && (
+                            <div className="flex gap-1">
+                              {task.phases.map((phase) => {
+                                const phaseProg = Math.min(100, (phase.currentSubmissions / phase.slots) * 100)
+                                return (
+                                  <div key={phase.phaseIndex} className="flex-1 space-y-0.5">
+                                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                                      <div
+                                        className={cn(
+                                          "h-full rounded-full transition-all",
+                                          phaseProg >= 100 ? "bg-success" : "bg-primary/60"
+                                        )}
+                                        style={{ width: `${phaseProg}%` }}
+                                      />
+                                    </div>
+                                    <p className="text-[9px] text-muted-foreground text-center truncate">
+                                      P{phase.phaseIndex}
+                                    </p>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
 
                           <div className="flex gap-2">
                             <Link href={`/admin/submissions?task=${task.id}`} className="flex-1">

@@ -1,13 +1,15 @@
 import { get, set, createStore } from "idb-keyval"
-import type { Task, Submission, User, TaskType, Platform } from "./types"
+import type { Task, Submission, User, TaskType, Platform, TaskPhase, DripFeedConfig } from "./types"
+import { getActivePhase } from "./types"
 import { MOCK_USERS } from "./mock-users"
 
 // ─── IndexedDB Persistence ────────────────────────────────────
 // Main store for structured data (tasks, submissions without images)
+// Bumped to v3 for Phase 2 (task phases + drip feed)
 const STORAGE_KEYS = {
-  tasks: "taskmarket_tasks_v2",
-  submissions: "taskmarket_submissions_v2",
-  initialized: "taskmarket_initialized_v2",
+  tasks: "taskmarket_tasks_v3",
+  submissions: "taskmarket_submissions_v3",
+  initialized: "taskmarket_initialized_v3",
 } as const
 
 // Separate IndexedDB store for base64 images (keyed by submission ID)
@@ -173,20 +175,67 @@ function generateMockTasks(): Task[] {
       deadline = Math.random() > 0.6 ? new Date(now.getTime() + (Math.random() * 30) * 24 * 60 * 60 * 1000) : undefined
     }
     
+    const reward = parseFloat((0.5 + Math.random() * 9.5).toFixed(2))
+
+    // Phase 2: ~10% of tasks (indices 0-49) get phases, ~5% get drip feed
+    const isPhased = i < 50 && i % 5 === 0 // 10 phased tasks
+    const hasDripFeed = i < 50 && i % 10 === 0 // 5 drip feed tasks
+
+    let phases: TaskPhase[] | undefined
+    let dripFeed: DripFeedConfig | undefined
+    let adjustedMaxSubs = maxSubs
+    let adjustedCurrentSubs = currentSubs
+
+    if (isPhased) {
+      // Create 2-3 phases with proportional slots
+      const phaseCount = 2 + (i % 2) // 2 or 3 phases
+      const slotPerPhase = Math.floor(maxSubs / phaseCount)
+      phases = []
+      let remaining = adjustedCurrentSubs
+      for (let p = 1; p <= phaseCount; p++) {
+        const slots = p === phaseCount ? maxSubs - slotPerPhase * (phaseCount - 1) : slotPerPhase
+        const phaseSubs = Math.min(remaining, slots)
+        remaining = Math.max(0, remaining - phaseSubs)
+        const phaseNames = ["Launch Posts", "Engagement Replies", "Analytics Reports", "Final Review"]
+        phases.push({
+          phaseIndex: p,
+          phaseName: `Phase ${p} — ${phaseNames[(p - 1) % phaseNames.length]}`,
+          slots,
+          currentSubmissions: phaseSubs,
+          instructions: `**Phase ${p} Instructions:**\n\nComplete the phase ${p} requirements as specified.\n\n- Follow all steps carefully.\n- Submit proof when finished.`,
+          reward: parseFloat((reward * (0.8 + p * 0.2)).toFixed(2)),
+        })
+      }
+      // Recalculate totals from phases
+      adjustedMaxSubs = phases.reduce((sum, p) => sum + p.slots, 0)
+      adjustedCurrentSubs = phases.reduce((sum, p) => sum + p.currentSubmissions, 0)
+    }
+
+    if (hasDripFeed) {
+      dripFeed = {
+        enabled: true,
+        dripAmount: [5, 10, 15, 20][i % 4],
+        dripInterval: [6, 12, 24][i % 3],
+        startedAt: new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000),
+      }
+    }
+
     const baseTask = {
       id: `task-${i + 1}`,
       type,
       title: `${template.title}${i > 0 ? ` #${i + 1}` : ""}`,
       description: template.description,
       details: `**Instructions:** Complete the task exactly as specified.\n\n- Follow all steps carefully.\n- Submit proof when finished.\n\nThis task is part of our quality review workflow and includes additional validation before approval.`,
-      reward: parseFloat((0.5 + Math.random() * 9.5).toFixed(2)),
-      maxSubmissions: maxSubs,
+      reward,
+      maxSubmissions: adjustedMaxSubs,
       allowMultipleSubmissions: i % 4 !== 0,
-      currentSubmissions: currentSubs,
+      currentSubmissions: adjustedCurrentSubs,
       status,
       createdAt: new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000),
       deadline,
       campaignId,
+      phases,
+      dripFeed,
     }
     
     if (type === "social_media_posting") {
@@ -227,6 +276,21 @@ function generateMockSubmissions(generatedTasks: Task[]): Submission[] {
     const submittedAt = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000)
     const userName = names[i % names.length]
     
+    // Determine phaseIndex for phased tasks
+    let phaseIndex: number | undefined
+    if (task.phases && task.phases.length > 0) {
+      // Distribute submissions across phases proportionally
+      const totalPhaseSlots = task.phases.reduce((sum, p) => sum + p.slots, 0)
+      let cumulativeSlots = 0
+      for (const phase of task.phases) {
+        cumulativeSlots += phase.slots
+        if ((i % totalPhaseSlots) < cumulativeSlots) {
+          phaseIndex = phase.phaseIndex
+          break
+        }
+      }
+    }
+
     // screenshotUrl stays as a placeholder URL for mock data
     // Real uploads use the separate files store via saveEvidenceFile
     const submission: Submission = {
@@ -240,6 +304,7 @@ function generateMockSubmissions(generatedTasks: Task[]): Submission[] {
       submittedAt,
       reviewedAt: status !== "pending" ? new Date(submittedAt.getTime() + 2 * 60 * 60 * 1000) : undefined,
       adminNotes: status === "rejected" ? "Submission does not meet requirements" : undefined,
+      phaseIndex,
     }
     
     if (taskType === "social_media_posting" || taskType === "social_media_liking") {
@@ -327,6 +392,9 @@ type CreateTaskInputBase = {
   allowMultipleSubmissions: boolean
   deadline?: Date
   campaignId?: string
+  // Phase 2
+  phases?: Omit<TaskPhase, "currentSubmissions">[]
+  dripFeed?: DripFeedConfig
 }
 
 type CreateTaskInput = 
@@ -336,6 +404,18 @@ type CreateTaskInput =
 
 export async function createTask(input: CreateTaskInput): Promise<Task> {
   await initializeStore()
+
+  // Phase 2: Build phases with currentSubmissions = 0
+  const phases: TaskPhase[] | undefined = input.phases?.map((p, i) => ({
+    ...p,
+    phaseIndex: p.phaseIndex ?? i + 1,
+    currentSubmissions: 0,
+  }))
+
+  // If phased, maxSubmissions = sum of all phase slots
+  const maxSubmissions = phases && phases.length > 0
+    ? phases.reduce((sum, p) => sum + p.slots, 0)
+    : input.maxSubmissions
   
   const newTask: Task = {
     id: `task-${Date.now()}`,
@@ -343,7 +423,7 @@ export async function createTask(input: CreateTaskInput): Promise<Task> {
     description: input.description,
     details: input.details,
     reward: input.reward,
-    maxSubmissions: input.maxSubmissions,
+    maxSubmissions,
     allowMultipleSubmissions: input.allowMultipleSubmissions,
     currentSubmissions: 0,
     status: "open",
@@ -352,6 +432,8 @@ export async function createTask(input: CreateTaskInput): Promise<Task> {
     campaignId: input.campaignId,
     type: input.type,
     taskDetails: input.taskDetails,
+    phases,
+    dripFeed: input.dripFeed?.enabled ? { ...input.dripFeed, startedAt: new Date() } : undefined,
   } as Task
   
   await simulateMutationDelay(null)
@@ -426,20 +508,42 @@ export async function createSubmission(submission: Omit<Submission, "id" | "subm
     screenshotRef = `evidence://${newId}` // Reference pointer, not the blob
   }
 
+  // Phase 2: Determine the active phase for phased tasks
+  const activePhase = getActivePhase(task)
+  const phaseIndex = activePhase?.phaseIndex
+
   const newSubmission: Submission = {
     ...submission,
     id: newId,
     screenshotUrl: screenshotRef,
     submittedAt: new Date(),
     status: "pending",
+    phaseIndex,
   }
   
   await simulateMutationDelay(null)
   submissions = [newSubmission, ...submissions]
   
-  const newCount = task.currentSubmissions + 1
-  const newStatus = newCount >= task.maxSubmissions ? "completed" : task.status
-  tasks[taskIndex] = { ...task, currentSubmissions: newCount, status: newStatus }
+  // Phase 2: Update phase-level counters if phased task
+  if (task.phases && activePhase && phaseIndex) {
+    const updatedPhases = task.phases.map((p) =>
+      p.phaseIndex === phaseIndex
+        ? { ...p, currentSubmissions: p.currentSubmissions + 1 }
+        : p
+    )
+    const totalSubs = updatedPhases.reduce((sum, p) => sum + p.currentSubmissions, 0)
+    const allPhasesDone = updatedPhases.every((p) => p.currentSubmissions >= p.slots)
+    tasks[taskIndex] = {
+      ...task,
+      phases: updatedPhases,
+      currentSubmissions: totalSubs,
+      status: allPhasesDone ? "completed" : task.status,
+    }
+  } else {
+    const newCount = task.currentSubmissions + 1
+    const newStatus = newCount >= task.maxSubmissions ? "completed" : task.status
+    tasks[taskIndex] = { ...task, currentSubmissions: newCount, status: newStatus }
+  }
   
   schedulePersist()
   return newSubmission
