@@ -146,6 +146,90 @@ PRD's ADHD UX requirement: prevent accidental data loss. Bulk destructive action
 - **Consistent spacing** — all sections use same spacing scale
 - **Glass header** — sticky, always visible reference point
 
+## Phase 2
+
+Phase 2 extends the platform with task phases, drip feed, worker earnings, past submissions, bulk CSV upload, and admin phase filtering.
+
+### New Routes
+
+| Path | Role | Screen |
+|------|------|--------|
+| `/worker/earnings` | Worker | Earnings Dashboard with breakdown and activity feed |
+| `/worker/submissions` | Worker | Past submissions with filter, sort, and detail drawer |
+
+### New Components
+
+| Component | Purpose |
+|-----------|---------|
+| `components/composer/phases-editor.tsx` | Add/edit/remove sequential phases for a task |
+| `components/composer/drip-feed-field.tsx` | Configure drip feed (batch size, interval) |
+| `components/composer/csv-upload.tsx` | Drag-and-drop CSV upload with preview and validation |
+| `components/tasks/task-detail.tsx` (updated) | Phase progress cards, drip feed countdown timer |
+
+### New Types
+
+| Type | Location | Purpose |
+|------|----------|---------|
+| `TaskPhase` | `lib/types.ts` | Phase index, name, slots, instructions, reward |
+| `DripFeedConfig` | `lib/types.ts` | Drip amount, interval, start time |
+| `DripFeedState` | `lib/types.ts` | Union: "active", "waiting", "completed" |
+
+### New Hooks
+
+| Hook | Location | Purpose |
+|------|----------|---------|
+| `useWorkerEarnings` | `hooks/use-store.ts` | Computes approved + pending earnings from submissions |
+| `useWorkerSubmissions` | `hooks/use-store.ts` | Filters submissions by userId for the past work screen |
+
+### Phase 2 Key Decisions
+
+**Why sequential phases on tasks?**
+PRD requires breaking tasks into stages with independent slot counts and rewards. Each phase auto-advances when full. Workers only see the active phase to reduce confusion.
+
+**Why computed drip feed state instead of stored state?**
+Drip feed slots are calculated from `startedAt`, `dripInterval`, and `dripAmount` using wall-clock time. No polling or timers needed on the data layer. The UI countdown uses a local `setInterval` for the visual timer only.
+
+**Why optimistic earnings?**
+Workers see pending submissions counted toward their total earnings immediately. This gives instant feedback after task completion without waiting for admin review.
+
+**Why phase-aware reward computation?**
+Phased tasks can have different rewards per phase. The earnings hook looks up each submission's `phaseIndex` and uses the matching phase reward instead of the top-level task reward.
+
+**Why CSV upload with preview dialog?**
+Bulk task creation needs error visibility before committing. The preview shows parsed rows with per-row validation errors highlighted. Workers can fix issues in the CSV and re-upload before importing.
+
+**Why phase filter on admin submissions?**
+When a phased task has hundreds of submissions across multiple phases, admins need to scope their review to a specific phase. The filter only appears when a phased task is selected in the task dropdown.
+
+**Why separate worker navigation items?**
+Earnings and past submissions are distinct workflows from the task feed. Separate nav items prevent a cluttered feed and give workers direct access to each screen.
+
+### Architecture Update
+
+```
+app/
+  worker/
+    page.tsx              -- tasks feed (updated: phase badges, drip indicators)
+    earnings/page.tsx     -- NEW: earnings dashboard
+    submissions/page.tsx  -- NEW: past submissions list
+
+components/
+  composer/
+    phases-editor.tsx     -- NEW: phase management UI
+    drip-feed-field.tsx   -- NEW: drip feed toggle and config
+    csv-upload.tsx        -- NEW: bulk CSV import
+  tasks/
+    task-detail.tsx       -- UPDATED: phase progress, drip countdown
+
+lib/
+  types.ts                -- UPDATED: TaskPhase, DripFeedConfig, helper functions
+  schemas.ts              -- UPDATED: phase and drip feed zod schemas
+  store.ts                -- UPDATED: v3 storage, phase-aware submissions, mock phased tasks
+
+hooks/
+  use-store.ts            -- UPDATED: useWorkerEarnings, useWorkerSubmissions
+```
+
 ## AI Disclosure
 
-AI tools were used as a coding assistant during development — boilerplate generation, component scaffolding, and syntax lookup. All architectural decisions, PRD interpretation, design direction, bug diagnosis, and code review were done by the developer. See `/.ai_disclosure/` for the full log.
+AI tools were used as a coding assistant during development -- boilerplate generation, component scaffolding, and syntax lookup. All architectural decisions, PRD interpretation, design direction, bug diagnosis, and code review were done by the developer. See `/.ai_disclosure/` for the full log.
