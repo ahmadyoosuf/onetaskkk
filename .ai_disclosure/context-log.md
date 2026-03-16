@@ -117,3 +117,64 @@ Added confirmation dialogs to bulk destructive actions (ADHD UX requirement). Wi
 
 - **v0.dev (Claude-powered)** for code generation and refactoring assistance
 - **Claude.ai** for architecture discussions between sessions (localStorage vs IndexedDB trade-offs, Lexical integration approach)
+
+---
+
+## Phase 2: Task Phases & Drip Feed
+
+### Session 1: Core Data Layer + Task Phases
+
+Extended the Task type with a `phases` array containing `TaskPhase` objects (phaseIndex, phaseName, slots, instructions, reward, currentSubmissions). Added `phaseIndex` to Submission to track which phase a worker submitted to.
+
+Implemented `getActivePhase()` helper that returns the first phase with available slots (currentSubmissions < slots), auto-advancing through the array as phases fill up. Built `getDripFeedState()` helper that computes drip feed slot availability from wall-clock time using `startedAt`, `dripInterval`, and `dripAmount` rather than storing state on the task itself. This avoids polling or timer complexity at the data layer.
+
+**Key decision:** Drip feed is purely computed from wall-clock time. No background jobs or stored state. The UI countdown timer runs a local `setInterval` for display purposes only.
+
+Scaled mock data to include some phased tasks (50% of tasks use phases, 30% have drip feed enabled) for real-world testing.
+
+### Session 2: Worker Feed UI + Phase Indicators
+
+Updated `task-detail.tsx` to show phase-specific information: active phase highlighting, per-phase reward display, drip feed countdown timer (with live ticking seconds), and a "All Phases" accordion showing past phases the worker has submitted to.
+
+Added phase name badges and drip feed status ("Waiting") indicators to task cards in the worker feed. The countdown timer uses `useEffect` with `setInterval` to tick live without re-fetching data.
+
+**Bug fixed:** Phase progress array mutation — the phases array from the store was being mutated directly. Wrapped all phase mutations in spread operators and used `map()` to create new arrays.
+
+### Session 3: Worker Earnings Dashboard
+
+Created `/worker/earnings` page showing total earnings (optimistic + confirmed), breakdown bar chart by approval status, top-earning tasks ranked by payout, and a recent activity feed showing last 5 submissions with timestamps and status badges.
+
+Implemented `useWorkerEarnings()` hook that sums approved + pending submissions and looks up each submission's phase-specific reward if `phaseIndex` is present, falling back to the task-level reward for non-phased tasks. Pending submissions are included in "Optimistic Earnings" for immediate feedback.
+
+### Session 4: Worker Past Submissions
+
+Built `/worker/submissions` page with virtualized submission list, status filter pills (all, pending, approved, rejected), sort dropdown (newest, oldest, by status), and a detail drawer showing evidence images, admin notes, review timestamp, and phase indicator badge (P1, P2, etc.).
+
+The detail drawer uses a `useCallback` with `useMemo` to prevent drawer state from resetting when the list re-renders. Added phase badge inline to each row so admins can scan which phase submissions belong to.
+
+### Session 5: Admin Phase Filtering
+
+Added a phase filter dropdown to the admin submissions page that appears only when a phased task is selected in the task filter. The dropdown lets admins scope submissions to a specific phase, reducing clutter when reviewing hundreds of submissions across multiple phases.
+
+Updated submission rows to display phase badges (P1, P2, etc.) inline. The filter parameter is stored in URL state via `nuqs` so the filter persists on page reload.
+
+### Session 6: Bulk CSV Upload
+
+Built `CSVUpload` component with drag-and-drop file input, CSV parsing via `papaparse`, per-row validation using the same zod schemas as the form, and a preview dialog highlighting error rows in red.
+
+The component generates a downloadable CSV template with headers for all three task types and example rows. Supports bulk task creation with a "Create All" button that loops through parsed rows and calls the store's `createTask` API for each one. Success toast shows count of created tasks.
+
+**Bug fixed:** CSV parser was treating empty cells as empty strings instead of undefined. Wired a post-parse transformation to convert empty strings to undefined so optional fields don't get stray values.
+
+### Session 7: Documentation & Context Log
+
+Updated README.md with a "Phase 2" section covering new routes, task phases, drip feed, worker earnings, past submissions, bulk CSV, and admin phase filtering. Updated CLAUDE.md with new types, hooks, components, and architectural decision rationale. Updated `.ai_disclosure/README.md` with what the developer owned and decided for Phase 2.
+
+Expanded `context-log.md` with 7 Phase 2 sessions documenting all new features, key decisions, and bugs fixed. Maintained consistent formatting and style from Phase 1.
+
+---
+
+## Tools Used
+
+- **v0.dev (Claude-powered)** for code generation and refactoring assistance
+- **Claude.ai** for architecture discussions between sessions (localStorage vs IndexedDB trade-offs, Lexical integration approach)
