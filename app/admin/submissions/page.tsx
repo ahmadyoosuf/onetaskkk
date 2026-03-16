@@ -78,12 +78,20 @@ function SubmissionsContent() {
   const [groupByTask, setGroupByTask] = useQueryState("group", parseAsBoolean.withDefault(false))
   const [sortBy, setSortBy] = useQueryState("sort", sortByParser)
   
+  const [phaseFilter, setPhaseFilter] = useQueryState("phase", parseAsString.withDefault("all"))
   const [showReviewDialog, setShowReviewDialog] = useState(false)
   const [reviewAction, setReviewAction] = useState<"approved" | "rejected">("approved")
   const [adminNotes, setAdminNotes] = useState("")
   const [showMobileDrawer, setShowMobileDrawer] = useState(false)
   const parentRef = useRef<HTMLDivElement>(null)
   const taskMap = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks])
+
+  // Get phases for the currently selected task (for phase filter dropdown)
+  const selectedTaskPhases = useMemo(() => {
+    if (taskFilter === "all") return []
+    const task = taskMap.get(taskFilter)
+    return task?.phases ?? []
+  }, [taskFilter, taskMap])
 
   // Handle submission selection - show mobile drawer on small screens
   const handleSubmissionSelect = (submission: Submission) => {
@@ -100,6 +108,13 @@ function SubmissionsContent() {
     }
     if (taskFilter !== "all") {
       result = result.filter((s) => s.taskId === taskFilter)
+    }
+    // Phase 2: Filter by phase
+    if (phaseFilter !== "all" && taskFilter !== "all") {
+      const phaseIdx = parseInt(phaseFilter, 10)
+      if (!isNaN(phaseIdx)) {
+        result = result.filter((s) => s.phaseIndex === phaseIdx)
+      }
     }
     
     // Apply sorting (PRD requirement)
@@ -338,6 +353,23 @@ function SubmissionsContent() {
                   ))}
                 </SelectContent>
               </Select>
+              {/* Phase 2: Phase filter (visible only when a phased task is selected) */}
+              {selectedTaskPhases.length > 0 && (
+                <Select value={phaseFilter} onValueChange={(v) => setPhaseFilter(v)}>
+                  <SelectTrigger className="w-full sm:w-44">
+                    <Layers className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
+                    <SelectValue placeholder="Phase" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Phases</SelectItem>
+                    {selectedTaskPhases.map((phase) => (
+                      <SelectItem key={phase.phaseIndex} value={String(phase.phaseIndex)}>
+                        {phase.phaseName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
                 <SelectTrigger className="w-full sm:w-36">
                   <ArrowUpDown className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
@@ -447,9 +479,21 @@ function SubmissionsContent() {
                                 </div>
                                 <div className="min-w-0">
                                   <p className="truncate text-sm font-medium">{row.submission.userName}</p>
-                                  <p className="truncate text-xs text-muted-foreground">
-                                    {groupByTask ? row.submission.submittedAt.toLocaleDateString() : row.taskTitle}
-                                  </p>
+                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                    <span className="truncate">
+                                      {groupByTask ? row.submission.submittedAt.toLocaleDateString() : row.taskTitle}
+                                    </span>
+                                    {row.submission.phaseIndex && (() => {
+                                      const task = taskMap.get(row.submission.taskId)
+                                      const phase = task?.phases?.find((p) => p.phaseIndex === row.submission.phaseIndex)
+                                      return (
+                                        <span className="flex items-center gap-0.5 text-info shrink-0">
+                                          <Layers className="h-2.5 w-2.5" />
+                                          <span className="text-[10px]">{phase ? `P${phase.phaseIndex}` : `P${row.submission.phaseIndex}`}</span>
+                                        </span>
+                                      )
+                                    })()}
+                                  </div>
                                 </div>
                               </div>
                               <div className="flex shrink-0 items-center gap-2">
