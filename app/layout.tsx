@@ -6,6 +6,7 @@ import { QueryProvider } from '@/components/providers/query-provider'
 import { AuthProvider } from '@/components/providers/auth-provider'
 import { ThemeProvider } from '@/components/providers/theme-provider'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
+
 import './globals.css'
 
 const spaceGrotesk = Space_Grotesk({
